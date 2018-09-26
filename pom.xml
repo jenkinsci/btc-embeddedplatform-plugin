@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jenkins-ci.plugins</groupId>
+        <artifactId>plugin</artifactId>
+        <version>2.3</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.btc.ep</groupId>
+    <artifactId>embedded-platform-plugin</artifactId>
+    <version>1.9.0</version>
+    <packaging>hpi</packaging>
+
+    <name>BTC DSL for Pipeline</name>
+    <description>BTC DSL for Pipeline allows easy access to test steps provided by the BTC Jenkins Automation Plugin.</description>
+
+    <url>https://www.btc-es.de</url>
+
+    <properties>
+        <workflow.version>1.13</workflow.version>
+    </properties>
+
+    <developers>
+        <developer>
+            <id>thabok</id>
+            <name>Thabo Krick</name>
+            <email>thabo.krick@btc-es.de</email>
+        </developer>
+    </developers>
+
+    <repositories>
+        <repository>
+            <id>repo.jenkins-ci.org</id>
+            <url>http://repo.jenkins-ci.org/public/</url>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>repo.jenkins-ci.org</id>
+            <url>http://repo.jenkins-ci.org/public/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <dependencies>
+        <!-- BTC Plugin dependencies for DSL steps -->
+        <!-- JUnit -->
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>junit</artifactId>
+            <version>1.14</version>
+        </dependency>
+        <!-- HttpRequest -->
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>http_request</artifactId>
+            <version>1.8</version>
+        </dependency>
+        <!-- HtmlPublish -->
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>htmlpublisher</artifactId>
+            <version>1.6</version>
+        </dependency>
+        <!-- End of BTC Plugin DSL dependencies -->
+        <dependency>
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-cps</artifactId>
+            <version>${workflow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>script-security</artifactId>
+            <version>1.15</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-aggregator</artifactId>
+            <version>${workflow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>docker-workflow</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>git</artifactId>
+            <version>2.4.2</version>
+        </dependency>
+
+    </dependencies>
+</project>
