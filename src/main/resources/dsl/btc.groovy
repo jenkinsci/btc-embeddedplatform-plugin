@@ -93,11 +93,6 @@ def startup(body = {}) {
 
 def profileLoad(body) {
     
-    // ----DEBUGGING-----
-    echo "DEBUGGING"
-    echo "btc.profileLoad: body = ${body}"
-    // ------------------
-    
     // evaluate the body block, and collect configuration into the object
     def config = [:]
     try {
@@ -108,10 +103,6 @@ def profileLoad(body) {
         config = body
     }
     // ... end of body eval
-    
-    // ----DEBUGGING-----
-    echo "btc.profileLoad: config.tlModelPath = ${config.tlModelPath}"
-    // ------------------
     
     // create http request body
     def reqString = '{ '
@@ -159,11 +150,6 @@ def profileLoad(body) {
     if (reqString.endsWith(','))
         reqString = reqString.substring(0, reqString.length() - 1)
     reqString += ' }'
-    
-    // ----DEBUGGING-----
-    echo "btc.profileLoad: requestString = ${reqString}"
-    echo "DEBUGGING"
-    // ----DEBUGGING-----
     
     // call EP to invoke profile creation / loading / update
     r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/profileLoad", validResponseCodes: '100:500'
@@ -656,12 +642,6 @@ def migrationSource(body) {
     body.resolveStrategy = Closure.DELEGATE_ONLY
     body.delegate = config
     body()
-    
-    // ----DEBUGGING-----
-    echo "DEBUGGING"
-    echo "btc.migrationSource: config.tlModelPath = ${config.tlModelPath}"
-    echo "DEBUGGING"
-    // ------------------
     
     // dispatch args
     if ("${config.matlabVersion}" == "null")
