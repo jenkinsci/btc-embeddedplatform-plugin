@@ -19,6 +19,7 @@
     <url>https://www.btc-es.de</url>
 
     <properties>
+		<jenkins-test-harness.version>2.19</jenkins-test-harness.version>
         <workflow.version>1.13</workflow.version>
     </properties>
 
