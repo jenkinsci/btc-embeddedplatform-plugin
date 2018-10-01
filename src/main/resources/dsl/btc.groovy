@@ -3,15 +3,7 @@ package dsl
 // vars/btc.groovy
 def startup(body = {}) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
+    def config = resolveConfig(body)
     if (config.port != null)
         restPort = config.port
     else
@@ -19,7 +11,6 @@ def startup(body = {}) {
     timeoutSeconds = 120
     if (config.timeout != null)
         timeoutSeconds = config.timeout
-
     
     /*
      * EP Startup configuration
@@ -62,6 +53,7 @@ def startup(body = {}) {
     
     // start EP and wait for it to be available at the given port
     def r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
+    def responseCode = r.status;
     if (r.status == 200) {
         echo "(201) Successfully connected to an running instance of BTC EmbeddedPlatform on port: ${restPort}."
         responseCode = 201; // connected to an existing instance
@@ -92,503 +84,152 @@ def startup(body = {}) {
 }
 
 def profileLoad(body) {
-    
-    // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    reqString += '"profilePath": "' + toAbsPath("${config.profilePath}") + '", '
-    exportPath = toAbsPath(getParentDir("${config.profilePath}") + "/reports")
-    
-    if ("${config.tlModelPath}" != "null")
-        reqString += '"tlModelPath": "' + toAbsPath("${config.tlModelPath}") + '", '
-    if ("${config.tlScriptPath}" != "null")
-        reqString += '"tlScriptPath": "' + toAbsPath("${config.tlScriptPath}") + '", '
-    if ("${config.slModelPath}" != "null")
-        reqString += '"slModelPath": "' + toAbsPath("${config.slModelPath}") + '", '
-    if ("${config.slScriptPath}" != "null")
-        reqString += '"slScriptPath": "' + toAbsPath("${config.slScriptPath}") + '", '
-    if ("${config.addModelInfoPath}" != "null")
-        reqString += '"addModelInfoPath": "' + toAbsPath("${config.addModelInfoPath}") + '", '
-    if ("${config.matlabVersion}" != "null")
-        reqString += '"matlabVersion": "' + "${config.matlabVersion}" + '", '
-    if ("${config.codeModelPath}" != "null")
-        reqString += '"codeModelPath": "' + toAbsPath("${config.codeModelPath}") + '", '
-    if ("${config.tlSubsystem}" != "null")
-        reqString += '"tlSubsystem": "' + "${config.tlSubsystem}" + '", '
-    if ("${config.compilerShortName}" != "null")
-        reqString += '"compilerShortName": "' + "${config.compilerShortName}" + '", '
-    if ("${config.exportPath}" != "null") {
-        exportPath = toAbsPath("${config.exportPath}")
-        reqString += '"exportPath": "' + exportPath + '", '
-    }
-    if ("${config.loadReportData}" != "null")
-        reqString += '"loadReportData": "' + "${config.loadReportData}" + '", '
-    if ("${config.updateRequired}" != "null")    
-        reqString += '"updateRequired": "' + "${config.updateRequired}" + '", '
-    if ("${config.enableEC}" != "null")    
-        reqString += '"enableEC": "' + "${config.enableEC}" + '", '
-    if ("${config.useEC}" != "null")    
-        reqString += '"useEC": "' + "${config.useEC}" + '", '
-    if ("${config.saveProfileAfterEachStep}" != "null")
-        reqString += '"saveProfileAfterEachStep": "' + "${config.saveProfileAfterEachStep}" + '", '
-    if ("${config.migrationType}" != "null")
-        reqString += '"migrationType": "' + "${config.migrationType}" + '", '
-    if ("${config.logFilePath}" != "null")
-        reqString += '"logFilePath": "' + toAbsPath("${config.logFilePath}") + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
-    // call EP to invoke profile creation / loading / update
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/profileLoad", validResponseCodes: '100:500'
-    responseCode = r.status
-    echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return profileInit(body, 'profileLoad')
+}
+
+def profileCreateTL(body) {
+    return profileInit(body, 'profileCreateTL')
+}
+
+def profileCreateEC(body) {
+    def config = resolveConfig(body)
+    config.enableEC = true
+    return profileInit(config, 'profileCreateEC')
+}
+
+def profileCreateSL(body) {
+    return profileInit(body, 'profileCreateSL')
+}
+
+def profileCreateC(body) {
+    return profileInit(body, 'profileCreateC')
 }
 
 def rbtExecution(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-
-    // create http request body
-    def reqString = '{ '
-    if ("${config.executionConfigString}" != "null")
-        reqString += '"executionConfigString": "' + "${config.executionConfigString}" + '", '
-    if ("${config.debugConfigString}" != "null")
-        reqString += '"debugConfigString": "' + "${config.debugConfigString}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
     // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testexecution", validResponseCodes: '100:500'
-    responseCode = r.status
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testexecution", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def formalTest(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-
-    // create http request body
-    def reqString = '{ '
-    if ("${config.executionConfigString}" != "null")
-        reqString += '"executionConfigString": "' + "${config.executionConfigString}" + '"'
-    reqString += ' }'
-
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
     // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalTest", validResponseCodes: '100:500'
-    responseCode = r.status
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalTest", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def vectorGeneration(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.pll}" != "null")
-        reqString += '"pll": "' + "${config.pll}" + '", '
-    if ("${config.engine}" != "null")
-        reqString += '"engine": "' + "${config.engine}" + '", '
-    if ("${config.perGoalTimeout}" != "null")
-        reqString += '"perGoalTimeout": "' + "${config.perGoalTimeout}" + '", '
-    if ("${config.globalTimeout}" != "null")
-        reqString += '"globalTimeout": "' + "${config.globalTimeout}" + '", '
-    if ("${config.engineTimeout}" != "null")
-        reqString += '"engineTimeout": "' + "${config.engineTimeout}" + '", '
-    if ("${config.scopeTimeout}" != "null")
-        reqString += '"scopeTimeout": "' + "${config.scopeTimeout}" + '", '
-    if ("${config.considerSubscopes}" != "null")
-        reqString += '"considerSubscopes": "' + "${config.considerSubscopes}" + '", '
-    if ("${config.recheckUnreachable}" != "null")
-        reqString += '"recheckUnreachable": "' + "${config.recheckUnreachable}" + '", '
-    if ("${config.depthCv}" != "null")
-        reqString += '"depthCv": "' + "${config.depthCv}" + '", '
-    if ("${config.depthAtg}" != "null")
-        reqString += '"depthAtg": "' + "${config.depthAtg}" + '", '
-    if ("${config.loopUnroll}" != "null")
-        reqString += '"loopUnroll": "' + "${config.loopUnroll}" + '", '
-    if ("${config.robustnessTestFailure}" != "null")
-        reqString += '"robustnessTestFailure": "' + "${config.robustnessTestFailure}" + '", '
-    if ("${config.inputRestrictions}" != "null")
-        reqString += '"inputRestrictions": "' + toAbsPath("${config.inputRestrictions}") + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
     // call EP to invoke vector generation and analysis
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorGeneration", validResponseCodes: '100:500'
-    responseCode = r.status
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorGeneration", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def backToBack(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.reference}" != "null")
-        reqString += '"reference": "' + "${config.reference}" + '", '
-    if ("${config.comparison}" != "null")
-        reqString += '"comparison": "' + "${config.comparison}" + '", '
-    if ("${config.debugConfigString}" != "null")
-        reqString += '"debugConfigString": "' + "${config.debugConfigString}" + '", '
-    if ("${config.applyOldFailedAccepted}" != "null")
-        reqString += '"applyOldFailedAccepted": "' + "${config.applyOldFailedAccepted}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
     // call EP to invoke back-to-back test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/backToBack", validResponseCodes: '100:500'
-    responseCode = r.status
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/backToBack", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def regressionTest(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.executionConfigString}" != "null")
-        reqString += '"executionConfigString": "' + "${config.executionConfigString}" + '", '
-    if ("${config.debugConfigString}" != "null")
-        reqString += '"debugConfigString": "' + "${config.debugConfigString}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
     // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/regressionTest", validResponseCodes: '100:500'
-    responseCode = r.status
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/regressionTest", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def rangeViolationGoals(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.scopePath}" != "null")
-        reqString += '"scopePath": "' + "${config.scopePath}" + '", '
-    if ("${config.rvXmlPath}" != "null")
-        reqString += '"rvXmlPath": "' + toAbsPath("${config.rvXmlPath}") + '", '
-    if ("${config.considerOutputs}" != "null")
-        reqString += '"considerOutputs": "' + "${config.considerOutputs}" + '", '
-    if ("${config.considerLocals}" != "null")
-        reqString += '"considerLocals": "' + "${config.considerLocals}" + '", '
-    if ("${config.checkRangeSpecification}" != "null")
-        reqString += '"checkRangeSpecification": "' + "${config.checkRangeSpecification}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
     // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addRangeViolationGoals", validResponseCodes: '100:500'
-    responseCode = r.status
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addRangeViolationGoals", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def domainCoverageGoals(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.scopePath}" != "null")
-        reqString += '"scopePath": "' + "${config.scopePath}" + '", '
-    if ("${config.dcXmlPath}" != "null")
-        reqString += '"dcXmlPath": "' + toAbsPath("${config.dcXmlPath}") + '", '
-    if ("${config.raster}" != "null")
-        reqString += '"raster": "' + "${config.raster}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
     // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
-    responseCode = r.status
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def vectorImport(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    
-    if ("${config.importDir}" != "null")
-        reqString += '"importDir": "' + toAbsPath("${config.importDir}") + '", '
-    if ("${config.vectorFormat}" != "null")
-        reqString += '"vectorFormat": "' + "${config.vectorFormat}" + '", '
-    if ("${config.vectorKind}" != "null")
-        reqString += '"vectorKind": "' + "${config.vectorKind}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
-    // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorImport", validResponseCodes: '100:500'
-    responseCode = r.status
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorImport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def toleranceImport(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    
-    if ("${config.path}" != "null")
-        reqString += '"path": "' + toAbsPath("${config.path}") + '", '
-    if ("${config.useCase}" != "null")
-        reqString += '"useCase": "' + "${config.useCase}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
-    // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceImport", validResponseCodes: '100:500'
-    responseCode = r.status
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceImport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def inputRestrictionsImport(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    
-    if ("${config.path}" != "null")
-        reqString += '"path": "' + toAbsPath("${config.path}") + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
-    // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsImport", validResponseCodes: '100:500'
-    responseCode = r.status
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsImport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def formalVerification(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.loopUnroll}" != "null")
-        reqString += '"loopUnroll": "' + "${config.loopUnroll}" + '", '
-    if ("${config.searchDepth}" != "null")
-        reqString += '"searchDepth": "' + "${config.searchDepth}" + '", '
-    if ("${config.memoryLimit}" != "null")
-        reqString += '"memoryLimit": "' + "${config.memoryLimit}" + '", '
-    if ("${config.timeLimit}" != "null")
-        reqString += '"timeLimit": "' + "${config.timeLimit}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
-    // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalVerification", validResponseCodes: '100:500'
-    responseCode = r.status
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalVerification", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return responseCode;
+    return r.status;
 }
 
 def executionRecordExport(body) {
-    // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.dir}" != "null")
-        reqString += '"dir": "' + toAbsPath("${config.dir}") + '", '
-    if ("${config.executionConfig}" != "null")
-        reqString += '"executionConfig": "' + "${config.executionConfig}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
-    // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/exportExecutionRecords", validResponseCodes: '100:500'
+     // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/exportExecutionRecords", validResponseCodes: '100:500'
     return r.status
 }
 
 def executionRecordImport(body) {
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    try {
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-    } catch (err) {
-        config = body
-    }
-    // ... end of body eval
-    
-    // create http request body
-    def reqString = '{ '
-    if ("${config.dir}" != "null")
-        reqString += '"dir": "' + toAbsPath("${config.dir}") + '", '
-    if ("${config.executionConfig}" != "null")
-        reqString += '"executionConfig": "' + "${config.executionConfig}" + '", '
-    
-    reqString = reqString.trim()
-    if (reqString.endsWith(','))
-        reqString = reqString.substring(0, reqString.length() - 1)
-    reqString += ' }'
-    
-    // call EP to invoke test execution
-    r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/importExecutionRecords", validResponseCodes: '100:500'
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/importExecutionRecords", validResponseCodes: '100:500'
     return r.status
 }
 
@@ -618,10 +259,14 @@ def wrapUp(body = {}) {
         echo 'BTC EmbeddedPlatform successfully closed.'
     }
     try {
-        if (archiveProfiles)
-            archiveArtifacts allowEmptyArchive: true, artifacts: '**/*.epp'
-        archiveArtifacts allowEmptyArchive: true, artifacts: '**/Debug_*.zip'
-        if (publishReports&& fileExists("/${exportPath}/TestAutomationReport.html"))
+        // TODO: check if archiveArtifacts can work with absolute paths (because some archiving steps only accept relPaths in the workspace)
+        if (archiveProfiles) {
+            def profilePathParentDir = getParentDir(profilePath)
+            archiveArtifacts allowEmptyArchive: true, artifacts: "${profilePathParentDir}/*.epp"
+        }
+        if (isDebug)
+            archiveArtifacts allowEmptyArchive: true, artifacts: "${exportPath}/Debug_*.zip"
+        if (publishReports && fileExists("/${exportPath}/TestAutomationReport.html"))
             publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${exportPath}", reportFiles: 'TestAutomationReport.html', reportName: 'Test Automation Report'])
     } catch (err) {
         echo err.message
@@ -638,13 +283,10 @@ def migrationSource(body) {
     mode = 'source'
     
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    body.resolveStrategy = Closure.DELEGATE_ONLY
-    body.delegate = config
-    body()
+    def config = resolveConfig(body)
     
     // dispatch args
-    if ("${config.matlabVersion}" == "null")
+    if (config.matlabVersion == null)
         throw new Exception("Matlab version for MigrationSource needs to be defined.");
     
     migrationTmpDir = toAbsPath("MigrationTmp")
@@ -657,7 +299,13 @@ def migrationSource(body) {
     // Startup
     startup(body)
     // Profile Creation
-    r = profileLoad(config)
+    if (config.tlModelPath != null) {
+        r = profileCreateTL(config)
+    } else if (config.slModelPath != null) {
+        r = profileCreateEC(config)
+    } else {
+        throw new Exception("Please specify the model to be tested (target configuration).");
+    }
     if (r >= 300) {
         wrapUp(body)
         throw new Exception("Error during profile creation (source)")
@@ -700,9 +348,9 @@ def migrationSource(body) {
     } catch (err) {
         echo 'BTC EmbeddedPlatform successfully closed.'
     }
-    archiveArtifacts allowEmptyArchive: true, artifacts: '**/*.epp'
-    echo "stashing files: **/er/**/*.mdf"
-    stash includes: "**/er/**/*.mdf, **/reports/**/*", name: "migration-source"
+    archiveArtifacts allowEmptyArchive: true, artifacts: "${migrationTmpDir}/profiles/*.epp"
+    echo "stashing files: ${migrationTmpDir}/er/**/*.mdf, ${exportPath}/*"
+    stash includes: "${migrationTmpDir}/er/**/*.mdf, ${exportPath}/*", name: "migration-source"
 }
 
 def migrationTarget(body) {
@@ -710,10 +358,7 @@ def migrationTarget(body) {
     mode = 'target'
     
     // evaluate the body block, and collect configuration into the object
-    def config = [:]
-    body.resolveStrategy = Closure.DELEGATE_ONLY
-    body.delegate = config
-    body()
+    def config = resolveConfig(body)
     
     // dispatch args
     if ("${config.matlabVersion}" == "null")
@@ -733,7 +378,13 @@ def migrationTarget(body) {
     // Startup
     startup(body)
     // Profile Creation
-    r = profileLoad(config)
+    if (config.tlModelPath != null) {
+        r = profileCreateTL(config)
+    else if (config.slModelPath != null) {
+        r = profileCreateEC(config)
+    } else {
+        throw new Exception("Please specify the model to be tested (target configuration).");
+    }
     if (r >= 300) {
         wrapUp(body)
         throw new Exception("Error during profile creation (target)")
@@ -773,6 +424,16 @@ def migrationTarget(body) {
     wrapUp(body)
 }
 
+def profileInit(body, method) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP to invoke profile creation / loading / update
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
+    echo "(${r.status}) ${r.content}"
+    return r.status;
+}
+
 def getPort() {
     port
 }
@@ -787,6 +448,152 @@ def getEPPort(restPort) {
     if (epPort == Integer.parseInt("" + restPort))
         epPort = epPort - 100
     return epPort
+}
+
+def createReqString(config) {
+    def reqString = '{ '
+    // Profile
+    if (config.profilePath != null) {
+        reqString += '"profilePath": "' + toAbsPath("${config.profilePath}") + '", '
+        profilePath = "${config.profilePath}"
+        exportPath = toAbsPath(getParentDir("${config.profilePath}") + "/reports")
+    }
+    if (config.tlModelPath != null)
+        reqString += '"tlModelPath": "' + toAbsPath("${config.tlModelPath}") + '", '
+    if (config.tlScriptPath != null)
+        reqString += '"tlScriptPath": "' + toAbsPath("${config.tlScriptPath}") + '", '
+    if (config.slModelPath != null)
+        reqString += '"slModelPath": "' + toAbsPath("${config.slModelPath}") + '", '
+    if (config.slScriptPath != null)
+        reqString += '"slScriptPath": "' + toAbsPath("${config.slScriptPath}") + '", '
+    if (config.addModelInfoPath != null)
+        reqString += '"addModelInfoPath": "' + toAbsPath("${config.addModelInfoPath}") + '", '
+    if (config.matlabVersion != null)
+        reqString += '"matlabVersion": "' + "${config.matlabVersion}" + '", '
+    if (config.codeModelPath != null)
+        reqString += '"codeModelPath": "' + toAbsPath("${config.codeModelPath}") + '", '
+    if (config.tlSubsystem != null)
+        reqString += '"tlSubsystem": "' + "${config.tlSubsystem}" + '", '
+    if (config.compilerShortName != null)
+        reqString += '"compilerShortName": "' + "${config.compilerShortName}" + '", '
+    if (config.exportPath != null) {
+        exportPath = toAbsPath("${config.exportPath}")
+        reqString += '"exportPath": "' + exportPath + '", '
+    }
+    if (config.loadReportData != null)
+        reqString += '"loadReportData": "' + "${config.loadReportData}" + '", '
+    if (config.updateRequired != null)    
+        reqString += '"updateRequired": "' + "${config.updateRequired}" + '", '
+    if (config.enableEC != null)    
+        reqString += '"enableEC": "' + "${config.enableEC}" + '", '
+    if (config.saveProfileAfterEachStep != null)
+        reqString += '"saveProfileAfterEachStep": "' + "${config.saveProfileAfterEachStep}" + '", '
+    if (config.migrationType != null)
+        reqString += '"migrationType": "' + "${config.migrationType}" + '", '
+    if (config.logFilePath != null)
+        reqString += '"logFilePath": "' + toAbsPath("${config.logFilePath}") + '", '
+    
+    // RBT Execution / Regression Test / Formal Test / Back-to-Back
+    if (config.executionConfigString != null)
+        reqString += '"executionConfigString": "' + "${config.executionConfigString}" + '", '
+    if (config.debugConfigString != null) {
+        reqString += '"debugConfigString": "' + "${config.debugConfigString}" + '", '
+        isDebug = true
+    }
+    if (config.reference != null)
+        reqString += '"reference": "' + "${config.reference}" + '", '
+    if (config.comparison != null)
+        reqString += '"comparison": "' + "${config.comparison}" + '", '
+     
+    // Vector Generation
+    if (config.pll != null)
+        reqString += '"pll": "' + "${config.pll}" + '", '
+    if (config.engine != null)
+        reqString += '"engine": "' + "${config.engine}" + '", '
+    if (config.perGoalTimeout != null)
+        reqString += '"perGoalTimeout": "' + "${config.perGoalTimeout}" + '", '
+    if (config.globalTimeout != null)
+        reqString += '"globalTimeout": "' + "${config.globalTimeout}" + '", '
+    if (config.engineTimeout != null)
+        reqString += '"engineTimeout": "' + "${config.engineTimeout}" + '", '
+    if (config.scopeTimeout != null)
+        reqString += '"scopeTimeout": "' + "${config.scopeTimeout}" + '", '
+    if (config.considerSubscopes != null)
+        reqString += '"considerSubscopes": "' + "${config.considerSubscopes}" + '", '
+    if (config.recheckUnreachable != null)
+        reqString += '"recheckUnreachable": "' + "${config.recheckUnreachable}" + '", '
+    if (config.depthCv != null)
+        reqString += '"depthCv": "' + "${config.depthCv}" + '", '
+    if (config.depthAtg != null)
+        reqString += '"depthAtg": "' + "${config.depthAtg}" + '", '
+    if (config.loopUnroll != null)
+        reqString += '"loopUnroll": "' + "${config.loopUnroll}" + '", '
+    if (config.robustnessTestFailure != null)
+        reqString += '"robustnessTestFailure": "' + "${config.robustnessTestFailure}" + '", '
+    if (config.inputRestrictions != null)
+        reqString += '"inputRestrictions": "' + toAbsPath("${config.inputRestrictions}") + '", '
+    
+    // Formal Verification
+    if (config.searchDepth != null)
+        reqString += '"searchDepth": "' + "${config.searchDepth}" + '", '
+    if (config.memoryLimit != null)
+        reqString += '"memoryLimit": "' + "${config.memoryLimit}" + '", '
+    if (config.timeLimit != null)
+        reqString += '"timeLimit": "' + "${config.timeLimit}" + '", '
+    
+    // Domain Coverage + Range Violation
+    if (config.scopePath != null)
+        reqString += '"scopePath": "' + "${config.scopePath}" + '", '
+    if (config.rvXmlPath != null)
+        reqString += '"rvXmlPath": "' + toAbsPath("${config.rvXmlPath}") + '", '
+    if (config.considerOutputs != null)
+        reqString += '"considerOutputs": "' + "${config.considerOutputs}" + '", '
+    if (config.considerLocals != null)
+        reqString += '"considerLocals": "' + "${config.considerLocals}" + '", '
+    if (config.checkRangeSpecification != null)
+        reqString += '"checkRangeSpecification": "' + "${config.checkRangeSpecification}" + '", '
+    if (config.dcXmlPath != null)
+        reqString += '"dcXmlPath": "' + toAbsPath("${config.dcXmlPath}") + '", '
+    if (config.raster != null)
+        reqString += '"raster": "' + "${config.raster}" + '", '
+    
+    // Vector Import
+    if (config.importDir != null)
+        reqString += '"importDir": "' + toAbsPath("${config.importDir}") + '", '
+    if (config.vectorFormat != null)
+        reqString += '"vectorFormat": "' + "${config.vectorFormat}" + '", '
+    if (config.vectorKind != null)
+        reqString += '"vectorKind": "' + "${config.vectorKind}" + '", '
+    
+    // Tolerance Import
+    if (config.path != null)
+        reqString += '"path": "' + toAbsPath("${config.path}") + '", '
+    if (config.useCase != null)
+        reqString += '"useCase": "' + "${config.useCase}" + '", '
+    
+    // Execution Record Import / Export
+    if (config.dir != null)
+        reqString += '"dir": "' + toAbsPath("${config.dir}") + '", '
+    if (config.executionConfig != null)
+        reqString += '"executionConfig": "' + "${config.executionConfig}" + '", '
+    
+    reqString = reqString.trim()
+    if (reqString.endsWith(','))
+        reqString = reqString.substring(0, reqString.length() - 1)
+    reqString += ' }'
+    return reqString
+}
+
+def resolveConfig(body) {
+    def config = [:]
+    try {
+        body.resolveStrategy = Closure.DELEGATE_ONLY
+        body.delegate = config
+        body()
+    } catch (err) {
+        config = body
+    }
+    return config
 }
 
 def toAbsPath(path) {
