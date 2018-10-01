@@ -5,12 +5,12 @@
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
         <version>2.3</version>
-        <relativePath/>
+        <relativePath />
     </parent>
 
     <groupId>com.btc.ep</groupId>
     <artifactId>btc-embeddedplatform</artifactId>
-    <version>1.9.0-beta-SNAPSHOT</version>
+    <version>1.9.0-beta</version>
     <packaging>hpi</packaging>
 
     <name>BTC DSL for Pipeline</name>
