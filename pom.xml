@@ -10,7 +10,7 @@
 
     <groupId>com.btc.ep</groupId>
     <artifactId>btc-embeddedplatform</artifactId>
-    <version>1.9.0-beta</version>
+    <version>1.9.0-beta-SNAPSHOT</version>
     <packaging>hpi</packaging>
 
     <name>BTC DSL for Pipeline</name>
