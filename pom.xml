@@ -7,17 +7,18 @@
         <version>2.3</version>
         <relativePath />
     </parent>
-
-    <scm>
-        <connection>https://github.com/jenkinsci/btc-embeddedplatform-plugin.git</connection>
-        <url>https://github.com/jenkinsci/btc-embeddedplatform-plugin</url>
-      <tag>btc-embeddedplatform-1.9.0-beta</tag>
-  </scm>
     
     <groupId>com.btc.ep</groupId>
     <artifactId>btc-embeddedplatform</artifactId>
-    <version>1.9.0-beta</version>
+    <version>1.9.0-beta-SNAPSHOT</version>
     <packaging>hpi</packaging>
+
+     <scm>
+        <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
+        <url>http://github.com/jenkinsci/${project.artifactId}-plugin</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <name>BTC DSL for Pipeline</name>
     <description>BTC DSL for Pipeline allows easy access to test steps provided by the BTC Jenkins Automation Plugin.</description>
