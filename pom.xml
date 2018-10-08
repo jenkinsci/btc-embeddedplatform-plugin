@@ -8,6 +8,11 @@
         <relativePath />
     </parent>
 
+    <scm>
+        <connection>https://github.com/jenkinsci/btc-embeddedplatform-plugin.git</connection>
+        <url>https://github.com/jenkinsci/btc-embeddedplatform-plugin</url>
+    </scm>
+    
     <groupId>com.btc.ep</groupId>
     <artifactId>btc-embeddedplatform</artifactId>
     <version>1.9.0-beta-SNAPSHOT</version>
