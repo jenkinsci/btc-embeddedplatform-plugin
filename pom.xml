@@ -11,11 +11,12 @@
     <scm>
         <connection>https://github.com/jenkinsci/btc-embeddedplatform-plugin.git</connection>
         <url>https://github.com/jenkinsci/btc-embeddedplatform-plugin</url>
-    </scm>
+      <tag>btc-embeddedplatform-1.9.0-beta</tag>
+  </scm>
     
     <groupId>com.btc.ep</groupId>
     <artifactId>btc-embeddedplatform</artifactId>
-    <version>1.9.0-beta-SNAPSHOT</version>
+    <version>1.9.0-beta</version>
     <packaging>hpi</packaging>
 
     <name>BTC DSL for Pipeline</name>
