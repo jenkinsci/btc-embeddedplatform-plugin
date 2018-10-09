@@ -380,7 +380,7 @@ def migrationTarget(body) {
     // Profile Creation
     if (config.tlModelPath != null) {
         r = profileCreateTL(config)
-    else if (config.slModelPath != null) {
+    } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
     } else {
         throw new Exception("Please specify the model to be tested (target configuration).");
