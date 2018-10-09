@@ -10,7 +10,7 @@
     
     <groupId>com.btc.ep</groupId>
     <artifactId>btc-embeddedplatform</artifactId>
-    <version>1.9.4-beta-SNAPSHOT</version>
+    <version>1.9.5-beta-SNAPSHOT</version>
     <packaging>hpi</packaging>
 
      <scm>
