@@ -431,6 +431,7 @@ def profileInit(body, method) {
     // call EP to invoke profile creation / loading / update
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
+    isDebug = false
     return r.status;
 }
 
