@@ -17,7 +17,8 @@
         <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
         <url>http://github.com/jenkinsci/${project.artifactId}-plugin</url>
-    </scm>
+      <tag>HEAD</tag>
+  </scm>
 
     <name>BTC DSL for Pipeline</name>
     <description>BTC DSL for Pipeline allows easy access to test steps provided by the BTC Jenkins Automation Plugin.</description>
