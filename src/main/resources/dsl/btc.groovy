@@ -105,6 +105,16 @@ def profileCreateC(body) {
     return profileInit(body, 'profileCreateC')
 }
 
+def codeAnalysisReport(body) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP to invoke test execution
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/codeAnalysisReport", validResponseCodes: '100:500'
+    echo "(${r.status}) ${r.content}"
+    return r.status;
+}
+
 def rbtExecution(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
@@ -533,6 +543,8 @@ def createReqString(config) {
         reqString += '"robustnessTestFailure": "' + "${config.robustnessTestFailure}" + '", '
     if (config.inputRestrictions != null)
         reqString += '"inputRestrictions": "' + toAbsPath("${config.inputRestrictions}") + '", '
+    if (config.createReport != null)
+        reqString += '"createReport": "' + "${config.createReport}" + '", '
     
     // Formal Verification
     if (config.searchDepth != null)
@@ -577,6 +589,9 @@ def createReqString(config) {
         reqString += '"dir": "' + toAbsPath("${config.dir}") + '", '
     if (config.executionConfig != null)
         reqString += '"executionConfig": "' + "${config.executionConfig}" + '", '
+    // CodeAnalysisReport
+    if (config.includeSourceCode != null)
+        reqString += '"includeSourceCode": "' + "${config.includeSourceCode}" + '", '
     
     reqString = reqString.trim()
     if (reqString.endsWith(','))
