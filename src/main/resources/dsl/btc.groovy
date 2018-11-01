@@ -268,21 +268,21 @@ def wrapUp(body = {}) {
     } catch (err) {
         echo 'BTC EmbeddedPlatform successfully closed.'
     }
+    def relativeReportPath = exportPath.replace(pwd() + "/", "")
+    def profilePathParentDir = getParentDir(profilePath.replace(pwd() + "/", ""))
     try {
         // TODO: check if archiveArtifacts can work with absolute paths (because some archiving steps only accept relPaths in the workspace)
         if (archiveProfiles) {
-            def profilePathParentDir = getParentDir(profilePath)
             archiveArtifacts allowEmptyArchive: true, artifacts: "${profilePathParentDir}/*.epp"
         }
         if (isDebug)
-            archiveArtifacts allowEmptyArchive: true, artifacts: "${exportPath}/Debug_*.zip"
-        if (publishReports && fileExists("/${exportPath}/TestAutomationReport.html"))
-            publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${exportPath}", reportFiles: 'TestAutomationReport.html', reportName: 'Test Automation Report'])
+            archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeReportPath}/Debug_*.zip"
+        if (publishReports && fileExists("/${relativeReportPath}/TestAutomationReport.html"))
+            publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'TestAutomationReport.html', reportName: 'Test Automation Report'])
     } catch (err) {
         echo err.message
     }
     if (publishResults) {
-        relativeReportPath = exportPath.replace(pwd() + "/", "")
         echo "Looking for junit results in '" + "${relativeReportPath}/junit-report.xml" + "'"
         junit allowEmptyResults: true, testResults: "${relativeReportPath}/junit-report.xml"
     }
@@ -358,9 +358,11 @@ def migrationSource(body) {
     } catch (err) {
         echo 'BTC EmbeddedPlatform successfully closed.'
     }
-    archiveArtifacts allowEmptyArchive: true, artifacts: "${migrationTmpDir}/profiles/*.epp"
-    echo "stashing files: ${migrationTmpDir}/er/**/*.mdf, ${exportPath}/*"
-    stash includes: "${migrationTmpDir}/er/**/*.mdf, ${exportPath}/*", name: "migration-source"
+    def relativeMigTmpDir = migrationTmpDir.replace(pwd() + "/", "")
+    def relativeExportPath = exportPath.replace(pwd() + "/", "")
+    archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeMigTmpDir}/profiles/*.epp"
+    echo "stashing files: ${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*"
+    stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*", name: "migration-source"
 }
 
 def migrationTarget(body) {
