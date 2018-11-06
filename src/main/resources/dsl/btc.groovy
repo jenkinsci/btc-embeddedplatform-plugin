@@ -271,17 +271,19 @@ def wrapUp(body = {}) {
     def relativeReportPath = exportPath.replace(pwd() + "/", "")
     def profilePathParentDir = getParentDir(profilePath.replace(pwd() + "/", ""))
     try {
-        // TODO: check if archiveArtifacts can work with absolute paths (because some archiving steps only accept relPaths in the workspace)
+        // archiveArtifacts works with relative paths
         if (archiveProfiles) {
             archiveArtifacts allowEmptyArchive: true, artifacts: "${profilePathParentDir}/*.epp"
         }
         if (isDebug)
             archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeReportPath}/Debug_*.zip"
-        if (publishReports && fileExists("/${relativeReportPath}/TestAutomationReport.html"))
+        // fileExists check needs absolute path
+        if (publishReports && fileExists("/${exportPath}/TestAutomationReport.html"))
             publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'TestAutomationReport.html', reportName: 'Test Automation Report'])
     } catch (err) {
         echo err.message
     }
+    // JUnit works with relative paths
     if (publishResults) {
         echo "Looking for junit results in '" + "${relativeReportPath}/junit-report.xml" + "'"
         junit allowEmptyResults: true, testResults: "${relativeReportPath}/junit-report.xml"
