@@ -250,10 +250,10 @@ def wrapUp(body = {}) {
         body.resolveStrategy = Closure.DELEGATE_ONLY
         body.delegate = config
         body()
-        closeEp = "${config.closeEp}"
-        archiveProfiles = "${config.archiveProfiles}"
-        publishReports = "${config.publishReports}"
-        publishResults = "${config.publishResults}"
+        closeEp = config.closeEp
+        archiveProfiles = config.archiveProfiles
+        publishReports = config.publishReports
+        publishResults = config.publishResults
     } catch (err) {
         closeEp = true
         archiveProfiles = true
@@ -278,7 +278,7 @@ def wrapUp(body = {}) {
         if (isDebug)
             archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeReportPath}/Debug_*.zip"
         // fileExists check needs absolute path
-        if (publishReports && fileExists("/${exportPath}/TestAutomationReport.html"))
+        if (publishReports && fileExists("${exportPath}/TestAutomationReport.html"))
             publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'TestAutomationReport.html', reportName: 'Test Automation Report'])
     } catch (err) {
         echo err.message
@@ -446,6 +446,15 @@ def profileInit(body, method) {
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
     isDebug = false
+    if (r.status >= 400) {
+        def relativeReportPath = exportPath.replace(pwd() + "/", "")
+        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
+        wrapUp {
+            publishReports = false
+            publishResults = false
+        }
+        throw new Exception("Error during profile load / creation. Aborting (you cannot continue without a profile).")
+    }
     return r.status;
 }
 
@@ -596,6 +605,8 @@ def createReqString(config) {
     // CodeAnalysisReport
     if (config.includeSourceCode != null)
         reqString += '"includeSourceCode": "' + "${config.includeSourceCode}" + '", '
+    if (config.reportName != null)
+        reqString += '"reportName": "' + "${config.reportName}" + '", '
     
     reqString = reqString.trim()
     if (reqString.endsWith(','))
