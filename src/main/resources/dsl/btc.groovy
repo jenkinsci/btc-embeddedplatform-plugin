@@ -53,10 +53,10 @@ def startup(body = {}) {
     
     // start EP and wait for it to be available at the given port
     def r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
-    def responseCode = r.status;
+    def responseCode = r.status
     if (r.status == 200) {
         echo "(201) Successfully connected to an running instance of BTC EmbeddedPlatform on port: ${restPort}."
-        responseCode = 201; // connected to an existing instance
+        responseCode = 201 // connected to an existing instance
     } else { // try to connect to EP until timeout is reached
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
@@ -73,14 +73,14 @@ def startup(body = {}) {
                     return (r.status == 200)
                 }
                 echo "(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${restPort}."
-                responseCode = 200; // connected to a new instance
+                responseCode = 200 // connected to a new instance
             } catch(err) {
                 echo "(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds."
                 throw err
             }
         }
     }
-    return responseCode;
+    return responseCode
 }
 
 def profileLoad(body) {
@@ -112,7 +112,7 @@ def codeAnalysisReport(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/codeAnalysisReport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def rbtExecution(body) {
@@ -122,7 +122,7 @@ def rbtExecution(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testexecution", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def formalTest(body) {
@@ -132,7 +132,7 @@ def formalTest(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalTest", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def vectorGeneration(body) {
@@ -142,7 +142,7 @@ def vectorGeneration(body) {
     // call EP to invoke vector generation and analysis
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorGeneration", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def backToBack(body) {
@@ -152,7 +152,7 @@ def backToBack(body) {
     // call EP to invoke back-to-back test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/backToBack", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def regressionTest(body) {
@@ -162,7 +162,7 @@ def regressionTest(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/regressionTest", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def rangeViolationGoals(body) {
@@ -172,7 +172,7 @@ def rangeViolationGoals(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addRangeViolationGoals", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def domainCoverageGoals(body) {
@@ -182,7 +182,7 @@ def domainCoverageGoals(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def vectorImport(body) {
@@ -192,7 +192,7 @@ def vectorImport(body) {
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorImport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def toleranceImport(body) {
@@ -202,7 +202,7 @@ def toleranceImport(body) {
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceImport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def inputRestrictionsImport(body) {
@@ -212,7 +212,7 @@ def inputRestrictionsImport(body) {
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsImport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def formalVerification(body) {
@@ -222,7 +222,7 @@ def formalVerification(body) {
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalVerification", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
-    return r.status;
+    return r.status
 }
 
 def executionRecordExport(body) {
@@ -299,7 +299,7 @@ def migrationSource(body) {
     
     // dispatch args
     if (config.matlabVersion == null)
-        throw new Exception("Matlab version for MigrationSource needs to be defined.");
+        throw new Exception("Matlab version for MigrationSource needs to be defined.")
     
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
@@ -316,7 +316,7 @@ def migrationSource(body) {
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
     } else {
-        throw new Exception("Please specify the model to be tested (target configuration).");
+        throw new Exception("Please specify the model to be tested (target configuration).")
     }
     if (r >= 300) {
         wrapUp(body)
@@ -376,7 +376,7 @@ def migrationTarget(body) {
     
     // dispatch args
     if ("${config.matlabVersion}" == "null")
-        throw new Exception("The matlabVersion for MigrationTarget needs to be defined.");
+        throw new Exception("The matlabVersion for MigrationTarget needs to be defined.")
     
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
@@ -397,7 +397,7 @@ def migrationTarget(body) {
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
     } else {
-        throw new Exception("Please specify the model to be tested (target configuration).");
+        throw new Exception("Please specify the model to be tested (target configuration).")
     }
     if (r >= 300) {
         wrapUp(body)
@@ -455,7 +455,7 @@ def profileInit(body, method) {
         }
         throw new Exception("Error during profile load / creation. Aborting (you cannot continue without a profile).")
     }
-    return r.status;
+    return r.status
 }
 
 def getPort() {
