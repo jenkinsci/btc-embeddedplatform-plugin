@@ -244,26 +244,26 @@ def executionRecordImport(body) {
 }
 
 def wrapUp(body = {}) {
-    try {
-        // evaluate the body block, and collect configuration into the object
-        def config = [:]
-        body.resolveStrategy = Closure.DELEGATE_ONLY
-        body.delegate = config
-        body()
-        closeEp = config.closeEp
-        archiveProfiles = config.archiveProfiles
-        publishReports = config.publishReports
-        publishResults = config.publishResults
-    } catch (err) {
-        closeEp = true
-        archiveProfiles = true
-        publishReports = true
-        publishResults = true
-    }
+    def config = resolveConfig(body)
+    if (config.archiveProfiles == null) {
+		archiveProfiles = true
+	} else {
+		archiveProfiles = config.archiveProfiles
+	}
+	if (config.publishReports == null) {
+		publishReports = true
+	} else {
+		publishReports = config.publishReports
+	}
+	if (config.publishResults == null) {
+		publishResults = true
+	} else {
+		publishResults = config.publishResults
+	}
     try {
         // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
         // will throw an exception as soon as the tool closes. This is expected.
-        def reqString = "${closeEp}"
+        def reqString = "" // removed closeEp parameter, it was only causing problems
         httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
         echo 'BTC EmbeddedPlatform successfully closed.'
@@ -442,6 +442,7 @@ def profileInit(body, method) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
     def reqString = createReqString(config)
+    echo "$config"
     // call EP to invoke profile creation / loading / update
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
