@@ -501,6 +501,8 @@ def createReqString(config) {
         reqString += '"tlSubsystem": "' + "${config.tlSubsystem}" + '", '
     if (config.compilerShortName != null)
         reqString += '"compilerShortName": "' + "${config.compilerShortName}" + '", '
+    if (config.licenseLocationString != null)
+        reqString += '"licenseLocationString": "' + "${config.licenseLocationString}" + '", '
     if (config.exportPath != null) {
         exportPath = toAbsPath("${config.exportPath}")
         reqString += '"exportPath": "' + exportPath + '", '
