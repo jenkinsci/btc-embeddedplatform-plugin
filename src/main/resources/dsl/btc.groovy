@@ -487,6 +487,19 @@ def createReqString(config) {
         reqString += '"tlModelPath": "' + toAbsPath("${config.tlModelPath}") + '", '
     if (config.tlScriptPath != null)
         reqString += '"tlScriptPath": "' + toAbsPath("${config.tlScriptPath}") + '", '
+    startupScriptPath
+    if (config.startupScriptPath != null)
+        reqString += '"startupScriptPath": "' + toAbsPath("${config.startupScriptPath}") + '", '
+    if (config.reuseExistingCode != null)
+        reqString += '"reuseExistingCode": "' + "${config.reuseExistingCode}" + '", '
+    if (config.pilConfig != null)
+        reqString += '"pilConfig": "' + "${config.pilConfig}" + '", '
+    if (config.pilTimeout != null)
+        reqString += '"pilTimeout": "' + "${config.pilTimeout}" + '", '
+    if (config.testMode != null)
+        reqString += '"testMode": "' + "${config.testMode}" + '", '
+    if (config.environmentXmlPath != null)
+        reqString += '"environmentXmlPath": "' + toAbsPath("${config.environmentXmlPath}") + '", '
     if (config.slModelPath != null)
         reqString += '"slModelPath": "' + toAbsPath("${config.slModelPath}") + '", '
     if (config.slScriptPath != null)
