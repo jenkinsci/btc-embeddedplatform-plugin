@@ -487,7 +487,6 @@ def createReqString(config) {
         reqString += '"tlModelPath": "' + toAbsPath("${config.tlModelPath}") + '", '
     if (config.tlScriptPath != null)
         reqString += '"tlScriptPath": "' + toAbsPath("${config.tlScriptPath}") + '", '
-    startupScriptPath
     if (config.startupScriptPath != null)
         reqString += '"startupScriptPath": "' + toAbsPath("${config.startupScriptPath}") + '", '
     if (config.reuseExistingCode != null)
