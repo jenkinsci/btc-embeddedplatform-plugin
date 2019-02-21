@@ -63,8 +63,8 @@ def startup(body = {}) {
                 bat "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
                 -application com.btc.ep.application.headless -nosplash \
                 -vmargs -Dep.runtime.batch=com.btc.ep -Dep.runtime.api.port=${epPort} \
-                -Dosgi.configuration.area.default=%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/configuration \
-                -Dosgi.instance.area.default=%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/workspace \
+                -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/configuration\" \
+                -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/workspace\" \
                 -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epPort} \
                 -Dep.licensing.package=ET_COMPLETE -Dep.rest.port=${restPort}"
                 waitUntil {
@@ -111,6 +111,16 @@ def codeAnalysisReport(body) {
     def reqString = createReqString(config)
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/codeAnalysisReport", validResponseCodes: '100:500'
+    echo "(${r.status}) ${r.content}"
+    return r.status
+}
+
+def xmlReport(body) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP to invoke test execution
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/xmlReportExport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
     return r.status
 }
@@ -480,7 +490,7 @@ def createReqString(config) {
     // Profile
     if (config.profilePath != null) {
         reqString += '"profilePath": "' + toAbsPath("${config.profilePath}") + '", '
-        profilePath = "${config.profilePath}"
+        profilePath = toAbsPath("${config.profilePath}")
         exportPath = toAbsPath(getParentDir("${config.profilePath}") + "/reports")
     }
     if (config.tlModelPath != null)
@@ -606,7 +616,7 @@ def createReqString(config) {
     if (config.vectorKind != null)
         reqString += '"vectorKind": "' + "${config.vectorKind}" + '", '
     
-    // Tolerance Import
+    // Tolerance Import & Code Analysis Report
     if (config.path != null)
         reqString += '"path": "' + toAbsPath("${config.path}") + '", '
     if (config.useCase != null)
@@ -643,11 +653,12 @@ def resolveConfig(body) {
 }
 
 def toAbsPath(path) {
-    if (path.startsWith("/"))
-        path = path.substring(1, path.length())
-    if (path.contains(":"))
-        return path
-    return pwd() + "/" + path
+    def sPath = path.replace("\\", "/")
+    if (sPath.startsWith("/"))
+        sPath = sPath.substring(1, sPath.length())
+    if (sPath.contains(":"))
+        return sPath
+    return pwd() + "/" + sPath
 }
 
 def getParentDir(path) {
