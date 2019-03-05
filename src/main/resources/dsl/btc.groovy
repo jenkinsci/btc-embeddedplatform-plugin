@@ -507,6 +507,8 @@ def createReqString(config) {
         reqString += '"pilTimeout": "' + "${config.pilTimeout}" + '", '
     if (config.testMode != null)
         reqString += '"testMode": "' + "${config.testMode}" + '", '
+    if (config.calibrationHandling != null)
+        reqString += '"calibrationHandling": "' + "${config.calibrationHandling}" + '", '
     if (config.environmentXmlPath != null)
         reqString += '"environmentXmlPath": "' + toAbsPath("${config.environmentXmlPath}") + '", '
     if (config.slModelPath != null)
