@@ -215,32 +215,12 @@ def toleranceImport(body) {
     return r.status
 }
 
-def toleranceExport(body) {
-    // evaluate the body block, and collect configuration into the object
-    def config = resolveConfig(body)
-    def reqString = createReqString(config)
-    // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceExport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
-    return r.status
-}
-
 def inputRestrictionsImport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
     def reqString = createReqString(config)
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsImport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
-    return r.status
-}
-
-def inputRestrictionsExport(body) {
-    // evaluate the body block, and collect configuration into the object
-    def config = resolveConfig(body)
-    def reqString = createReqString(config)
-    // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsExport", validResponseCodes: '100:500'
     echo "(${r.status}) ${r.content}"
     return r.status
 }
