@@ -1,6 +1,11 @@
 package dsl
-
 // vars/btc.groovy
+
+/**
+ * Tries to connect to EP using the default port 29267 (unless specified differently).
+ * If EP is not available a new instance is started via a batch command. Availability
+ * is then checked until success or until the timeout (default: 2 minutes) has expired.
+ */
 def startup(body = {}) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
@@ -83,6 +88,8 @@ def startup(body = {}) {
     return responseCode
 }
 
+// Profile Creation steps
+ 
 def profileLoad(body) {
     return profileInit(body, 'profileLoad')
 }
@@ -104,6 +111,29 @@ def profileCreateSL(body) {
 def profileCreateC(body) {
     return profileInit(body, 'profileCreateC')
 }
+
+def profileInit(body, method) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    echo "$config"
+    // call EP to invoke profile creation / loading / update
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
+    echo "(${r.status}) ${r.content}"
+    isDebug = false
+    if (r.status >= 400) {
+        def relativeReportPath = exportPath.replace(pwd() + "/", "")
+        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
+        wrapUp {
+            publishReports = false
+            publishResults = false
+        }
+        throw new Exception("Error during profile load / creation. Aborting (you cannot continue without a profile).")
+    }
+    return r.status
+}
+
+// Normal Steps
 
 def codeAnalysisReport(body) {
     // evaluate the body block, and collect configuration into the object
@@ -273,6 +303,18 @@ def executionRecordImport(body) {
     return r.status
 }
 
+// wrap up step
+
+/**
+ * This method publishes html reports to the Jenkins Job page, archives artifacts
+ * (profiles, debug zip files, etc.) and passes test results to JUnit.
+ * In the end it closes EP. Which is important to release CPU / RAM resources.
+ * - If Matlab has been opened by EP it will be closed automatically
+ * - If Matlab was already available and EP just connected to it, Matlab will not be closed
+ *
+ * The boolean properties archiveProfiles, publishReports and publishResults allow users
+ * to skip the respective steps by setting the property to false.
+ */
 def wrapUp(body = {}) {
     def config = resolveConfig(body)
     if (config.archiveProfiles == null) {
@@ -320,6 +362,10 @@ def wrapUp(body = {}) {
     }
 }
 
+/**
+ * Creates a profile on the source configuration (e.g. old Matlab / TargetLink version),
+ * generates vectors for full coverage and exports the simulation results.
+ */
 def migrationSource(body) {
     // activate mode: target
     mode = 'source'
@@ -336,7 +382,6 @@ def migrationSource(body) {
     config.exportPath = migrationTmpDir + "/reports"
     config.profilePath = migrationTmpDir + "/profiles/profile.epp"
     config.saveProfileAfterEachStep = true
-    config.migrationType = "source"
     
     // Startup
     startup(body)
@@ -397,6 +442,10 @@ def migrationSource(body) {
     stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*", name: "migration-source"
 }
 
+/**
+ * Creates a profile on the target configuration (e.g. newMatlab / TargetLink version),
+ * imports the simulation results from the source config and runs a regression test.
+ */
 def migrationTarget(body) {
     // activate mode: target
     mode = 'target'
@@ -414,7 +463,6 @@ def migrationTarget(body) {
     config.profilePath = migrationTmpDir + "/profiles/profile.epp"
     config.saveProfileAfterEachStep = true
     config.loadReportData = true
-    config.migrationType = "target"
     
     // unstash files from source slave
     unstash "migration-source"
@@ -468,43 +516,18 @@ def migrationTarget(body) {
     wrapUp(body)
 }
 
-def profileInit(body, method) {
-    // evaluate the body block, and collect configuration into the object
-    def config = resolveConfig(body)
-    def reqString = createReqString(config)
-    echo "$config"
-    // call EP to invoke profile creation / loading / update
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
-    isDebug = false
-    if (r.status >= 400) {
-        def relativeReportPath = exportPath.replace(pwd() + "/", "")
-        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
-        wrapUp {
-            publishReports = false
-            publishResults = false
-        }
-        throw new Exception("Error during profile load / creation. Aborting (you cannot continue without a profile).")
-    }
-    return r.status
-}
+// Request String Method
 
-def getPort() {
-    port
-}
-
-def getReportPath() {
-    exportPath
-}
-
-def getEPPort(restPort) {
-    epPort = 29300 + Integer.parseInt("" + restPort) % 100
-    // in case the ports are equal
-    if (epPort == Integer.parseInt("" + restPort))
-        epPort = epPort - 100
-    return epPort
-}
-
+/**
+ * Generic method that extracts the properties from the config object and returns the json string to be passed to EP.
+ *
+ * ToDo: Check if some kind of reflection can be used (right now this method needs to contain all possible properties)
+ *      
+ *      for field in config.fields:
+ *          reqString += '"' + field.name + '": "' + field.value + '", '
+ *          
+ *      + special handling for paths and some others
+ */
 def createReqString(config) {
     def reqString = '{ '
     // Profile
@@ -559,8 +582,6 @@ def createReqString(config) {
         reqString += '"enableEC": "' + "${config.enableEC}" + '", '
     if (config.saveProfileAfterEachStep != null)
         reqString += '"saveProfileAfterEachStep": "' + "${config.saveProfileAfterEachStep}" + '", '
-    if (config.migrationType != null)
-        reqString += '"migrationType": "' + "${config.migrationType}" + '", '
     if (config.logFilePath != null)
         reqString += '"logFilePath": "' + toAbsPath("${config.logFilePath}") + '", '
     
@@ -571,6 +592,8 @@ def createReqString(config) {
         reqString += '"debugConfigString": "' + "${config.debugConfigString}" + '", '
         isDebug = true
     }
+    if (config.reportSource != null)
+        reqString += '"reportSource": "' + "${config.reportSource}" + '", '
     if (config.reference != null)
         reqString += '"reference": "' + "${config.reference}" + '", '
     if (config.comparison != null)
@@ -662,6 +685,27 @@ def createReqString(config) {
     return reqString
 }
 
+// Utility methods
+
+def getPort() {
+    port
+}
+
+def getReportPath() {
+    exportPath
+}
+
+def getEPPort(restPort) {
+    epPort = 29300 + Integer.parseInt("" + restPort) % 100
+    // in case the ports are equal
+    if (epPort == Integer.parseInt("" + restPort))
+        epPort = epPort - 100
+    return epPort
+}
+
+/**
+ * Resolves unresolved closures (groovy magic)
+ */
 def resolveConfig(body) {
     def config = [:]
     try {
@@ -674,6 +718,11 @@ def resolveConfig(body) {
     return config
 }
 
+/**
+ * Returns an absolute path. If the input is a relative path it is resolved
+ * to the current directory using the Jenkins Pipeline command pwd().
+ * In all cases backslashes are replaced by slashes for compatibility reasons.
+ */
 def toAbsPath(path) {
     def sPath = path.replace("\\", "/")
     if (sPath.startsWith("/"))
