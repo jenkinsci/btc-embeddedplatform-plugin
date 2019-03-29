@@ -581,8 +581,8 @@ def createReqString(config) {
         reqString += '"pll": "' + "${config.pll}" + '", '
     if (config.engine != null)
         reqString += '"engine": "' + "${config.engine}" + '", '
-    if (config.perGoalTimeout != null)
-        reqString += '"perGoalTimeout": "' + "${config.perGoalTimeout}" + '", '
+    if (config.perPropertyTimeout != null)
+        reqString += '"perPropertyTimeout": "' + "${config.perPropertyTimeout}" + '", '
     if (config.globalTimeout != null)
         reqString += '"globalTimeout": "' + "${config.globalTimeout}" + '", '
     if (config.engineTimeout != null)
