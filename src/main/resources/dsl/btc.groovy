@@ -145,6 +145,16 @@ def codeAnalysisReport(body) {
     return r.status
 }
 
+def modelCoverageReport(body) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP to invoke test execution
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/modelCoverageReport", validResponseCodes: '100:500'
+    echo "(${r.status}) ${r.content}"
+    return r.status
+}
+
 def xmlReport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
@@ -667,7 +677,7 @@ def createReqString(config) {
     if (config.useCase != null)
         reqString += '"useCase": "' + "${config.useCase}" + '", '
     
-    // Execution Record Import / Export
+    // Execution Record Import / Export + Model Coverage Report
     if (config.dir != null)
         reqString += '"dir": "' + toAbsPath("${config.dir}") + '", '
     if (config.executionConfig != null)
