@@ -22,8 +22,7 @@
 
     <name>BTC DSL for Pipeline</name>
     <description>BTC DSL for Pipeline allows easy access to test steps provided by the BTC Jenkins Automation Plugin.</description>
-
-    <url>https://www.btc-es.de</url>
+    <url>https://wiki.jenkins.io/display/JENKINS/BTC+EmbeddedPlatform</url>
 
     <properties>
 		<jenkins-test-harness.version>2.19</jenkins-test-harness.version>
