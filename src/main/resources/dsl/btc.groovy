@@ -608,6 +608,19 @@ def createReqString(config) {
         reqString += '"reference": "' + "${config.reference}" + '", '
     if (config.comparison != null)
         reqString += '"comparison": "' + "${config.comparison}" + '", '
+    if (config.scopesWhitelist != null)
+        reqString += '"scopesWhitelist": "' + "${config.scopesWhitelist}" + '", '
+    if (config.scopesBlacklist != null)
+        reqString += '"scopesBlacklist": "' + "${config.scopesBlacklist}" + '", '
+    if (config.foldersWhitelist != null)
+        reqString += '"foldersWhitelist": "' + "${config.foldersWhitelist}" + '", '
+    if (config.foldersBlacklist != null)
+        reqString += '"foldersBlacklist": "' + "${config.foldersBlacklist}" + '", '
+    if (config.testCasesWhitelist != null)
+        reqString += '"testCasesWhitelist": "' + "${config.testCasesWhitelist}" + '", '
+    if (config.testCasesBlacklist != null)
+        reqString += '"testCasesBlacklist": "' + "${config.testCasesBlacklist}" + '", '
+    
      
     // Vector Generation
     if (config.pll != null)
