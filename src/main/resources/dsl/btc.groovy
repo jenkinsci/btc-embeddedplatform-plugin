@@ -27,7 +27,7 @@ def startup(body = {}) {
         epInstallDir = "${config.installPath}".replace("/", "\\")
     } else {
         try {
-            epRegPath = bat returnStdout: true, script: '''
+            epRegPath = bat returnStdout: true, label: 'Query Registry for active EP version', script: '''
             @echo OFF
             for /f "tokens=*" %%a in ('REG QUERY HKLM\\SOFTWARE\\BTC /reg:64 /s /f "EmbeddedPlatform" ') do (
                 call :parseEpVersion %%a
@@ -63,15 +63,24 @@ def startup(body = {}) {
         echo "(201) Successfully connected to an running instance of BTC EmbeddedPlatform on port: ${restPort}."
         responseCode = 201 // connected to an existing instance
     } else { // try to connect to EP until timeout is reached
+        // configure license packages (required since 2.4.0 to support ET_BASE)
+        licensingPackage = config.licensingPackage
+        if (licensingPackage == null) {
+            licensingPackage = 'ET_COMPLETE,ET_AUTOMATION_SERVER'
+        } else if (licensingPackage.equals('ET_COMPLETE')) {
+            licensingPackage += ',ET_AUTOMATION_SERVER'
+        } else if (licensingPackage.equals('ET_BASE')) {
+            licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
+        }
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
-                bat "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
+                bat label: 'Starting BTC EmbeddedPlatform', script: "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
                 -application com.btc.ep.application.headless -nosplash \
                 -vmargs -Dep.runtime.batch=com.btc.ep -Dep.runtime.api.port=${epPort} \
                 -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/configuration\" \
                 -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/workspace\" \
                 -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epPort} \
-                -Dep.licensing.package=ET_COMPLETE -Dep.rest.port=${restPort}"
+                -Dep.licensing.package=${licensingPackage} -Dep.rest.port=${restPort}"
                 waitUntil {
                     r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
                     // exit waitUntil closure
