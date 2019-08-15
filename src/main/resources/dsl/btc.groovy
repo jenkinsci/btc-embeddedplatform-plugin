@@ -766,7 +766,10 @@ def resolveConfig(body) {
  * In all cases backslashes are replaced by slashes for compatibility reasons.
  */
 def toAbsPath(path) {
+    // replace backslashes with slashes, they're easier to work with
     def sPath = path.replace("\\", "/")
+    // replace multiple occurrences: e.g. C://file -> C:/file
+    sPath = path.replaceAll("(/)+", "/")
     if (sPath.startsWith("/"))
         sPath = sPath.substring(1, sPath.length())
     if (sPath.contains(":"))
