@@ -144,6 +144,16 @@ def profileInit(body, method) {
 
 // Normal Steps
 
+def testExecutionReport(body) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config)
+    // call EP to invoke test execution
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testExecutionReport", validResponseCodes: '100:500'
+    echo "(${r.status}) ${r.content}"
+    return r.status
+}
+
 def codeAnalysisReport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
