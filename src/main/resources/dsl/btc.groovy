@@ -131,7 +131,7 @@ def profileInit(body, method) {
     echo "(${r.status}) ${r.content}"
     isDebug = false
     if (r.status >= 400) {
-        def relativeReportPath = exportPath.replace(pwd() + "/", "")
+        def relativeReportPath = toRelPath(exportPath)
         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
         wrapUp {
             publishReports = false
@@ -369,8 +369,8 @@ def wrapUp(body = {}) {
     } catch (err) {
         echo 'BTC EmbeddedPlatform successfully closed.'
     }
-    def relativeReportPath = exportPath.replace(pwd() + "/", "")
-    def profilePathParentDir = getParentDir(profilePath.replace(pwd() + "/", ""))
+    def relativeReportPath = toRelPath(exportPath)
+    def profilePathParentDir = getParentDir(toRelPath(profilePath))
     try {
         // archiveArtifacts works with relative paths
         if (archiveProfiles) {
@@ -464,8 +464,8 @@ def migrationSource(body) {
     } catch (err) {
         echo 'BTC EmbeddedPlatform successfully closed.'
     }
-    def relativeMigTmpDir = migrationTmpDir.replace(pwd() + "/", "")
-    def relativeExportPath = exportPath.replace(pwd() + "/", "")
+    def relativeMigTmpDir = toRelPath(migrationTmpDir)
+    def relativeExportPath = toRelPath(exportPath)
     archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeMigTmpDir}/profiles/*.epp"
     echo "stashing files: ${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*"
     stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*", name: "migration-source"
@@ -591,6 +591,8 @@ def createReqString(config) {
         reqString += '"addModelInfoPath": "' + toAbsPath("${config.addModelInfoPath}") + '", '
     if (config.matlabVersion != null)
         reqString += '"matlabVersion": "' + "${config.matlabVersion}" + '", '
+    if (config.matlabInstancePolicy != null)
+        reqString += '"matlabInstancePolicy": "' + "${config.matlabInstancePolicy}" + '", '
     if (config.codeModelPath != null)
         reqString += '"codeModelPath": "' + toAbsPath("${config.codeModelPath}") + '", '
     if (config.tlSubsystem != null)
@@ -769,12 +771,28 @@ def toAbsPath(path) {
     // replace backslashes with slashes, they're easier to work with
     def sPath = path.replace("\\", "/")
     // replace multiple occurrences: e.g. C://file -> C:/file
-    sPath = path.replaceAll("(/)+", "/")
+    sPath = sPath.replaceAll("(/)+", "/")
     if (sPath.startsWith("/"))
         sPath = sPath.substring(1, sPath.length())
     if (sPath.contains(":"))
         return sPath
-    return pwd() + "/" + sPath
+    def wd = pwd().replace("\\", "/")
+    wd = wd.replaceAll("(/)+", "/")
+    return wd + "/" + sPath
+}
+
+/**
+ * Converts an absolute path into a path relative to pwd (if the path points to a location on or below pwd).
+ * Backslashes are replaced by slashes for compatibility reasons.
+ */
+def toRelPath(path) {
+    // replace backslashes with slashes, they're easier to work with
+    def sPath = path.replace("\\", "/")
+    // replace multiple occurrences: e.g. C://file -> C:/file
+    sPath = sPath.replaceAll("(/)+", "/")
+    def wd = pwd().replace("\\", "/")
+    wd = wd.replaceAll("(/)+", "/")
+    return sPath.replace(wd + "/", "")
 }
 
 def getParentDir(path) {

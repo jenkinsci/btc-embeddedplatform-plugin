@@ -5,7 +5,7 @@
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
         <version>2.5</version>
-        <relativePath />
+        <relativePath/>
     </parent>
     
     <groupId>com.btc.ep</groupId>
