@@ -720,6 +720,8 @@ def createReqString(config) {
         reqString += '"dir": "' + toAbsPath("${config.dir}") + '", '
     if (config.executionConfig != null)
         reqString += '"executionConfig": "' + "${config.executionConfig}" + '", '
+    if (config.exportFormat != null)
+        reqString += '"exportFormat": "' + "${config.exportFormat}" + '", '
     // CodeAnalysisReport
     if (config.includeSourceCode != null)
         reqString += '"includeSourceCode": "' + "${config.includeSourceCode}" + '", '
