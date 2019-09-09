@@ -439,23 +439,27 @@ def migrationSource(body) {
     executionRecordExport {
         dir = "${this.migrationTmpDir}/er/SIL"
         executionConfig = "SIL"
+        isMigration = true
     }
     if ("${config.executionConfigString}".contains("TL MIL")) {
         executionRecordExport { // only if requested
             dir = "${this.migrationTmpDir}/er/TL_MIL"
             executionConfig = "TL MIL"
+            isMigration = true
         }
     }
     if ("${config.executionConfigString}".contains("SL MIL")) {
         executionRecordExport { // only if requested
             dir = "${this.migrationTmpDir}/er/SL_MIL"
             executionConfig = "SL MIL"
+            isMigration = true
         }
     }
     if ("${config.executionConfigString}".contains("PIL")) {
         executionRecordExport { // only if requested
             dir = "${this.migrationTmpDir}/er/PIL"
             executionConfig = "PIL"
+            isMigration = true
         }
     }
     try {
