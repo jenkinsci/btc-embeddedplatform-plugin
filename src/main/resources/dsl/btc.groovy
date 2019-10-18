@@ -812,3 +812,13 @@ def getParentDir(path) {
     parentDir = path.substring(0, path.lastIndexOf("/"))
     return "/" + parentDir
 }
+
+/**
+ * Utility method to query available execution configs
+ *
+ * Returns an unsorted collection of executionConfigs (Strings).
+ */
+def getAvailableExecutionConfigs() {
+    cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
+    return cfgs.body
+}
