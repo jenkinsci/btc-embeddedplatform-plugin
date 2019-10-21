@@ -820,5 +820,5 @@ def getParentDir(path) {
  */
 def getAvailableExecutionConfigs() {
     cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
-    return cfgs.body
+    return cfgs
 }
