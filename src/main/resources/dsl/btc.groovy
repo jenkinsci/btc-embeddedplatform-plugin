@@ -593,6 +593,8 @@ def createReqString(config) {
         reqString += '"slScriptPath": "' + toAbsPath("${config.slScriptPath}") + '", '
     if (config.addModelInfoPath != null)
         reqString += '"addModelInfoPath": "' + toAbsPath("${config.addModelInfoPath}") + '", '
+    if (config.mappingXmlPath != null)
+        reqString += '"mappingXmlPath": "' + toAbsPath("${config.mappingXmlPath}") + '", '
     if (config.matlabVersion != null)
         reqString += '"matlabVersion": "' + "${config.matlabVersion}" + '", '
     if (config.matlabInstancePolicy != null)
