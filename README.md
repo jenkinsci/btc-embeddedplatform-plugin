@@ -1,4 +1,4 @@
-# Description
+## Description
 
 The Jenkins Automation Plugin for BTC EmbeddedPlatform provides easy to
 use steps for Jenkins Pipeline enabling you to execute test workflow
@@ -29,7 +29,7 @@ instances of BTC EmbeddedPlatform and to close them if again required.
 In addition, the Migration Suite use case can be addressed (see section
 Migration Suite below).
 
-# Release Notes
+## Release Notes
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
@@ -56,16 +56,16 @@ Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 2.0.3 | - Adapted to EP 2.3<br>- A Failed Profile Creation / Profile load will now always throw an exception to break the build<br>- In case of failures during profile creation profile messages will be exported and made available in Jenkins (if possible)<br>- Fixed a bug that prevented the use of some settings for the wrapUp step.<br>- Fixed a bug that caused a specified PLL to be ignored.<br>- Jenkins: HPI plugin ("btc-embeddedplatform-plugin") is now available in the official Jenkins plugin repository | 2.3 |  | 
 2.0.1 | - The Vector Generation step now supports dummy toplevels. If the toplevel subsystem is a dummy scope (no C-function available) then the vector generation will be done on the direct children of the toplevel.<br>- Domain Coverage and Range Violation goals can now be added to the profile and considered during vector generation (requires additional plugins)<br>- Fixed a bug that caused execution records to not be available for debugging in the migration suite use case.<br>- archiveArtifacts and stash commands used by the btc-embeddedplatform plugin are now only called if needed and were changed to be more specific<br>- Fixed an issue that could cause existing profiles to be loaded in the migration suite scenario. From now on the migrationSuite will always create a new profile.<br>- Profile Creation can now be invoked explicitly.<br>- The Code Analysis Report can now be created explicitly. It was formerly created by the Vector Generation step. That's still possible but not enabled by default (controlled by property "createReport" in the btc.vectorGeneration step). | 2.2p2 |  | 
 
-# Prerequisites
+## Prerequisites
 
 This plugin only works in combination with BTC EmbeddedPlatform which
 needs to be installed and licensed separately.
 
 ![](https://wiki.jenkins.io/download/attachments/173703174/Jenkins-EP.png?version=1&modificationDate=1558695678000&api=v2)
 
-# Jenkins Pipeline
+## Jenkins Pipeline
 
-## Overview
+### Overview
 
 Integrating test runs with BTC EmbeddedPlatform in your Jenkins
 workflows combines the automation and traceability concepts and results
@@ -97,7 +97,7 @@ in great benefits:
 
     ![](https://wiki.jenkins.io/download/thumbnails/173703174/save-profile.png?version=1&modificationDate=1558695685000&api=v2)
 
-## Licensing for Jenkins Integration
+### Licensing for Jenkins Integration
 
 In addition to the basic license requirements that depend on the chosen
 workflow steps which require EmbeddedTester or EmbeddedValidator the
@@ -109,7 +109,7 @@ Import, Test Case Import, Test Execution, Reporting) with an
 EmbeddedTester BASE installation and the license
 ET\_AUTOMATION\_SERVER\_BASE.
 
-## Configuration
+### Configuration
 
 In a Jenkins Pipeline the configuration of a job can be defined as
 simple groovy code which can be versioned alongside the main source
@@ -120,9 +120,9 @@ from Jenkins via the BTC DSL for Pipeline Plugin. The Plugin needs to be
 installed in Jenkins and dedicated BTC methods to create a test
 automation workflow.
 
-**Pipeline Example**  Expand source
+**Pipeline Example**
 
-``` syntaxhighlighter-pre
+``` groovy
 node {
     // checkout changes from SCM
     checkout scm
@@ -155,7 +155,7 @@ node {
 }
 ```
 
-# Workflow Steps
+## Workflow Steps
 
 ### Step “startup”
 
@@ -175,18 +175,19 @@ licensingPackage | Name of the licensing package to use, e.g. to use a EmbeddedT
 
 **Possible Return values**
 
-| **Return Value** | **Description**                                                                              |
-| 200              | Started a new instance of BTC EmbeddedPlatform and successfully connected to it.             |
-| 201              | Successfully connected to an already running instance of BTC EmbeddedPlatform.               |
-| 400              | Timeout while connecting to BTC EmbeddedPlatform (either manually specified or 120 seconds). |
-| 500              | Unexpected Error                                                                             |
+Return Value | Description
+-----------------|----------------
+200 | Started a new instance of BTC EmbeddedPlatform and successfully connected to it.
+201 | Successfully connected to an already running instance of BTC EmbeddedPlatform.
+400 | Timeout while connecting to BTC EmbeddedPlatform (either manually specified or 120 seconds).
+500 | Unexpected Error
 
-Jenkins will always connect to the active version of EmbeddedPlatform
+_Jenkins will always connect to the active version of EmbeddedPlatform
 since many tasks will only work with the version that is integrated into
 Matlab. Please ensure that the correct EP version is active by
 choosing Activate BTC EmbeddedPlatform in your start menu for the
 desired version and also ensure that the Jenkins Automation Plugin is
-installed for this version of EmbeddedPlatform.
+installed for this version of EmbeddedPlatform._
 
 ### Step “profileLoad”
 
@@ -199,21 +200,44 @@ new profile. A profile update is only performed if this is required.
 Profile Creation requires either a TargetLink model or C-Code in
 combination with a CodeModel.xml architecture description.
 
-The “profileLoad” step or any of the "profileCreate" steps are a
-mandatory starting point for all automation workflows.
+_The “profileLoad” step or any of the "profileCreate" steps are a
+mandatory starting point for all automation workflows._
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
+tlModelPath | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace. | "model.slx"
+tlScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
+environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
+startupScriptPath | Path to a Startup Script which can be used to initialize matlab (e.g. toolchain startup, etc.). The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory**The script must provide a function of the same name which takes at least one input argument (the model path) and returns exactly one output value (an exit code |  0 indicating success). | "startup_toolchain.m"
+codeModelPath | Path of the hand code description file. The path can be absolute or relative to the jenkins job's workspace. | "CodeModel.xml"
+compilerShortName | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found. | "MSSDK71", "MSVC140", "MinGW64"
+slModelPath | Path of the Simulink model. The path can be absolute or relative to the jenkins job's workspace. | "slModel.slx"
+slScriptPath | Path of the model init script for the Simulink model. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+addModelInfoPath | Path to the XML file with additional model info for SL use case. The path can be absolute or relative to the jenkins job's workspace. | "AddGenModelInfo.xml"
+pilConfig | Name of the PIL configuration to use. This config must exist in TargetLink. Setting a PIL Config will activate PIL in the profile and enable you to choose "PIL" as an execution config. | "default EVM"
+pilTimeout | Timeout in seconds for the download process to the PIL board.<br>(default: 60) | 60, 120
+calibrationHandling | The calibration handling controls how calibrations are recognized during architecture import.<br>(default: "EXPLICIT PARAM") | "EXPLICIT PARAM", "LIMITED BLOCKSET", "OFF"
+testMode | The test mode controls whether local displayables will be available for testing (GREY BOX) or not (BLACK BOX). | "GREY BOX", "BLACK BOX"
+reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use existing generated code from TargetLink. Requires the Code and the linking information in the data dictionary to be available.<br>(default: false) | true, false
+matlabVersion | Controls which matlab version will be used by the tool.<br>String containing the release version (e.g. "2016b"), optionally followed by "32-bit" or "64-bit". The version and 32/64-bit part should be separated by a space character. | "2010a 32-bit"<br>"2013b"<br>"2016b 64-bit"
+matlabInstancePolicy | String that controls when EmbeddedPlatform will start a new Matlab instance. When selecting "NEVER" another process needs to ensure that a Matlab instance is available on the agent machine.<br>Default: "AUTO" (i.e. a new instance is only started if no instance of the specified version is available) | "AUTO", "ALWAYS", "NEVER"
+exportPath | Path to a folder where reports shall be stored. The path can be absolute or relative to the jenkins job's workspace. | "reports" (default)
+updateRequired | Boolean flag that controls whether or not the profile is being update after loading.<br>(default: false) | true, false
+saveProfileAfterEachStep | Boolean flag that controls whether or not the profile is being saved after each step.(default: false) | true, false
+logFilePath | Path for the log file. The path can be absolute or relative to the jenkins job's workspace. | "log.txt" (default)
+licenseLocationString | String containing the license locations in the order of their priority. Multiple locations are to be separated by a semicolon. If not specified explicitly, the license locations will still be retrieved from the registry (via FlexLM) in the way they have been configured in the EP license dialog. | "C:\Licenses\EP21_30.01.2019.lic"<br>"@192.168.0.1"<br>"9000@myserver.com"
 
 **Possible Return values**
 
-|                  |                                                                                                                   |
-|------------------|-------------------------------------------------------------------------------------------------------------------|
-| **Return Value** | **Description**                                                                                                   |
-| 200              | Successfully loaded an existing profile.                                                                          |
-| 201              | Successfully loaded an existing profile and performed an architecture update (see updateRequired property above). |
-| 202              | Successfully created a new profile.                                                                               |
-| 400              | Error during profile creation. Throws an exception because further testing is not possible.                       |
-| 500              | Unexpected Error. Throws an exception because further testing is not possible.                                    |
+| Return Value | Description                                                                                                       |
+|--------------|-------------------------------------------------------------------------------------------------------------------|
+| 200          | Successfully loaded an existing profile.                                                                          |
+| 201          | Successfully loaded an existing profile and performed an architecture update (see updateRequired property above). |
+| 202          | Successfully created a new profile.                                                                               |
+| 400          | Error during profile creation. Throws an exception because further testing is not possible.                       |
+| 500          | Unexpected Error. Throws an exception because further testing is not possible.                                    |
 
 ### Step “profileCreateTL”
 
@@ -223,10 +247,39 @@ DSL Command: btc.profileCreateTL {...}
 
 Creates a new profile for a TargetLink model.
 
-The listed properties only show the TargetLink specific properties. Each
+_Please note:_ The listed properties only show the TargetLink specific properties. Each
 of the properties listed in the "profileLoad" step also apply here.
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
+**tlModelPath** | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for TL use case** | "model.slx"
+tlScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
+environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
+reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use existing generated code from TargetLink. Requires the Code and the linking information in the data dictionary to be available.<br>(default: false) | true, false
+
+
+### Step “profileCreateEC”
+
+DSL Command: btc.profileCreateEC {...}
+
+**Description**
+
+Creates a new profile for an EmbeddedCoder model.
+
+_Please note:_ The listed properties only show the EmbeddedCoder specific properties. Each
+of the properties listed in the "profileLoad" step also apply here.
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
+**slModelPath** | Path of the EmbeddedCoder model. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for EC use case** | "model.slx"
+slScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+**compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
+codeModelPath | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "CodeModel.xml"
+mappingFilePath | Path of the mapping file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "Mapping.xml"
+
 
 ### Step “profileCreateSL”
 
@@ -236,10 +289,15 @@ DSL Command: btc.profileCreateSL {...}
 
 Creates a new profile for a Simulink model.
 
-The listed properties only show the Simulink specific properties. Each
+_Please note:_ The listed properties only show the Simulink specific properties. Each
 of the properties listed in the "profileLoad" step also apply here.
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
+**slModelPath** | Path of the EmbeddedCoder model. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for EC use case** | "model.slx"
+slScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+**addModelInfoPath** | Path to the XML file with additional model info for SL use case. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for SL use case** | "AddGenModelInfo.xml"
 
 ### Step “profileCreateC”
 
@@ -249,10 +307,14 @@ DSL Command: btc.profileCreateC {...}
 
 Creates a new profile for supported ansi C-Code.
 
-The listed properties only show the C-Code specific properties. Each of
+_Please note:_ The listed properties only show the C-Code specific properties. Each of
 the properties listed in the "profileLoad" step also apply here.
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
+**compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
+**codeModelPath** | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for hand code use case** | "CodeModel.xml"
 
 ### Step “vectorImport”
 
@@ -263,17 +325,17 @@ DSL Command: btc.vectorImport {...}
 Imports test cases or stimuli vectors from the specified location. The
 following settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                               |
-|------------------|-----------------------------------------------|
-| **Return Value** | **Description**                               |
-| 200              | Successfully imported all vectors.            |
-| 300              | No valid vectors were found in the importDir. |
-| 400              | Error during vector import.                   |
-| 500              | Unexpected Error                              |
+| Return Value | Description                                   |
+|--------------|-----------------------------------------------|
+| 200          | Successfully imported all vectors.            |
+| 300          | No valid vectors were found in the importDir. |
+| 400          | Error during vector import.                   |
+| 500          | Unexpected Error                              |
 
 ### Step “toleranceImport”
 
@@ -286,13 +348,13 @@ options are available:
 
 **Possible Return values**
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                               |
+| Return Value     | Description                                   |
 |------------------|-----------------------------------------------|
-| **Return Value** | **Description**                               |
 | 200              | Successfully imported the tolerance settings. |
 | 400              | No path specified.                            |
 | 401              | The file at specified path does not exist.    |
@@ -310,13 +372,13 @@ are available:
 
 **Possible Return values**
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                               |
+| Return Value     | Description                                   |
 |------------------|-----------------------------------------------|
-| **Return Value** | **Description**                               |
 | 200              | Successfully exported the tolerance settings. |
 | 400              | No path specified.                            |
 | 402              | The specified useCase is invalid.             |
@@ -337,13 +399,13 @@ options are available:
 
 **Possible Return values**
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                               |
+| Return Value     | Description                                   |
 |------------------|-----------------------------------------------|
-| **Return Value** | **Description**                               |
 | 200              | Successfully imported the tolerance settings. |
 | 400              | No path specified.                            |
 | 401              | The file at specified path does not exist.    |
@@ -364,7 +426,8 @@ options are available:
 
 **Possible Return values**
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 You can define whitelists and blacklists for scopes, folders and test
 cases. Everything will be merged resulting in a filtered set of test
@@ -375,9 +438,8 @@ something is whitelisted and blacklisted it will be excluded).
 
 **Possible Return values**
 
-|                  |                                              |
+| Return Value     | Description                                  |
 |------------------|----------------------------------------------|
-| **Return Value** | **Description**                              |
 | 200              | Successfully exported the execution records. |
 | 500              | Unexpected Error                             |
 
@@ -396,13 +458,13 @@ are available:
 
 **Possible Return values**
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                               |
+|   Return Value   | Description                                   |
 |------------------|-----------------------------------------------|
-| **Return Value** | **Description**                               |
 | 200              | Successfully exported the tolerance settings. |
 | 400              | No path specified.                            |
 | 500              | Unexpected Error                              |
@@ -421,7 +483,8 @@ Executes all functional test cases in the profile. A Test Execution
 Report will be exported to the “exportDir” specified in the
 “profileLoad” step. The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 Filtering via White- & Blacklists
 
@@ -434,9 +497,8 @@ something is whitelisted and blacklisted it will be excluded).
 
 **Possible Return values**
 
-|                  |                                                               |
+| Return Value     | Description                                                   |
 |------------------|---------------------------------------------------------------|
-| **Return Value** | **Description**                                               |
 | 200              | All test cases passed (status: PASSED)                        |
 | 201              | Nothing to Execute (no functional test cases in the profile). |
 | 300              | There were failed test cases (status: FAILED)                 |
@@ -458,15 +520,15 @@ specified in the "profileLoad" / "profileCreate" step. If no reportName
 is specified the reports will be placed into a subdirectory in order to
 avoid multiple reports overwriting each other.
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
   
 
 **Possible Return values**
 
-|                  |                  |
+| Return Value     | Description      |
 |------------------|------------------|
-| **Return Value** | **Description**  |
 | 200              | Success          |
 | 500              | Unexpected Error |
 
@@ -484,13 +546,13 @@ Creates the XML Report and exports it to the "exportDir" specified in
 the "profileLoad" / "profileCreate" step. Requires BTC Plugin for
 XMLReports. The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                  |
+| Return Value     | Description      |
 |------------------|------------------|
-| **Return Value** | **Description**  |
 | 200              | Success          |
 | 500              | Unexpected Error |
 
@@ -508,13 +570,13 @@ Creates the Code Analysis Report and exports it to the "exportDir"
 specified in the "profileLoad" / "profileCreate" step. The following
 optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                  |
+| Return Value     | Description      |
 |------------------|------------------|
-| **Return Value** | **Description**  |
 | 200              | Success          |
 | 500              | Unexpected Error |
 
@@ -525,7 +587,7 @@ Plugin](https://plugins.jenkins.io/plot) to report coverage.
 
 **Example content of the CSV File:**
 
-``` syntaxhighlighter-pre
+``` c
 Statement Coverage, Decision Coverage, MC/DC Coverage
 100.0, 90.0, 91.98
 ```
@@ -537,7 +599,7 @@ Plugin](https://plugins.jenkins.io/plot):**
 
 ![](https://wiki.jenkins.io/download/attachments/173703174/plots.png?version=1&modificationDate=1558695682000&api=v2)
 
-``` syntaxhighlighter-pre
+``` groovy
 plot csvFileName: 'plot-b2b-codecoverage.csv', csvSeries: [[displayTableFlag: false, exclusionValues: '', file: "reports/BTCCoverageOverview_B2B.csv", inclusionFlag: 'OFF', url: '']], group: 'BTC Code Coverage Overview', style: 'line', title: 'B2B Code Coverage (Structural)', yaxis: 'Coverage Percentage'
 ```
 
@@ -557,13 +619,13 @@ Creates the Model Coverage Report and exports it to the "exportDir"
 specified in the "profileLoad" / "profileCreate" step. The following
 optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                  |
+| Return Value     | Description      |
 |------------------|------------------|
-| **Return Value** | **Description**  |
 | 200              | Success          |
 | 500              | Unexpected Error |
 
@@ -584,13 +646,13 @@ A Formal Test Report will be exported to the “exportDir” specified in
 the “profileLoad” step (and will be linked in the overview report). The
 following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                                              |
+| Return Value     | Description                                                  |
 |------------------|--------------------------------------------------------------|
-| **Return Value** | **Description**                                              |
 | 200              | All test cases passed (status: PASSED / FULLFILLED)          |
 | 201              | Nothing to Execute (no formal requirements in the profile).  |
 | 300              | There were violations (status: FAILED / VIOLATED)            |
@@ -617,13 +679,13 @@ Adds Range Violation Goals to the profile which contribute to the Code
 Analysis Report and can be considered during vector generation (pll:
 "RVG"). The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                            |
+| Return Value     | Description                                |
 |------------------|--------------------------------------------|
-| **Return Value** | **Description**                            |
 | 200              | Success                                    |
 | 400              | Range Violation Goals plugin not installed |
 | 500              | Unexpected Error                           |
@@ -646,13 +708,13 @@ Adds Domain Coverage Goals to the profile which contribute to the Code
 Analysis Report and can be considered during vector generation (pll:
 "DCG"). The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                            |
+| Return Value     | Description                                |
 |------------------|--------------------------------------------|
-| **Return Value** | **Description**                            |
 | 200              | Success                                    |
 | 400              | Domain Coverage Goals plugin not installed |
 | 500              | Unexpected Error                           |
@@ -670,13 +732,13 @@ EmbeddedTester (ET\_COMPLETE)
 Executes the engines for analysis and stimuli vector generation for
 structural coverage. The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                                                                                                              |
+| Return Value     | Description                                                                                                                  |
 |------------------|------------------------------------------------------------------------------------------------------------------------------|
-| **Return Value** | **Description**                                                                                                              |
 | 200              | Successfully generated vectors and reached all selected coverage goals (see PLL property). No robustness goals were covered. |
 | 300              | Ran into timeouts before completely analyzing all selected goals (see PLL property). No robustness goals were covered.       |
 | 41x              | Covered Robustness Goal: Downcast                                                                                            |
@@ -710,13 +772,13 @@ the deviating values are equal. For more information, please contact
 
 The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                                                                          |
+| Return Value     | Description                                                                              |
 |------------------|------------------------------------------------------------------------------------------|
-| **Return Value** | **Description**                                                                          |
 | 200              | Back-to-Back Test passed (status: PASSED)                                                |
 | 201              | Back-to-Back Test has accepted failures (status: FAILED ACCEPTED)                        |
 | 300              | There were deviations between the reference and comparison architecture (status: FAILED) |
@@ -741,13 +803,13 @@ requires stimuli vectors or functional test cases in the profile.  A
 Regression Test Report will be exported to the “exportDir” specified in
 the “profileLoad” step. The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                                                            |
+| Return Value     | Description                                                                |
 |------------------|----------------------------------------------------------------------------|
-| **Return Value** | **Description**                                                            |
 | 200              | Regression Test passed (status: PASSED)                                    |
 | 201              | Nothing to compare. Simulation results stored for later Regression Tests.  |
 | 300              | There were deviations between the old and the new version (status: FAILED) |
@@ -767,13 +829,13 @@ EmbeddedValidator (EV)
 Executes all existing proofs in the profile and generates a Formal
 Verification Report. The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 **Possible Return values**
 
-|                  |                                                |
+| Return Value     | Description                                    |
 |------------------|------------------------------------------------|
-| **Return Value** | **Description**                                |
 | 200              | All proofs are fulfilled (status: FULFILLED)   |
 | 300              | There was a violation (status: VIOLATED)       |
 | 301              | Unknown (status: UNKNOWN)                      |
@@ -789,11 +851,12 @@ DSL Command: btc.wrapUp {...}
 Publishes HTML reports and the JUnit XML report to Jenkins and closes
 BTC EmbeddedPlatform. The following optional settings are available:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
   
 
-# BTC Migration Suite
+## BTC Migration Suite
 
 The BTC Migration Suite allows you to perform a fully automatic
 regression test between different Matlab or TargetLink versions. This
@@ -830,7 +893,8 @@ config and runs a regression test.
 For both steps (migrationSource and migrationTarget) the following
 parameters are mandatory:
 
-[TABLE]
+Property | Description | Example Value(s)
+---------|-------------|-----------------
 
 In Addition, you can add all other the parameters from the
 steps btc.profileLoad and btc.vectorGeneration if required.
@@ -849,9 +913,7 @@ required for the regression test.
 
 **Migration Suite Example**
 
-**Migration Suite Example**  Expand source
-
-``` syntaxhighlighter-pre
+``` groovy
 node ('Win7 && TL41 && ML2015b') {
 
     checkout scm
@@ -879,7 +941,7 @@ node ('Win10 && TL43 && ML2017b') {
 }
 ```
 
-# Adding the BTC Plugin to Jenkins
+## Adding the BTC Plugin to Jenkins
 
 In order to use the convenient pipeline syntax described above you need
 to add the BTC Plugin to Jenkins. This is very easy and can be done with
@@ -905,7 +967,3 @@ download the plugin
 [here](https://updates.jenkins-ci.org/latest/btc-embeddedplatform.hpi)
 and upload it to the server via the advanced section of the "Manage
 Plugins" page.
-
-  
-
-  
