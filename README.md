@@ -157,7 +157,7 @@ node {
 
 ## Workflow Steps
 
-### Step “startup”
+### Step "startup"
 
 DSL Command: btc.startup {...}
 
@@ -189,7 +189,7 @@ choosing Activate BTC EmbeddedPlatform in your start menu for the
 desired version and also ensure that the Jenkins Automation Plugin is
 installed for this version of EmbeddedPlatform._
 
-### Step “profileLoad”
+### Step "profileLoad"
 
 DSL Command: btc.profileLoad {...}
 
@@ -200,7 +200,7 @@ new profile. A profile update is only performed if this is required.
 Profile Creation requires either a TargetLink model or C-Code in
 combination with a CodeModel.xml architecture description.
 
-_The “profileLoad” step or any of the "profileCreate" steps are a
+_The "profileLoad" step or any of the "profileCreate" steps are a
 mandatory starting point for all automation workflows._
 
 Property | Description | Example Value(s)
@@ -239,7 +239,7 @@ licenseLocationString | String containing the license locations in the order of 
 | 400          | Error during profile creation. Throws an exception because further testing is not possible.                       |
 | 500          | Unexpected Error. Throws an exception because further testing is not possible.                                    |
 
-### Step “profileCreateTL”
+### Step "profileCreateTL"
 
 DSL Command: btc.profileCreateTL {...}
 
@@ -260,7 +260,7 @@ environmentXmlPath | Path to the XML file with additional include paths, etc.. T
 reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use existing generated code from TargetLink. Requires the Code and the linking information in the data dictionary to be available.<br>(default: false) | true, false
 
 
-### Step “profileCreateEC”
+### Step "profileCreateEC"
 
 DSL Command: btc.profileCreateEC {...}
 
@@ -281,7 +281,7 @@ codeModelPath | Path of the code description file. The path can be absolute or r
 mappingFilePath | Path of the mapping file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "Mapping.xml"
 
 
-### Step “profileCreateSL”
+### Step "profileCreateSL"
 
 DSL Command: btc.profileCreateSL {...}
 
@@ -299,7 +299,7 @@ Property | Description | Example Value(s)
 slScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
 **addModelInfoPath** | Path to the XML file with additional model info for SL use case. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for SL use case** | "AddGenModelInfo.xml"
 
-### Step “profileCreateC”
+### Step "profileCreateC"
 
 DSL Command: btc.profileCreateC {...}
 
@@ -316,7 +316,7 @@ Property | Description | Example Value(s)
 **compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
 **codeModelPath** | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for hand code use case** | "CodeModel.xml"
 
-### Step “vectorImport”
+### Step "vectorImport"
 
 DSL Command: btc.vectorImport {...}
 
@@ -327,6 +327,9 @@ following settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+**importDir** | The directory that contains the vectors to import. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\vectors", "E:\data\ImportExport"
+vectorFormat | String to specify the format of the vector import files in Standard BTC EmbeddedPlatform style.<br>(default: EXCEL) | "CSV", "EXCEL", "TC"
+vectorKind | A String that defines the type of the vectors to import. Can be "TC" (= Test Case) or "SV" (= Stimuli Vector).<br>(default: TC) | "TC", "SV"
 
 **Possible Return values**
 
@@ -337,7 +340,7 @@ Property | Description | Example Value(s)
 | 400          | Error during vector import.                   |
 | 500          | Unexpected Error                              |
 
-### Step “toleranceImport”
+### Step "toleranceImport"
 
 DSL Command: btc.toleranceImport {...}
 
@@ -350,6 +353,9 @@ options are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+**path** | The tolerance settings file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\tolerances.xml", "E:\data\tolerances.xml"
+useCase | String to specify the use case for the Tolerances (Back-to-Back or Requirements-Based Testing).<br>(default: B2B) | "B2B", "RBT"
+
 
 **Possible Return values**
 
@@ -361,7 +367,7 @@ Property | Description | Example Value(s)
 | 402              | The specified useCase is invalid.             |
 | 500              | Unexpected Error                              |
 
-### Step “toleranceExport”
+### Step "toleranceExport"
 
 DSL Command: btc.toleranceExport {...}
 
@@ -374,6 +380,8 @@ are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+**path** | The tolerance settings file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\tolerances.xml", "E:\data\tolerances.xml"
+useCase | String to specify the use case for the Tolerances (Back-to-Back or Requirements-Based Testing).<br>(default: B2B) | "B2B", "RBT"
 
 **Possible Return values**
 
@@ -384,7 +392,7 @@ Property | Description | Example Value(s)
 | 402              | The specified useCase is invalid.             |
 | 500              | Unexpected Error                              |
 
-### Step “inputRestrictionsImport”
+### Step "inputRestrictionsImport"
 
 DSL Command: btc.inputRestrictionsImport {...}
 
@@ -401,6 +409,7 @@ options are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+**path** | The file that contains the Input Restrictions. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\inputrestrictions.xml", "E:\data\inputrestrictions.xml"
 
 **Possible Return values**
 
@@ -411,7 +420,7 @@ Property | Description | Example Value(s)
 | 401              | The file at specified path does not exist.    |
 | 500              | Unexpected Error                              |
 
-### Step “executionRecordExport”
+### Step "executionRecordExport"
 
 DSL Command: btc.executionRecordExport {...}
 
@@ -428,11 +437,20 @@ options are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+**dir** | The target directory. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "exectutionrecords\SIL", "E:\data\er\MIL"
+**executionConfig** | Execution configs for the Test Execution (String)<br>**mandatory** | "TL MIL", "SL MIL", "SIL", "PIL"
+exportFormat | String specifying the export format for the execution records<br>(default: mdf) | "mdf", "excel"
+scopesWhitelist	| Comma separated String with scopes to include. If this string is not empty, only scopes that are listed here will be considered.<br>(default: "" - empty String: all scopes will be considered) | "toplevel"<br>"toplevel, subA, subB"
+scopesBlacklist | Comma separated String with scopes to exclude. If this string is not empty, only scopes that are not listed here will be considered.<br>(default: "" - empty String: no scopes will be excluded) | "toplevel"<br>"toplevel, subA, subB"
+foldersWhitelist | Comma separated String with folders to include. If this string is not empty, only folders that are listed here will be considered.<br>(default: "" - empty String: all folders will be considered) | "Old Execution Records"<br>"FolderA, FolderB"
+foldersBlacklist | Comma separated String with folders to exclude. If this string is not empty, only folders that are not listed here will be considered.<br>(default: "" - empty String: no folders will be excluded) | "Old Execution Records"<br>"FolderA, FolderB"
+testCasesWhitelist | Comma separated String with testcases to include. If this string is not empty, only testcases that are listed here will be considered.<br>(default: "" - empty String: all testcases will be considered) | "tc1"<br>"tc1, tc2, tc44"
+testCasesBlacklist | Comma separated String with testcases to exclude. If this string is not empty, only testcases that are not listed here will be considered.<br>(default: "" - empty String: no testcases will be excluded) | "tc1"<br>"tc1, tc2, tc44"
 
-You can define whitelists and blacklists for scopes, folders and test
+*You can define whitelists and blacklists for scopes, folders and test
 cases. Everything will be merged resulting in a filtered set of test
 cases. Blacklists always have precedence over whitelists (i.e. if
-something is whitelisted and blacklisted it will be excluded).
+something is whitelisted and blacklisted it will be excluded).*
 
   
 
@@ -443,7 +461,7 @@ something is whitelisted and blacklisted it will be excluded).
 | 200              | Successfully exported the execution records. |
 | 500              | Unexpected Error                             |
 
-### Step “inputRestrictionsExport”
+### Step "inputRestrictionsExport"
 
 DSL Command: btc.inputRestrictionsExport {...}
 
@@ -460,6 +478,7 @@ are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+**path** | The Input Restrictions xml file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\inputrestrictions.xml", "E:\data\inputrestrictions.xml"
 
 **Possible Return values**
 
@@ -469,7 +488,7 @@ Property | Description | Example Value(s)
 | 400              | No path specified.                            |
 | 500              | Unexpected Error                              |
 
-### Step “rbtExecution”
+### Step "rbtExecution"
 
 DSL Command: btc.rbtExecution {...}
 
@@ -480,20 +499,29 @@ EmbeddedTester (ET\_BASE)
 **Description**
 
 Executes all functional test cases in the profile. A Test Execution
-Report will be exported to the “exportDir” specified in the
-“profileLoad” step. The following optional settings are available:
+Report will be exported to the "exportDir" specified in the
+"profileLoad" step. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+executionConfigString | Execution configs for the Test Execution (comma separated list)<br>(default: all available configs) | "TL MIL, SIL, PIL"<br>"SIL, PIL"<br>"SL MIL"
+debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains all failed test cases.<br>(default: no debug export) | "TL MIL"<br>"SIL (Generic)"<br>"SIL (Visual Studio 2013)"
+reportSource | String that specified if the report is based on scopes or requirement sources. Setting the report source to "REQUIREMENT" has no effect if no requirements are available in the profile.<br>*Please note: Test Execution Reports based on requirements only consider test cases that are linked to these requirements. Unlinked test cases will not be considered in the report.*<br>(default: SCOPE) | "SCOPE"<br>"REQUIREMENT"
+createReport | Boolean flag controlling whether or not the Test Execution Report is created by this step. The report can be created explicitly in its own step (see step "testExecutionReport").<br>(default: false) | true, false
+scopesWhitelist	| Comma separated String with scopes to include. If this string is not empty, only scopes that are listed here will be considered.<br>(default: "" - empty String: all scopes will be considered) | "toplevel"<br>"toplevel, subA, subB"
+scopesBlacklist | Comma separated String with scopes to exclude. If this string is not empty, only scopes that are not listed here will be considered.<br>(default: "" - empty String: no scopes will be excluded) | "toplevel"<br>"toplevel, subA, subB"
+foldersWhitelist | Comma separated String with folders to include. If this string is not empty, only folders that are listed here will be considered.<br>(default: "" - empty String: all folders will be considered) | "Old Execution Records"<br>"FolderA, FolderB"
+foldersBlacklist | Comma separated String with folders to exclude. If this string is not empty, only folders that are not listed here will be considered.<br>(default: "" - empty String: no folders will be excluded) | "Old Execution Records"<br>"FolderA, FolderB"
+testCasesWhitelist | Comma separated String with testcases to include. If this string is not empty, only testcases that are listed here will be considered.<br>(default: "" - empty String: all testcases will be considered) | "tc1"<br>"tc1, tc2, tc44"
+testCasesBlacklist | Comma separated String with testcases to exclude. If this string is not empty, only testcases that are not listed here will be considered.<br>(default: "" - empty String: no testcases will be excluded) | "tc1"<br>"tc1, tc2, tc44"
 
-Filtering via White- & Blacklists
+**Filtering via White- & Blacklists**
 
-You can define whitelists and blacklists for scopes, folders and test
+*You can define whitelists and blacklists for scopes, folders and test
 cases. Everything will be merged resulting in a filtered set of test
 cases. Blacklists always have precedence over whitelists (i.e. if
-something is whitelisted and blacklisted it will be excluded).
+something is whitelisted and blacklisted it will be excluded).*
 
-  
 
 **Possible Return values**
 
@@ -505,7 +533,7 @@ something is whitelisted and blacklisted it will be excluded).
 | 400              | There were errors during test case execution (status: ERROR)  |
 | 500              | Unexpected Error                                              |
 
-### Step “testExecutionReport”
+### Step "testExecutionReport"
 
 DSL Command: btc.testExecutionReport{...}
 
@@ -522,8 +550,10 @@ avoid multiple reports overwriting each other.
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+reportName | The filename (String) for the resulting html file (suffix is optional).<br>(default: "TestExecutionReport_SIL.html", or "TL MIL" / "SL MIL" / "PIL" respectively) | "MyReport"<br>"Foo.html"
+executionConfigString | Execution configs for the Test Execution (comma separated list)<br>(default: all available configs) | "TL MIL, SIL, PIL"<br>"SIL, PIL"<br>"SL MIL"
+reportSource | String that specified if the report is based on scopes or requirement sources. Setting the report source to "REQUIREMENT" has no effect if no requirements are available in the profile.<br>Please note: Test Execution Reports based on requirements only consider test cases that are linked to these requirements. Unlinked test cases will not be considered in the report.<br>(default: SCOPE) | "SCOPE"<br>"REQUIREMENT"
 
-  
 
 **Possible Return values**
 
@@ -532,7 +562,7 @@ Property | Description | Example Value(s)
 | 200              | Success          |
 | 500              | Unexpected Error |
 
-### Step “xmlReport”
+### Step "xmlReport"
 
 DSL Command: btc.xmlReport{...}
 
@@ -548,6 +578,8 @@ XMLReports. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+path | Path to the report (relative paths will be resolved to the exportDir).<br>(default: "BTCXmlReport_<USECASE>.xml") | true, false
+useCase | Controls for which use case the coverage is reported.<br>(default: B2B) | "B2B", "RBT"
 
 **Possible Return values**
 
@@ -556,7 +588,7 @@ Property | Description | Example Value(s)
 | 200              | Success          |
 | 500              | Unexpected Error |
 
-### Step “codeAnalysisReport”
+### Step "codeAnalysisReport"
 
 DSL Command: btc.codeAnalysisReport{...}
 
@@ -572,6 +604,9 @@ optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+reportName | The filename (String) for the resulting html file.<br>(default: "report.html") | "report.html", "BTCCodeCoverage.html"
+includeSourceCode | Boolean flag controlling whether the annotated source code will be included in the Code Analysis Report.<br>(default: false) | true, false
+useCase | Controls for which use case the coverage is reported.<br>(default: B2B) | "B2B", "RBT"
 
 **Possible Return values**
 
@@ -603,7 +638,7 @@ Plugin](https://plugins.jenkins.io/plot):**
 plot csvFileName: 'plot-b2b-codecoverage.csv', csvSeries: [[displayTableFlag: false, exclusionValues: '', file: "reports/BTCCoverageOverview_B2B.csv", inclusionFlag: 'OFF', url: '']], group: 'BTC Code Coverage Overview', style: 'line', title: 'B2B Code Coverage (Structural)', yaxis: 'Coverage Percentage'
 ```
 
-### Step “modelCoverageReport”
+### Step "modelCoverageReport"
 
 DSL Command: btc.modelCoverageReport{...}
 
@@ -621,6 +656,9 @@ optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+executionConfig | The execution config for the MIL execution used for model coverage measurement.<br>(default: first available MIL execution config, arbitrary if more than one exists) | "TL MIL", "SL MIL"
+reportName | The filename (String) for the resulting html file.<br>(default: "report.html") | "report.html", "BTCCodeCoverage.html"
+useCase | Controls for which use case the coverage is reported.<br>(default: RBT) | "B2B", "RBT"
 
 **Possible Return values**
 
@@ -631,7 +669,7 @@ Property | Description | Example Value(s)
 
   
 
-### Step “formalTest”
+### Step "formalTest"
 
 DSL Command: btc.formalTest{...}
 
@@ -642,12 +680,14 @@ EmbeddedTester (ET\_BASE) + Formal Test Add-On
 **Description**
 
 Executes a Formal Test based on all formal requirements in the profile.
-A Formal Test Report will be exported to the “exportDir” specified in
-the “profileLoad” step (and will be linked in the overview report). The
+A Formal Test Report will be exported to the "exportDir" specified in
+the "profileLoad" step (and will be linked in the overview report). The
 following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+executionConfigString | Execution configs on which the Formal Test should run (comma separated list)<br>(default: all available configs) | "TL MIL, SIL, PIL"<br>"SIL, PIL"<br>"SL MIL"
+debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains all failed test cases.<br>(default: no debug export) | "TL MIL"<br>"SIL (Generic)"<br>"SIL (Visual Studio 2013)"
 
 **Possible Return values**
 
@@ -661,7 +701,7 @@ Property | Description | Example Value(s)
 
   
 
-### Step “rangeViolationGoals”
+### Step "rangeViolationGoals"
 
 DSL Command: btc.rangeViolationGoals{...}
 
@@ -681,6 +721,11 @@ Analysis Report and can be considered during vector generation (pll:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
+rvXmlPath | Path to an xml file containing Range Violation specs. | "RangeViolationGoals.xml"
+considerOutputs | Boolean flag controlling whether the goals should be created for Outputs.<br>(default: true) | true, false
+considerLocals | Boolean flag controlling whether the goals should be created for local displayables.<br>(default: true) | true, false
+checkRangeSpecification | Boolean flag controlling whether the goals should only be created if a signal has Min/Max values other than the data type range.<br>(default: true) | true, false
 
 **Possible Return values**
 
@@ -690,7 +735,7 @@ Property | Description | Example Value(s)
 | 400              | Range Violation Goals plugin not installed |
 | 500              | Unexpected Error                           |
 
-### Step “domainCoverageGoals”
+### Step "domainCoverageGoals"
 
 DSL Command: btc.domainCoverageGoals{...}
 
@@ -710,6 +755,9 @@ Analysis Report and can be considered during vector generation (pll:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
+dcXmlPath | Path to an xml file containing Domain Coverage specs. | "DomainCoverageGoals.xml"
+raster | String to specify a raster in %. Domain Coverage Goals will be created for equal according to the raster.<br>(default: 25) | "10", "25", "30"
 
 **Possible Return values**
 
@@ -719,7 +767,7 @@ Property | Description | Example Value(s)
 | 400              | Domain Coverage Goals plugin not installed |
 | 500              | Unexpected Error                           |
 
-### Step “vectorGeneration”
+### Step "vectorGeneration"
 
 DSL Command: btc.vectorGeneration{...}
 
@@ -734,10 +782,23 @@ structural coverage. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+pll | Semicolon separated list of PLLs used to set the goals for automatic stimuli vector generation.<br>(default: all goals will be analyzed) | "STM; D", "STM:3", … (see Back-to-Back & Vector Generation User Guide for more details about PLLs)
+engine | Engine to be used for vector generation (guided random, model checker, both)<br>
+(default: "ATG+CV", combined hierachical approach) | "ATG+CV", "ATG", "CV" (see Back-to-Back & Vector Generation User Guide for more details about engines)
+globalTimeout | Global timeout in seconds. 0 means no timeout.<br>(default: 600) | 600
+scopeTimeout | Scope timeout in seconds. 0 means no timeout.<br>(default: 300) | 300
+perPropertyTimeout | Timeout per coverage property in seconds. 0 means no timeout.<br>(default: 60) | 60
+considerSubscopes | Boolean flag controlling whether or not to consider coverage goals from subscopes.<br>(default: true) | true, false
+recheckUnreachable | Boolean flag controlling whether or not to recheck already calculated unreachable results.<br>(default: false) | true, false
+depthCv | Controls the maximum depth for the CV engine. Set to 0 for infinite depth.<br>(default: 10) | 0, 10, 20, 50
+depthAtg | Controls the maximum depth for the ATG engine. Must be greater than 0.<br>(default: 20) | 10, 20, 50
+loopUnroll | Number of loop interations to unroll for unpredictable loops.<br>(default: 50) | 10, 20, 50
+robustnessTestFailure | Boolean flag controlling whether or not robustness issues are added to the JUnit XML Report as "failed tests".<br>(default: false) | true, false
+createReport | Boolean flag controlling whether or not the Code Analysis Report is created by this step. The report can be created explicitly in its own step which is why you might want to tweak this setting.<br>(default: false) | true, false
 
 **Possible Return values**
 
-| Return Value     | Description                                                                                                                  |
+| Return Value     | Description                      |
 |------------------|------------------------------------------------------------------------------------------------------------------------------|
 | 200              | Successfully generated vectors and reached all selected coverage goals (see PLL property). No robustness goals were covered. |
 | 300              | Ran into timeouts before completely analyzing all selected goals (see PLL property). No robustness goals were covered.       |
@@ -745,7 +806,7 @@ Property | Description | Example Value(s)
 | 4x1              | Covered Robustness Goal: Division by Zero                                                                                    |
 | 500              | Unexpected Error                                                                                                             |
 
-### Step “backToBack”
+### Step "backToBack"
 
 DSL Command: btc.backToBack {...}
 
@@ -758,8 +819,8 @@ EmbeddedTester (ET\_COMPLETE)
 Executes a Back-to-Back Test between the specified reference and
 comparison configuration (e.g. TL MIL vs. SIL). This step requires
 stimuli vectors or functional test cases in the profile. A Back-to-Back
-Test Report will be exported to the “exportDir” specified in the
-“profileLoad” step.
+Test Report will be exported to the "exportDir" specified in the
+"profileLoad" step.
 
 In automated scenarios the effort for manual reviews of frequently
 executed Back-to-Back tests can become quite high. The BTC plugin
@@ -774,6 +835,9 @@ The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+reference | Execution config for the Back-to-Back test reference simulation.<br>(default: "TL MIL") | TL MIL, SIL, PIL, SL MIL
+comparison | Execution config for the Back-to-Back test comparison simulation.<br>(default: "SIL") | TL MIL, SIL, PIL, SL MIL
+debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains deviations which includes all vectors which lead to a deviation.<br>(default: no debug export) | "TL MIL"<br>"SIL (Visual Studio 2013)"
 
 **Possible Return values**
 
@@ -785,7 +849,7 @@ Property | Description | Example Value(s)
 | 400              | There were errors during the execution (status: ERROR)                                   |
 | 500              | Unexpected Error                                                                         |
 
-### Step “regressionTest”
+### Step "regressionTest"
 
 DSL Command: btc.regressionTest {...}
 
@@ -800,11 +864,13 @@ Records that have been saved. If no saved Execution Records are
 available, the vectors will only be executed on the current SUT and the
 Execution Records will be stored for a later Regression Test. This
 requires stimuli vectors or functional test cases in the profile.  A
-Regression Test Report will be exported to the “exportDir” specified in
-the “profileLoad” step. The following optional settings are available:
+Regression Test Report will be exported to the "exportDir" specified in
+the "profileLoad" step. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+executionConfigString | Execution configs for the simulation on the current SUT (comma separated list).<br>(default: SIL) | "TL MIL, SIL, PIL", "SL MIL", "SIL"
+debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains deviations which includes all vectors which lead to a deviation.<br>(default: no debug export) | "TL MIL"<br>"SIL (Visual Studio 2013)"
 
 **Possible Return values**
 
@@ -816,7 +882,7 @@ Property | Description | Example Value(s)
 | 400              | There were errors during the execution (status: ERROR)                     |
 | 500              | Unexpected Error                                                           |
 
-### Step “formalVerification”
+### Step "formalVerification"
 
 DSL Command: btc.formalVerification {...}
 
@@ -831,6 +897,11 @@ Verification Report. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+loopUnroll | If the code that is to be analyzed contains loops without explicit maximum number of iterations, e.g. a while(true) loop, these loops need to be unrolled. The given number provides the number of iterations for these loops that is used for the analysis. This unrolling is done in such a way that a "fulfilled" or "fulfilled (n steps)" result can only be obtained if this limit is not exceeded by any possible execution. Conversely, a trace that violates this limit can be found as a witness trace despite not strictly violating the formal requirement itself. This is indicated in the termination reason as "Loop unroll limit (n) exceeded".<br>(default: 32) | 10, 30, 50
+memoryLimit | Memory Limit (MB)<br>The maximum memory footprint to be used by the analysis tools of the EmbeddedPlatform. If an analysis cannot be completed within these limits, this may lead to termination reason "Memory limit (n MB) exceeded"<br>(default: unlimited)
+ | 0 (= unlimited), 1024, 3456
+timeLimit | Time Limit (Seconds)<br>The maximum duration the proof execution may take (excluding some of the pre- and postprocessing tasks, which in general are less time intensive than the actual model checking). This limit should be used especially whenever the proof execution is left unattended and multiple proofs are to be executed in batch. Otherwise, a single proof execution may consume most of the run time and no results would be obtained for the other proofs.<br>(default: unlimited) | 0 (= unlimited), 60, 1000
+searchDepth | Search depth (Steps)<br>the number of executions of the scope under test (i.e. how many execution steps may a counter example be long). This limit corresponds to the term "unwinding depth" employed in bounded model checking. Again, if no such limit is provided, the search for a counter example may in the worst case spend large amounts of time looking for longer and longer counter examples.<br>(default: unlimited) | 0 (= unlimited), 10, 50
 
 **Possible Return values**
 
@@ -842,7 +913,7 @@ Property | Description | Example Value(s)
 | 400              | BTC EmbeddedValidator package is not installed |
 | 500              | Unexpected Error                               |
 
-### Step “wrapUp”
+### Step "wrapUp"
 
 DSL Command: btc.wrapUp {...}
 
@@ -853,7 +924,9 @@ BTC EmbeddedPlatform. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
-
+archiveProfiles | Boolean flag controlling whether BTC EmbeddedPlatform profiles are archived by Jenkins to be available on the Job Page. You can disable this and control the "archiveArtifacts" option yourself.<br>(default: true) | true, false
+publishReports | Boolean flag controlling whether the BTC EmbeddedPlatform reports are published in Jenkins to be available on the Job Page. You can disable this and control the "publishHTML" option yourself.<br>(default: true) | true, false
+publishResults | Boolean flag controlling whether BTC EmbeddedPlatform test results (JUnit XML) are published in Jenkins to be available on the Job Page and for further aggregations. You can disable this and control the "junit" option yourself.<br>(default: true) | true, false
   
 
 ## BTC Migration Suite
@@ -868,7 +941,7 @@ components on model and code level.
 
 EmbeddedTester (ET\_COMPLETE)
 
-### Step “migrationSource”
+### Step "migrationSource"
 
 DSL Command: btc.migrationSource {...}
 
@@ -878,7 +951,7 @@ Creates a profile on the source configuration (e.g. old Matlab /
 TargetLink version), generates vectors for full coverage and exports the
 simulation results.
 
-### Step “migrationTarget”
+### Step "migrationTarget"
 
 DSL Command: btc.migrationTarget {...}
 
@@ -895,6 +968,8 @@ parameters are mandatory:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+**tlModelPath** | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace.< | "tlModel.slx", "model.mdl"
+matlabVersion | Controls which matlab version will be used by the tool.<br>String containing the release version (e.g. "2016b"), optionally followed by "32-bit" or "64-bit". The version and 32/64-bit part should be separated by a space character. | "2010a 32-bit"<br>"2016b"
 
 In Addition, you can add all other the parameters from the
 steps btc.profileLoad and btc.vectorGeneration if required.
@@ -926,7 +1001,7 @@ node ('Win7 && TL41 && ML2015b') {
         }
     }
 }
- 
+
 node ('Win10 && TL43 && ML2017b') {
 
     checkout scm
