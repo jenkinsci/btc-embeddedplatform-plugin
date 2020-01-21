@@ -12,7 +12,7 @@ def startup(body = {}) {
     if (config.port != null)
         restPort = config.port
     else
-        restPort = null
+        restPort = "29267" // default as fallback
     timeoutSeconds = 120
     if (config.timeout != null)
         timeoutSeconds = config.timeout
@@ -20,8 +20,6 @@ def startup(body = {}) {
     /*
      * EP Startup configuration
      */
-    if (restPort == null)
-        restPort = "29267" // default as fallback
     epPort = getEPPort(restPort)
     if (config.installPath != null) {
         epInstallDir = "${config.installPath}".replace("/", "\\")
@@ -74,12 +72,17 @@ def startup(body = {}) {
         }
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
+                epJreDir = getJreDir(epInstallDir)
+                epJreString = ''
+                if (epJreDir != null) {
+                    epJreString = ' -vm "' + epJreDir + '"'
+                }
                 bat label: 'Starting BTC EmbeddedPlatform', script: "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
-                -application com.btc.ep.application.headless -nosplash \
+                -application com.btc.ep.application.headless -nosplash${epJreString} \
                 -vmargs -Dep.runtime.batch=com.btc.ep -Dep.runtime.api.port=${epPort} \
-                -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/configuration\" \
-                -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epPort}/workspace\" \
-                -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epPort} \
+                -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${restPort}/configuration\" \
+                -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${restPort}/workspace\" \
+                -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${restPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${restPort} \
                 -Dep.licensing.package=${licensingPackage} -Dep.rest.port=${restPort}"
                 waitUntil {
                     r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
@@ -131,12 +134,11 @@ def profileInit(body, method) {
     echo "(${r.status}) ${r.content}"
     isDebug = false
     if (r.status >= 400) {
-        def relativeReportPath = toRelPath(exportPath)
-        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
         wrapUp {
-            publishReports = false
             publishResults = false
         }
+        def relativeReportPath = toRelPath(exportPath)
+        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
         throw new Exception("Error during profile load / creation. Aborting (you cannot continue without a profile).")
     }
     return r.status
@@ -813,6 +815,20 @@ def getParentDir(path) {
         return ""
     parentDir = path.substring(0, path.lastIndexOf("/"))
     return "/" + parentDir
+}
+
+/**
+ * Takes the epInstallDir and returns the first jre directory it finds
+ */
+def getJreDir(epInstallDir) {
+    def output = bat returnStdout: true, script: "dir \"${epInstallDir}/jres\" /b /A:D"
+    def foldersList = output.trim().tokenize('\n').collect() { it }
+    for (folder in foldersList) {
+        if (folder.startsWith('jre')) {
+            return epInstallDir + '/jres/' + folder + '/bin'
+        }
+    }
+    return null
 }
 
 /**
