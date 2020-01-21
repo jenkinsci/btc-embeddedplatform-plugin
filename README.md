@@ -210,7 +210,7 @@ tlModelPath | Path of the TargetLink model. The path can be absolute or relative
 tlScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
 tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
 environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
-startupScriptPath | Path to a Startup Script which can be used to initialize matlab (e.g. toolchain startup, etc.). The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory**The script must provide a function of the same name which takes at least one input argument (the model path) and returns exactly one output value (an exit code |  0 indicating success). | "startup_toolchain.m"
+startupScriptPath | Path to a Startup Script which can be used to initialize matlab (e.g. toolchain startup, etc.). The path can be absolute or relative to the jenkins job's workspace. | "startup_toolchain.m"
 codeModelPath | Path of the hand code description file. The path can be absolute or relative to the jenkins job's workspace. | "CodeModel.xml"
 compilerShortName | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found. | "MSSDK71", "MSVC140", "MinGW64"
 slModelPath | Path of the Simulink model. The path can be absolute or relative to the jenkins job's workspace. | "slModel.slx"
