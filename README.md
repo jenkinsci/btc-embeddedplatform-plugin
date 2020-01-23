@@ -29,50 +29,55 @@ instances of BTC EmbeddedPlatform and to close them if again required.
 In addition, the Migration Suite use case can be addressed (see section
 Migration Suite below).
 
-## Table of Contents
+
+
+**Table of Contents**
+
 * [Description](#description)
 * [Release Notes](#release-notes)
 * [Prerequisites](#prerequisites)
 * [Jenkins Pipeline](#jenkins-pipeline)
-  * [Overview](#overview)
-  * [Licensing for Jenkins Integration](#licensing-for-jenkins-integration)
-  * [Configuration](#configuration)
+  - [Overview](#overview)
+  - [Licensing for Jenkins Integration](#licensing-for-jenkins-integration)
+  - [Configuration](#configuration)
 * [Workflow Steps](#workflow-steps)
-  * [Step startup](#step-startup)
-  * [Step profileLoad](#step-profileload)
-  * [Step profileCreateTL](#step-profilecreatetl)
-  * [Step profileCreateEC](#step-profilecreateec)
-  * [Step profileCreateSL](#step-profilecreatesl)
-  * [Step profileCreateC](#step-profilecreatec)
-  * [Step vectorImport](#step-vectorimport)
-  * [Step toleranceImport](#step-toleranceimport)
-  * [Step toleranceExport](#step-toleranceexport)
-  * [Step inputRestrictionsImport](#step-inputrestrictionsimport)
-  * [Step inputRestrictionsExport](#step-inputrestrictionsexport)
-  * [Step executionRecordExport](#step-executionrecordexport)
-  * [Step rbtExecution](#step-rbtexecution)
-  * [Step testExecutionReport](#step-testexecutionreport)
-  * [Step xmlReport](#step-xmlreport)
-  * [Step codeAnalysisReport](#step-codeanalysisreport)
-  * [Step modelCoverageReport](#step-modelcoveragereport)
-  * [Step formalTest](#step-formaltest)
-  * [Step rangeViolationGoals](#step-rangeviolationgoals)
-  * [Step domainCoverageGoals](#step-domaincoveragegoals)
-  * [Step vectorGeneration](#step-vectorgeneration)
-  * [Step backToBack](#step-backtoback)
-  * [Step regressionTest](#step-regressiontest)
-  * [Step formalVerification](#step-formalverification)
-  * [Step wrapUp](#step-wrapup)
+  - [Step "startup"](#step-startup)
+  - [Step "profileLoad"](#step-profileload)
+  - [Step "profileCreateTL"](#step-profilecreatetl)
+  - [Step "profileCreateEC"](#step-profilecreateec)
+  - [Step "profileCreateSL"](#step-profilecreatesl)
+  - [Step "profileCreateC"](#step-profilecreatec)
+  - [Step "vectorImport"](#step-vectorimport)
+  - [Step "toleranceImport"](#step-toleranceimport)
+  - [Step "toleranceExport"](#step-toleranceexport)
+  - [Step "inputRestrictionsImport"](#step-inputrestrictionsimport)
+  - [Step "executionRecordExport"](#step-executionrecordexport)
+  - [Step "inputRestrictionsExport"](#step-inputrestrictionsexport)
+  - [Step "rbtExecution"](#step-rbtexecution)
+  - [Step "testExecutionReport"](#step-testexecutionreport)
+  - [Step "xmlReport"](#step-xmlreport)
+  - [Step "codeAnalysisReport"](#step-codeanalysisreport)
+  - [Step "modelCoverageReport"](#step-modelcoveragereport)
+  - [Step "formalTest"](#step-formaltest)
+  - [Step "rangeViolationGoals"](#step-rangeviolationgoals)
+  - [Step "domainCoverageGoals"](#step-domaincoveragegoals)
+  - [Step "vectorGeneration"](#step-vectorgeneration)
+  - [Step "backToBack"](#step-backtoback)
+  - [Step "regressionTest"](#step-regressiontest)
+  - [Step "formalVerification"](#step-formalverification)
+  - [Step "wrapUp"](#step-wrapup)
 * [BTC Migration Suite](#btc-migration-suite)
-  * [Step migrationSource](#step-migrationsource)
-  * [Step migrationTarget](#step-migrationtarget)
-  * [Migration Suite Example: Jenkinsfile](#migration-suite-example-jenkinsfile)
+  - [Step "migrationSource"](#step-migrationsource)
+  - [Step "migrationTarget"](#step-migrationtarget)
+  - [Migration Suite Example: Jenkinsfile](#migration-suite-example-jenkinsfile)
 * [Adding the BTC Plugin to Jenkins](#adding-the-btc-plugin-to-jenkins)
 
 ## Release Notes
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.5.5 | - Profile Creation steps now add some more information to the overview report<br>- Fixed an issue that could occur with certain versions of the DomainCoverageGoals plugin<br>- The headless application now only spawns one tasks: ep.exe (down from two: ep & javaw) | 2.5 | X | X 
+2.5.4 | - The Jenkins Automation plugin now writes its log messages to the default log file of BTC EmbeddedPlatform (usually found at %APPDATA%/BTC/ep/<version>/<port>/logs/current.log) | 2.5 | X | 
 2.5.3 | - Added workaround that allows EmbeddedCoder architecture udpate in Jenkins scenarios that currently don't work out of the box. CodeModel and Mapping XML must be provided in the btc.profileLoad step. | 2.5 | X | 
 2.5.2 | - Fixed: updating the default compiler in a model-based profile needed some additional efforts and could lead to problems before now. | 2.5 | X | 
 2.4.19 | - Fixed: updating the default compiler in a model-based profile needed some additional efforts and could lead to problems before now. | 2.4.1 | X | 
