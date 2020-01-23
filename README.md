@@ -29,6 +29,46 @@ instances of BTC EmbeddedPlatform and to close them if again required.
 In addition, the Migration Suite use case can be addressed (see section
 Migration Suite below).
 
+## Table of Contents
+* [Description](#description)
+* [Release Notes](#release-notes)
+* [Prerequisites](#prerequisites)
+* [Jenkins Pipeline](#jenkins-pipeline)
+  * [Overview](#overview)
+  * [Licensing for Jenkins Integration](#licensing-for-jenkins-integration)
+  * [Configuration](#configuration)
+* [Workflow Steps](#workflow-steps)
+  * [Step startup](#step-startup)
+  * [Step profileLoad](#step-profileload)
+  * [Step profileCreateTL](#step-profilecreatetl)
+  * [Step profileCreateEC](#step-profilecreateec)
+  * [Step profileCreateSL](#step-profilecreatesl)
+  * [Step profileCreateC](#step-profilecreatec)
+  * [Step vectorImport](#step-vectorimport)
+  * [Step toleranceImport](#step-toleranceimport)
+  * [Step toleranceExport](#step-toleranceexport)
+  * [Step inputRestrictionsImport](#step-inputrestrictionsimport)
+  * [Step inputRestrictionsExport](#step-inputrestrictionsexport)
+  * [Step executionRecordExport](#step-executionrecordexport)
+  * [Step rbtExecution](#step-rbtexecution)
+  * [Step testExecutionReport](#step-testexecutionreport)
+  * [Step xmlReport](#step-xmlreport)
+  * [Step codeAnalysisReport](#step-codeanalysisreport)
+  * [Step modelCoverageReport](#step-modelcoveragereport)
+  * [Step formalTest](#step-formaltest)
+  * [Step rangeViolationGoals](#step-rangeviolationgoals)
+  * [Step domainCoverageGoals](#step-domaincoveragegoals)
+  * [Step vectorGeneration](#step-vectorgeneration)
+  * [Step backToBack](#step-backtoback)
+  * [Step regressionTest](#step-regressiontest)
+  * [Step formalVerification](#step-formalverification)
+  * [Step wrapUp](#step-wrapup)
+* [BTC Migration Suite](#btc-migration-suite)
+  * [Step migrationSource](#step-migrationsource)
+  * [Step migrationTarget](#step-migrationtarget)
+  * [Migration Suite Example: Jenkinsfile](#migration-suite-example-jenkinsfile)
+* [Adding the BTC Plugin to Jenkins](#adding-the-btc-plugin-to-jenkins)
+
 ## Release Notes
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
