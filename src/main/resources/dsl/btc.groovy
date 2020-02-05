@@ -6,10 +6,10 @@ def isDebug  = null       // specifies if a debug environment should be exported
 def mode     = null       // mode for migration suite (source, target)
 
 /**
-* Tries to connect to EP using the default port 29267 (unless specified differently).
-* If EP is not available a new instance is started via a batch command. Availability
-* is then checked until success or until the timeout (default: 2 minutes) has expired.
-*/
+ * Tries to connect to EP using the default port 29267 (unless specified differently).
+ * If EP is not available a new instance is started via a batch command. Availability
+ * is then checked until success or until the timeout (default: 2 minutes) has expired.
+ */
 def startup(body = {}) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
@@ -347,15 +347,15 @@ def executionRecordImport(body) {
 // wrap up step
 
 /**
-* This method publishes html reports to the Jenkins Job page, archives artifacts
-* (profiles, debug zip files, etc.) and passes test results to JUnit.
-* In the end it closes EP. Which is important to release CPU / RAM resources.
-* - If Matlab has been opened by EP it will be closed automatically
-* - If Matlab was already available and EP just connected to it, Matlab will not be closed
-*
-* The boolean properties archiveProfiles, publishReports and publishResults allow users
-* to skip the respective steps by setting the property to false.
-*/
+ * This method publishes html reports to the Jenkins Job page, archives artifacts
+ * (profiles, debug zip files, etc.) and passes test results to JUnit.
+ * In the end it closes EP. Which is important to release CPU / RAM resources.
+ * - If Matlab has been opened by EP it will be closed automatically
+ * - If Matlab was already available and EP just connected to it, Matlab will not be closed
+ *
+ * The boolean properties archiveProfiles, publishReports and publishResults allow users
+ * to skip the respective steps by setting the property to false.
+ */
 def wrapUp(body = {}) {
     def config = resolveConfig(body)
     def archiveProfiles = true
@@ -400,9 +400,9 @@ def wrapUp(body = {}) {
 }
 
 /**
-* Creates a profile on the source configuration (e.g. old Matlab / TargetLink version),
-* generates vectors for full coverage and exports the simulation results.
-*/
+ * Creates a profile on the source configuration (e.g. old Matlab / TargetLink version),
+ * generates vectors for full coverage and exports the simulation results.
+ */
 def migrationSource(body) {
     // activate mode: target
     mode = 'source'
@@ -484,9 +484,9 @@ def migrationSource(body) {
 }
 
 /**
-* Creates a profile on the target configuration (e.g. newMatlab / TargetLink version),
-* imports the simulation results from the source config and runs a regression test.
-*/
+ * Creates a profile on the target configuration (e.g. newMatlab / TargetLink version),
+ * imports the simulation results from the source config and runs a regression test.
+ */
 def migrationTarget(body) {
     // activate mode: target
     mode = 'target'
@@ -560,15 +560,15 @@ def migrationTarget(body) {
 // Request String Method
 
 /**
-* Generic method that extracts the properties from the config object and returns the json string to be passed to EP.
-*
-* ToDo: Check if some kind of reflection can be used (right now this method needs to contain all possible properties)
-*      
-*      for field in config.fields:
-*          reqString += '"' + field.name + '": "' + field.value + '", '
-*          
-*      + special handling for paths and some others
-*/
+ * Generic method that extracts the properties from the config object and returns the json string to be passed to EP.
+ *
+ * ToDo: Check if some kind of reflection can be used (right now this method needs to contain all possible properties)
+ *      
+ *      for field in config.fields:
+ *          reqString += '"' + field.name + '": "' + field.value + '", '
+ *          
+ *      + special handling for paths and some others
+ */
 def createReqString(config) {
     def reqString = '{ '
     // Profile
@@ -764,8 +764,8 @@ def getEPPort(restPort) {
 }
 
 /**
-* Resolves unresolved closures (groovy magic)
-*/
+ * Resolves unresolved closures (groovy magic)
+ */
 def resolveConfig(body) {
     def config = [:]
     try {
@@ -779,10 +779,10 @@ def resolveConfig(body) {
 }
 
 /**
-* Returns an absolute path. If the input is a relative path it is resolved
-* to the current directory using the Jenkins Pipeline command pwd().
-* In all cases backslashes are replaced by slashes for compatibility reasons.
-*/
+ * Returns an absolute path. If the input is a relative path it is resolved
+ * to the current directory using the Jenkins Pipeline command pwd().
+ * In all cases backslashes are replaced by slashes for compatibility reasons.
+ */
 def toAbsPath(path) {
     // replace backslashes with slashes, they're easier to work with
     def sPath = path.replace("\\", "/")
@@ -798,9 +798,9 @@ def toAbsPath(path) {
 }
 
 /**
-* Converts an absolute path into a path relative to pwd (if the path points to a location on or below pwd).
-* Backslashes are replaced by slashes for compatibility reasons.
-*/
+ * Converts an absolute path into a path relative to pwd (if the path points to a location on or below pwd).
+ * Backslashes are replaced by slashes for compatibility reasons.
+ */
 def toRelPath(path) {
     // replace backslashes with slashes, they're easier to work with
     def sPath = path.replace("\\", "/")
@@ -824,8 +824,8 @@ def getParentDir(path) {
 }
 
 /**
-* Takes the epInstallDir and returns the first jre directory it finds
-*/
+ * Takes the epInstallDir and returns the first jre directory it finds
+ */
 def getJreDir(epInstallDir) {
     def output = bat returnStdout: true, script: "dir \"${epInstallDir}/jres\" /b /A:D"
     def foldersList = output.trim().tokenize('\n').collect() { it }
@@ -838,10 +838,10 @@ def getJreDir(epInstallDir) {
 }
 
 /**
-* Utility method to query available execution configs
-*
-* Returns an unsorted collection of executionConfigs (Strings).
-*/
+ * Utility method to query available execution configs
+ *
+ * Returns an unsorted collection of executionConfigs (Strings).
+ */
 def getAvailableExecutionConfigs() {
     cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
     return cfgs
