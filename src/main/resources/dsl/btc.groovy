@@ -1,6 +1,10 @@
 package dsl
 // vars/btc.groovy
 
+def restPort = null       // the port to use for communication with EP
+def isDebug  = null       // specifies if a debug environment should be exported and archived (true, false)
+def mode     = null       // mode for migration suite (source, target)
+
 /**
  * Tries to connect to EP using the default port 29267 (unless specified differently).
  * If EP is not available a new instance is started via a batch command. Availability
@@ -9,23 +13,24 @@ package dsl
 def startup(body = {}) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    if (config.port != null)
+    if (config.port != null) {
         restPort = config.port
-    else
+    } else {
         restPort = "29267" // default as fallback
-    timeoutSeconds = 120
+    }
+    def timeoutSeconds = 120
     if (config.timeout != null)
         timeoutSeconds = config.timeout
     
     /*
-     * EP Startup configuration
-     */
-    epPort = getEPPort(restPort)
+    * EP Startup configuration
+    */
+    def epInstallDir = null
     if (config.installPath != null) {
         epInstallDir = "${config.installPath}".replace("/", "\\")
     } else {
         try {
-            epRegPath = bat returnStdout: true, label: 'Query Registry for active EP version', script: '''
+            def epRegPath = bat returnStdout: true, label: 'Query Registry for active EP version', script: '''
             @echo OFF
             for /f "tokens=*" %%a in ('REG QUERY HKLM\\SOFTWARE\\BTC /reg:64 /s /f "EmbeddedPlatform" ') do (
                 call :parseEpVersion %%a
@@ -40,18 +45,19 @@ def startup(body = {}) {
                     )
                 )
             '''
-            split = "${epRegPath}".trim().split("\n")
+            def split = "${epRegPath}".trim().split("\n")
             epInstallDir = split[split.length - 1].trim()
         } catch (err) {
-            throw new Exception("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
+            error("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
         }
     }
+    def epVersion = null
     try {
-        split = "${epInstallDir}".split("\\\\")
+        def split = "${epInstallDir}".split("\\\\")
         epVersion = split[split.length - 1].substring(2)
         echo "Connecting to EP ${epVersion}... (timeout: " + timeoutSeconds + " seconds)"
     } catch (err) {
-        throw new Exception("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
+        error("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
     }
     
     // start EP and wait for it to be available at the given port
@@ -62,7 +68,7 @@ def startup(body = {}) {
         responseCode = 201 // connected to an existing instance
     } else { // try to connect to EP until timeout is reached
         // configure license packages (required since 2.4.0 to support ET_BASE)
-        licensingPackage = config.licensingPackage
+        def licensingPackage = config.licensingPackage
         if (licensingPackage == null) {
             licensingPackage = 'ET_COMPLETE,ET_AUTOMATION_SERVER'
         } else if (licensingPackage.equals('ET_COMPLETE')) {
@@ -70,6 +76,7 @@ def startup(body = {}) {
         } else if (licensingPackage.equals('ET_BASE')) {
             licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
         }
+        def epPort = getEPPort(restPort)
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
                 epJreDir = getJreDir(epInstallDir)
@@ -92,8 +99,7 @@ def startup(body = {}) {
                 echo "(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${restPort}."
                 responseCode = 200 // connected to a new instance
             } catch(err) {
-                echo "(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds."
-                throw err
+                error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
             }
         }
     }
@@ -139,7 +145,7 @@ def profileInit(body, method) {
         }
         def relativeReportPath = toRelPath(exportPath)
         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
-        throw new Exception("Error during profile load / creation. Aborting (you cannot continue without a profile).")
+        error("Error during profile load / creation. Aborting (you cannot continue without a profile).")
     }
     return r.status
 }
@@ -317,7 +323,7 @@ def formalVerification(body) {
 }
 
 def executionRecordExport(body) {
-     // evaluate the body block, and collect configuration into the object
+    // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
     def reqString = createReqString(config)
     // call EP
@@ -348,21 +354,15 @@ def executionRecordImport(body) {
  */
 def wrapUp(body = {}) {
     def config = resolveConfig(body)
-    if (config.archiveProfiles == null) {
-		archiveProfiles = true
-	} else {
-		archiveProfiles = config.archiveProfiles
-	}
-	if (config.publishReports == null) {
-		publishReports = true
-	} else {
-		publishReports = config.publishReports
-	}
-	if (config.publishResults == null) {
-		publishResults = true
-	} else {
-		publishResults = config.publishResults
-	}
+    def archiveProfiles = true
+    if (config.archiveProfiles != null)
+        archiveProfiles = config.archiveProfiles
+    publishReports = true
+    if (config.publishReports != null)
+        publishReports = config.publishReports
+    publishResults = true
+    if (config.publishResults != null)
+        publishResults = config.publishResults
     try {
         // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
         // will throw an exception as soon as the tool closes. This is expected.
@@ -406,7 +406,7 @@ def migrationSource(body) {
     
     // dispatch args
     if (config.matlabVersion == null)
-        throw new Exception("Matlab version for MigrationSource needs to be defined.")
+        error("Matlab version for MigrationSource needs to be defined.")
     
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
@@ -422,11 +422,11 @@ def migrationSource(body) {
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
     } else {
-        throw new Exception("Please specify the model to be tested (target configuration).")
+        error("Please specify the model to be tested (target configuration).")
     }
     if (r >= 300) {
         wrapUp(body)
-        throw new Exception("Error during profile creation (source)")
+        error("Error during profile creation (source)")
     }
     
     // Vector Generation
@@ -435,7 +435,7 @@ def migrationSource(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        throw new Exception("Error during simulation on source config.")
+        error("Error during simulation on source config.")
     }
     // ER Export
     executionRecordExport {
@@ -490,7 +490,7 @@ def migrationTarget(body) {
     
     // dispatch args
     if ("${config.matlabVersion}" == "null")
-        throw new Exception("The matlabVersion for MigrationTarget needs to be defined.")
+        error("The matlabVersion for MigrationTarget needs to be defined.")
     
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
@@ -510,11 +510,11 @@ def migrationTarget(body) {
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
     } else {
-        throw new Exception("Please specify the model to be tested (target configuration).")
+        error("Please specify the model to be tested (target configuration).")
     }
     if (r >= 300) {
         wrapUp(body)
-        throw new Exception("Error during profile creation (target)")
+        error("Error during profile creation (target)")
     }
     
     // ER Import
@@ -544,7 +544,7 @@ def migrationTarget(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        throw new Exception("Error during regression test (source vs. target config).")
+        error("Error during regression test (source vs. target config).")
     }
     
     // Wrap Up
@@ -750,7 +750,7 @@ def getReportPath() {
 }
 
 def getEPPort(restPort) {
-    epPort = 29300 + Integer.parseInt("" + restPort) % 100
+    def epPort = 29300 + Integer.parseInt("" + restPort) % 100
     // in case the ports are equal
     if (epPort == Integer.parseInt("" + restPort))
         epPort = epPort - 100
@@ -813,7 +813,7 @@ def getParentDir(path) {
         path = path.substring(0, path.length() - 1)
     if (!path.contains("/"))
         return ""
-    parentDir = path.substring(0, path.lastIndexOf("/"))
+    def parentDir = path.substring(0, path.lastIndexOf("/"))
     return "/" + parentDir
 }
 
