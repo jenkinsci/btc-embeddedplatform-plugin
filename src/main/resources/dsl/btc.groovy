@@ -1,31 +1,36 @@
 package dsl
 // vars/btc.groovy
 
+def restPort = null       // the port to use for communication with EP
+def isDebug  = null       // specifies if a debug environment should be exported and archived (true, false)
+def mode     = null       // mode for migration suite (source, target)
+
 /**
- * Tries to connect to EP using the default port 29267 (unless specified differently).
- * If EP is not available a new instance is started via a batch command. Availability
- * is then checked until success or until the timeout (default: 2 minutes) has expired.
- */
+* Tries to connect to EP using the default port 29267 (unless specified differently).
+* If EP is not available a new instance is started via a batch command. Availability
+* is then checked until success or until the timeout (default: 2 minutes) has expired.
+*/
 def startup(body = {}) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    if (config.port != null)
+    if (config.port != null) {
         restPort = config.port
-    else
+    } else {
         restPort = "29267" // default as fallback
-    timeoutSeconds = 120
+    }
+    def timeoutSeconds = 120
     if (config.timeout != null)
         timeoutSeconds = config.timeout
     
     /*
-     * EP Startup configuration
-     */
-    epPort = getEPPort(restPort)
+    * EP Startup configuration
+    */
+    def epInstallDir = null
     if (config.installPath != null) {
         epInstallDir = "${config.installPath}".replace("/", "\\")
     } else {
         try {
-            epRegPath = bat returnStdout: true, label: 'Query Registry for active EP version', script: '''
+            def epRegPath = bat returnStdout: true, label: 'Query Registry for active EP version', script: '''
             @echo OFF
             for /f "tokens=*" %%a in ('REG QUERY HKLM\\SOFTWARE\\BTC /reg:64 /s /f "EmbeddedPlatform" ') do (
                 call :parseEpVersion %%a
@@ -40,29 +45,33 @@ def startup(body = {}) {
                     )
                 )
             '''
-            split = "${epRegPath}".trim().split("\n")
+            def split = "${epRegPath}".trim().split("\n")
             epInstallDir = split[split.length - 1].trim()
         } catch (err) {
-            throw new Exception("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
+            error("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
         }
     }
+    def epVersion = null
     try {
-        split = "${epInstallDir}".split("\\\\")
+        def split = "${epInstallDir}".split("\\\\")
         epVersion = split[split.length - 1].substring(2)
         echo "Connecting to EP ${epVersion}... (timeout: " + timeoutSeconds + " seconds)"
     } catch (err) {
-        throw new Exception("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
+        error("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
     }
     
     // start EP and wait for it to be available at the given port
-    def r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
-    def responseCode = r.status
-    if (r.status == 200) {
-        echo "(201) Successfully connected to an running instance of BTC EmbeddedPlatform on port: ${restPort}."
+    def connectToRunningInstance = false
+    if (config.connectToRunningInstance != null) {
+        connectToRunningInstance = config.connectToRunningInstance
+    }
+    def responseCode = 500
+    if (connectToRunningInstance && isEpAvailable()) {
+        echo "(201) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${restPort}."
         responseCode = 201 // connected to an existing instance
     } else { // try to connect to EP until timeout is reached
         // configure license packages (required since 2.4.0 to support ET_BASE)
-        licensingPackage = config.licensingPackage
+        def licensingPackage = config.licensingPackage
         if (licensingPackage == null) {
             licensingPackage = 'ET_COMPLETE,ET_AUTOMATION_SERVER'
         } else if (licensingPackage.equals('ET_COMPLETE')) {
@@ -70,6 +79,8 @@ def startup(body = {}) {
         } else if (licensingPackage.equals('ET_BASE')) {
             licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
         }
+        restPort = findNextAvailablePort(restPort)
+        def epPort = getEPPort(restPort)
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
                 epJreDir = getJreDir(epInstallDir)
@@ -92,8 +103,7 @@ def startup(body = {}) {
                 echo "(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${restPort}."
                 responseCode = 200 // connected to a new instance
             } catch(err) {
-                echo "(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds."
-                throw err
+                error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
             }
         }
     }
@@ -101,7 +111,7 @@ def startup(body = {}) {
 }
 
 // Profile Creation steps
- 
+
 def profileLoad(body) {
     return profileInit(body, 'profileLoad')
 }
@@ -139,7 +149,7 @@ def profileInit(body, method) {
         }
         def relativeReportPath = toRelPath(exportPath)
         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
-        throw new Exception("Error during profile load / creation. Aborting (you cannot continue without a profile).")
+        error("Error during profile load / creation. Aborting (you cannot continue without a profile).")
     }
     return r.status
 }
@@ -317,7 +327,7 @@ def formalVerification(body) {
 }
 
 def executionRecordExport(body) {
-     // evaluate the body block, and collect configuration into the object
+    // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
     def reqString = createReqString(config)
     // call EP
@@ -337,32 +347,26 @@ def executionRecordImport(body) {
 // wrap up step
 
 /**
- * This method publishes html reports to the Jenkins Job page, archives artifacts
- * (profiles, debug zip files, etc.) and passes test results to JUnit.
- * In the end it closes EP. Which is important to release CPU / RAM resources.
- * - If Matlab has been opened by EP it will be closed automatically
- * - If Matlab was already available and EP just connected to it, Matlab will not be closed
- *
- * The boolean properties archiveProfiles, publishReports and publishResults allow users
- * to skip the respective steps by setting the property to false.
- */
+* This method publishes html reports to the Jenkins Job page, archives artifacts
+* (profiles, debug zip files, etc.) and passes test results to JUnit.
+* In the end it closes EP. Which is important to release CPU / RAM resources.
+* - If Matlab has been opened by EP it will be closed automatically
+* - If Matlab was already available and EP just connected to it, Matlab will not be closed
+*
+* The boolean properties archiveProfiles, publishReports and publishResults allow users
+* to skip the respective steps by setting the property to false.
+*/
 def wrapUp(body = {}) {
     def config = resolveConfig(body)
-    if (config.archiveProfiles == null) {
-		archiveProfiles = true
-	} else {
-		archiveProfiles = config.archiveProfiles
-	}
-	if (config.publishReports == null) {
-		publishReports = true
-	} else {
-		publishReports = config.publishReports
-	}
-	if (config.publishResults == null) {
-		publishResults = true
-	} else {
-		publishResults = config.publishResults
-	}
+    def archiveProfiles = true
+    if (config.archiveProfiles != null)
+        archiveProfiles = config.archiveProfiles
+    publishReports = true
+    if (config.publishReports != null)
+        publishReports = config.publishReports
+    publishResults = true
+    if (config.publishResults != null)
+        publishResults = config.publishResults
     try {
         // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
         // will throw an exception as soon as the tool closes. This is expected.
@@ -370,6 +374,8 @@ def wrapUp(body = {}) {
         httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
         echo 'BTC EmbeddedPlatform successfully closed.'
+    } finally {
+        releasePort(restPort)
     }
     def relativeReportPath = toRelPath(exportPath)
     def profilePathParentDir = getParentDir(toRelPath(profilePath))
@@ -394,9 +400,9 @@ def wrapUp(body = {}) {
 }
 
 /**
- * Creates a profile on the source configuration (e.g. old Matlab / TargetLink version),
- * generates vectors for full coverage and exports the simulation results.
- */
+* Creates a profile on the source configuration (e.g. old Matlab / TargetLink version),
+* generates vectors for full coverage and exports the simulation results.
+*/
 def migrationSource(body) {
     // activate mode: target
     mode = 'source'
@@ -406,7 +412,7 @@ def migrationSource(body) {
     
     // dispatch args
     if (config.matlabVersion == null)
-        throw new Exception("Matlab version for MigrationSource needs to be defined.")
+        error("Matlab version for MigrationSource needs to be defined.")
     
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
@@ -422,11 +428,11 @@ def migrationSource(body) {
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
     } else {
-        throw new Exception("Please specify the model to be tested (target configuration).")
+        error("Please specify the model to be tested (target configuration).")
     }
     if (r >= 300) {
         wrapUp(body)
-        throw new Exception("Error during profile creation (source)")
+        error("Error during profile creation (source)")
     }
     
     // Vector Generation
@@ -435,7 +441,7 @@ def migrationSource(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        throw new Exception("Error during simulation on source config.")
+        error("Error during simulation on source config.")
     }
     // ER Export
     executionRecordExport {
@@ -478,9 +484,9 @@ def migrationSource(body) {
 }
 
 /**
- * Creates a profile on the target configuration (e.g. newMatlab / TargetLink version),
- * imports the simulation results from the source config and runs a regression test.
- */
+* Creates a profile on the target configuration (e.g. newMatlab / TargetLink version),
+* imports the simulation results from the source config and runs a regression test.
+*/
 def migrationTarget(body) {
     // activate mode: target
     mode = 'target'
@@ -490,7 +496,7 @@ def migrationTarget(body) {
     
     // dispatch args
     if ("${config.matlabVersion}" == "null")
-        throw new Exception("The matlabVersion for MigrationTarget needs to be defined.")
+        error("The matlabVersion for MigrationTarget needs to be defined.")
     
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
@@ -510,11 +516,11 @@ def migrationTarget(body) {
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
     } else {
-        throw new Exception("Please specify the model to be tested (target configuration).")
+        error("Please specify the model to be tested (target configuration).")
     }
     if (r >= 300) {
         wrapUp(body)
-        throw new Exception("Error during profile creation (target)")
+        error("Error during profile creation (target)")
     }
     
     // ER Import
@@ -544,7 +550,7 @@ def migrationTarget(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        throw new Exception("Error during regression test (source vs. target config).")
+        error("Error during regression test (source vs. target config).")
     }
     
     // Wrap Up
@@ -554,15 +560,15 @@ def migrationTarget(body) {
 // Request String Method
 
 /**
- * Generic method that extracts the properties from the config object and returns the json string to be passed to EP.
- *
- * ToDo: Check if some kind of reflection can be used (right now this method needs to contain all possible properties)
- *      
- *      for field in config.fields:
- *          reqString += '"' + field.name + '": "' + field.value + '", '
- *          
- *      + special handling for paths and some others
- */
+* Generic method that extracts the properties from the config object and returns the json string to be passed to EP.
+*
+* ToDo: Check if some kind of reflection can be used (right now this method needs to contain all possible properties)
+*      
+*      for field in config.fields:
+*          reqString += '"' + field.name + '": "' + field.value + '", '
+*          
+*      + special handling for paths and some others
+*/
 def createReqString(config) {
     def reqString = '{ '
     // Profile
@@ -650,7 +656,7 @@ def createReqString(config) {
     if (config.testCasesBlacklist != null)
         reqString += '"testCasesBlacklist": "' + "${config.testCasesBlacklist}" + '", '
     
-     
+    
     // Vector Generation
     if (config.pll != null)
         reqString += '"pll": "' + "${config.pll}" + '", '
@@ -750,7 +756,7 @@ def getReportPath() {
 }
 
 def getEPPort(restPort) {
-    epPort = 29300 + Integer.parseInt("" + restPort) % 100
+    def epPort = 29300 + Integer.parseInt("" + restPort) % 100
     // in case the ports are equal
     if (epPort == Integer.parseInt("" + restPort))
         epPort = epPort - 100
@@ -758,8 +764,8 @@ def getEPPort(restPort) {
 }
 
 /**
- * Resolves unresolved closures (groovy magic)
- */
+* Resolves unresolved closures (groovy magic)
+*/
 def resolveConfig(body) {
     def config = [:]
     try {
@@ -773,10 +779,10 @@ def resolveConfig(body) {
 }
 
 /**
- * Returns an absolute path. If the input is a relative path it is resolved
- * to the current directory using the Jenkins Pipeline command pwd().
- * In all cases backslashes are replaced by slashes for compatibility reasons.
- */
+* Returns an absolute path. If the input is a relative path it is resolved
+* to the current directory using the Jenkins Pipeline command pwd().
+* In all cases backslashes are replaced by slashes for compatibility reasons.
+*/
 def toAbsPath(path) {
     // replace backslashes with slashes, they're easier to work with
     def sPath = path.replace("\\", "/")
@@ -792,9 +798,9 @@ def toAbsPath(path) {
 }
 
 /**
- * Converts an absolute path into a path relative to pwd (if the path points to a location on or below pwd).
- * Backslashes are replaced by slashes for compatibility reasons.
- */
+* Converts an absolute path into a path relative to pwd (if the path points to a location on or below pwd).
+* Backslashes are replaced by slashes for compatibility reasons.
+*/
 def toRelPath(path) {
     // replace backslashes with slashes, they're easier to work with
     def sPath = path.replace("\\", "/")
@@ -813,13 +819,13 @@ def getParentDir(path) {
         path = path.substring(0, path.length() - 1)
     if (!path.contains("/"))
         return ""
-    parentDir = path.substring(0, path.lastIndexOf("/"))
+    def parentDir = path.substring(0, path.lastIndexOf("/"))
     return "/" + parentDir
 }
 
 /**
- * Takes the epInstallDir and returns the first jre directory it finds
- */
+* Takes the epInstallDir and returns the first jre directory it finds
+*/
 def getJreDir(epInstallDir) {
     def output = bat returnStdout: true, script: "dir \"${epInstallDir}/jres\" /b /A:D"
     def foldersList = output.trim().tokenize('\n').collect() { it }
@@ -832,11 +838,136 @@ def getJreDir(epInstallDir) {
 }
 
 /**
- * Utility method to query available execution configs
- *
- * Returns an unsorted collection of executionConfigs (Strings).
- */
+* Utility method to query available execution configs
+*
+* Returns an unsorted collection of executionConfigs (Strings).
+*/
 def getAvailableExecutionConfigs() {
     cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
     return cfgs
 }
+
+
+/**
+ * Returns true if EP is available at the current restPort, false otherwise
+ */
+def isEpAvailable() {
+    def r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
+    return r.status == 200
+}
+
+
+/**
+ * Queries the btc-port-registry to find the next avaialble port.
+ */
+def findNextAvailablePort(portString) {
+    def appDataDir = "%AppData%\\BTC\\JenkinsAutomation"
+    def lockFile = "${appDataDir}\\.lock"
+    def portRegistryName = ".port-registry"
+    def portRegistryFile = "${appDataDir}\\${portRegistryName}"
+    try {
+
+        bat label: 'Query port registry', returnStdout: true, script:
+        """
+        @echo off
+        SET count=0
+
+        :CHECK
+        IF NOT EXIST "$appDataDir" MKDIR "$appDataDir"
+        MKDIR "$lockFile" 2> NUL || GOTO FAIL
+        IF EXIST "$portRegistryFile" (
+            COPY /Y "$portRegistryFile" $portRegistryName
+        ) ELSE (
+            COPY /y NUL .port-registry >NUL
+        )
+        GOTO END
+
+        :FAIL
+        IF %count% GEQ 15 EXIT -1
+        SET /A count+=1
+        PING localhost -n 2 >NUL
+        GOTO CHECK
+
+        :END
+        """
+    } catch (err) {
+        error("Could not get lock on btc-port-registry: " + err)
+    }
+    
+    def portList = readYaml file: '.port-registry'
+    Collections.sort(portList) // sort list to make sure port numbers are ascending
+    def restPortNumber = Integer.parseInt("" + portString)
+    for (port in portList) {
+        if (port == restPortNumber) {
+            restPortNumber++
+        } else if (port > restPortNumber) {
+            // sorted list ensures that no other ports collide with this one
+            break
+        }
+    }
+    echo "Using port $restPortNumber for communication with BTC EmbeddedPlatform"
+    portList += restPortNumber
+    writeYaml file: '.port-registry', data: portList, overwrite: true
+    
+    try {
+        bat label: 'Update port registry', returnStdout: true, script:
+        """
+        @echo off
+        COPY /Y .port-registry "%AppData%\\BTC\\JenkinsAutomation\\.port-registry"
+        RMDIR /S /Q "$lockFile"
+        """
+    } catch (err) {
+        error("Unable to update btc-port-registry: " + err)
+    }
+
+    return restPortNumber
+}
+
+def releasePort(port) {
+    def appDataDir = "%AppData%\\BTC\\JenkinsAutomation"
+    def lockFile = "${appDataDir}\\.lock"
+    def portRegistryName = ".port-registry"
+    def portRegistryFile = "${appDataDir}\\${portRegistryName}"
+    try {
+        bat label: 'Query port registry', returnStdout: true, script:
+        """
+        @echo off
+        SET count=0
+
+        :CHECK
+        IF NOT EXIST "$appDataDir" MKDIR "$appDataDir"
+        MKDIR "$lockFile" 2> NUL|| GOTO FAIL
+        IF EXIST "$portRegistryFile" (
+            COPY /Y "$portRegistryFile" $portRegistryName
+        ) ELSE (
+            COPY /y NUL .port-registry >NUL
+        )
+        GOTO END
+        
+        :FAIL
+        IF %count% GEQ 15 EXIT -1
+        SET /A count+=1
+        PING localhost -n 2 >NUL
+        GOTO CHECK
+
+        :END
+        """
+    } catch (err) {
+        error("Could not get lock on btc-port-registry: " + err)
+    }    
+    def portList = readYaml file: '.port-registry'
+    def restPortNumber = Integer.parseInt("" + port)
+    portList -= restPortNumber
+    writeYaml file: '.port-registry', data: portList, overwrite: true    
+    try {
+        bat label: 'Update port registry', returnStdout: true, script:
+        """
+        @echo off
+        COPY /Y .port-registry "%AppData%\\BTC\\JenkinsAutomation\\.port-registry"
+        RMDIR /S /Q "$lockFile"
+        """
+    } catch (err) {
+        error("Unable to update btc-port-registry: " + err)
+    }
+}
+
