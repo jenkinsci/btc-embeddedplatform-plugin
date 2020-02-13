@@ -55,19 +55,13 @@ def startup(body = {}) {
     try {
         def split = "${epInstallDir}".split("\\\\")
         epVersion = split[split.length - 1].substring(2)
-        echo "Connecting to EP ${epVersion}... (timeout: " + timeoutSeconds + " seconds)"
     } catch (err) {
         error("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
     }
     
-    // start EP and wait for it to be available at the given port
-    def connectToRunningInstance = false
-    if (config.connectToRunningInstance != null) {
-        connectToRunningInstance = config.connectToRunningInstance
-    }
     def responseCode = 500
-    if (connectToRunningInstance && isEpAvailable()) {
-        echo "(201) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${restPort}."
+    if (isEpAvailable()) {
+        printToConsole("(201) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${restPort}.")
         responseCode = 201 // connected to an existing instance
     } else { // try to connect to EP until timeout is reached
         // configure license packages (required since 2.4.0 to support ET_BASE)
@@ -81,6 +75,7 @@ def startup(body = {}) {
         }
         restPort = findNextAvailablePort(restPort)
         def epPort = getEPPort(restPort)
+        printToConsole("Connecting to EP ${epVersion} using port ${restPort}. (timeout: " + timeoutSeconds + " seconds)")
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
                 epJreDir = getJreDir(epInstallDir)
@@ -88,19 +83,21 @@ def startup(body = {}) {
                 if (epJreDir != null) {
                     epJreString = ' -vm "' + epJreDir + '"'
                 }
-                bat label: 'Starting BTC EmbeddedPlatform', script: "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
+                def startCmd = "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
                 -application com.btc.ep.application.headless -nosplash${epJreString} \
                 -vmargs -Dep.runtime.batch=com.btc.ep -Dep.runtime.api.port=${epPort} \
                 -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${restPort}/configuration\" \
                 -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${restPort}/workspace\" \
                 -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${restPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${restPort} \
                 -Dep.licensing.package=${licensingPackage} -Dep.rest.port=${restPort}"
+                printToConsole(startCmd.substring(9).replaceAll(/\s+/, " ").replaceAll(" -", "\n    -"))
+                bat label: 'Starting BTC EmbeddedPlatform', returnStdout: true, script: startCmd
                 waitUntil {
                     r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
                     // exit waitUntil closure
                     return (r.status == 200)
                 }
-                echo "(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${restPort}."
+                printToConsole("(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${restPort}.")
                 responseCode = 200 // connected to a new instance
             } catch(err) {
                 error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
@@ -137,11 +134,10 @@ def profileCreateC(body) {
 def profileInit(body, method) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
-    echo "$config"
+    def reqString = createReqString(config, method)
     // call EP to invoke profile creation / loading / update
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     isDebug = false
     if (r.status >= 400) {
         wrapUp {
@@ -159,188 +155,190 @@ def profileInit(body, method) {
 def testExecutionReport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'testExecutionReport')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testExecutionReport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def codeAnalysisReport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'codeAnalysisReport')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/codeAnalysisReport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def modelCoverageReport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'modelCoverageReport')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/modelCoverageReport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def xmlReport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'xmlReport')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/xmlReportExport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def rbtExecution(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'rbtExecution')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testexecution", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def formalTest(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'formalTest')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalTest", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def vectorGeneration(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'vectorGeneration')
     // call EP to invoke vector generation and analysis
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorGeneration", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def backToBack(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'backToBack')
     // call EP to invoke back-to-back test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/backToBack", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def regressionTest(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'regressionTest')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/regressionTest", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def rangeViolationGoals(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'rangeViolationGoals')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addRangeViolationGoals", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def domainCoverageGoals(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'domainCoverageGoals')
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def vectorImport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'vectorImport')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorImport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def toleranceImport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'toleranceImport')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceImport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def toleranceExport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'toleranceExport')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceExport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def inputRestrictionsImport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'inputRestrictionsImport')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsImport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def inputRestrictionsExport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'inputRestrictionsExport')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsExport", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def formalVerification(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'formalVerification')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalVerification", validResponseCodes: '100:500'
-    echo "(${r.status}) ${r.content}"
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def executionRecordExport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'executionRecordExport')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/exportExecutionRecords", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
 def executionRecordImport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config)
+    def reqString = createReqString(config, 'executionRecordImport')
     // call EP
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/importExecutionRecords", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
 
@@ -373,7 +371,7 @@ def wrapUp(body = {}) {
         def reqString = "" // removed closeEp parameter, it was only causing problems
         httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
-        echo 'BTC EmbeddedPlatform successfully closed.'
+        printToConsole('BTC EmbeddedPlatform successfully closed.')
     } finally {
         releasePort(restPort)
     }
@@ -381,6 +379,7 @@ def wrapUp(body = {}) {
     def profilePathParentDir = getParentDir(toRelPath(profilePath))
     try {
         // archiveArtifacts works with relative paths
+        archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeReportPath}/*.log"
         if (archiveProfiles) {
             archiveArtifacts allowEmptyArchive: true, artifacts: "${profilePathParentDir}/*.epp"
         }
@@ -390,11 +389,11 @@ def wrapUp(body = {}) {
         if (publishReports && fileExists("${exportPath}/TestAutomationReport.html"))
             publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'TestAutomationReport.html', reportName: 'Test Automation Report'])
     } catch (err) {
-        echo err.message
+        printToConsole(err.message)
     }
     // JUnit works with relative paths
     if (publishResults) {
-        echo "Looking for junit results in '" + "${relativeReportPath}/junit-report.xml" + "'"
+        printToConsole("Looking for junit results in '" + "${relativeReportPath}/junit-report.xml" + "'")
         junit allowEmptyResults: true, testResults: "${relativeReportPath}/junit-report.xml"
     }
 }
@@ -411,9 +410,6 @@ def migrationSource(body) {
     def config = resolveConfig(body)
     
     // dispatch args
-    if (config.matlabVersion == null)
-        error("Matlab version for MigrationSource needs to be defined.")
-    
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
     config.exportPath = migrationTmpDir + "/reports"
@@ -427,6 +423,8 @@ def migrationSource(body) {
         r = profileCreateTL(config)
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
+    } else if (config.codeModelPath != null) {
+        r = profileCreateC(config)
     } else {
         error("Please specify the model to be tested (target configuration).")
     }
@@ -436,7 +434,10 @@ def migrationSource(body) {
     }
     
     // Vector Generation
-    vectorGeneration(body)
+    if (config.createReport == null) {
+        config.createReport = true
+    }
+    vectorGeneration(config)
     // Simulation
     r = regressionTest(config)
     if (r >= 400) {
@@ -474,12 +475,14 @@ def migrationSource(body) {
         def reqString = "MIGRATION_SOURCE"
         httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
-        echo 'BTC EmbeddedPlatform successfully closed.'
+        printToConsole('BTC EmbeddedPlatform successfully closed.')
+    } finally {
+        releasePort(restPort)
     }
     def relativeMigTmpDir = toRelPath(migrationTmpDir)
     def relativeExportPath = toRelPath(exportPath)
     archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeMigTmpDir}/profiles/*.epp"
-    echo "stashing files: ${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*"
+    printToConsole("stashing files: ${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*")
     stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*", name: "migration-source"
 }
 
@@ -495,9 +498,6 @@ def migrationTarget(body) {
     def config = resolveConfig(body)
     
     // dispatch args
-    if ("${config.matlabVersion}" == "null")
-        error("The matlabVersion for MigrationTarget needs to be defined.")
-    
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
     config.exportPath = migrationTmpDir + "/reports"
@@ -515,6 +515,8 @@ def migrationTarget(body) {
         r = profileCreateTL(config)
     } else if (config.slModelPath != null) {
         r = profileCreateEC(config)
+    } else if (config.codeModelPath != null) {
+        r = profileCreateC(config)
     } else {
         error("Please specify the model to be tested (target configuration).")
     }
@@ -569,7 +571,8 @@ def migrationTarget(body) {
  *          
  *      + special handling for paths and some others
  */
-def createReqString(config) {
+def createReqString(config, methodName) {
+    printToConsole("Running btc.$methodName: $config")
     def reqString = '{ '
     // Profile
     if (config.profilePath != null) {
@@ -726,6 +729,8 @@ def createReqString(config) {
         reqString += '"useCase": "' + "${config.useCase}" + '", '
     
     // Execution Record Import / Export + Model Coverage Report
+    if (config.isMigration != null)
+        reqString += '"isMigration": "' + "${config.isMigration}" + '", '
     if (config.dir != null)
         reqString += '"dir": "' + toAbsPath("${config.dir}") + '", '
     if (config.executionConfig != null)
@@ -847,6 +852,15 @@ def getAvailableExecutionConfigs() {
     return cfgs
 }
 
+def getCallingMethodName(){
+  def marker = new Exception()
+  return StackTraceUtils.sanitize(marker).stackTrace[2].methodName
+}
+
+def printToConsole(string) {
+    echo "[BTC] " + string
+}
+
 
 /**
  * Returns true if EP is available at the current restPort, false otherwise
@@ -858,7 +872,11 @@ def isEpAvailable() {
 
 
 /**
- * Queries the btc-port-registry to find the next avaialble port.
+ * Finds the next available port, registers it in the bt-port-registry and returns it.
+ *
+ * - queries the btc-port-registry to find the next avaialble port
+ * - finds the next available port based on the given port number
+ * - updates the btc-port-registry to reflect that the port is in use
  */
 def findNextAvailablePort(portString) {
     def appDataDir = "%AppData%\\BTC\\JenkinsAutomation"
@@ -883,9 +901,9 @@ def findNextAvailablePort(portString) {
         GOTO END
 
         :FAIL
-        IF %count% GEQ 15 EXIT -1
         SET /A count+=1
         PING localhost -n 2 >NUL
+        IF %count% GEQ 15 RMDIR /S /Q "$lockFile"
         GOTO CHECK
 
         :END
@@ -895,7 +913,8 @@ def findNextAvailablePort(portString) {
     }
     
     def portList = readYaml file: '.port-registry'
-    Collections.sort(portList) // sort list to make sure port numbers are ascending
+    //Collections.sort(portList) // sort list to make sure port numbers are ascending
+    portList.sort()
     def restPortNumber = Integer.parseInt("" + portString)
     for (port in portList) {
         if (port == restPortNumber) {
@@ -905,7 +924,6 @@ def findNextAvailablePort(portString) {
             break
         }
     }
-    echo "Using port $restPortNumber for communication with BTC EmbeddedPlatform"
     portList += restPortNumber
     writeYaml file: '.port-registry', data: portList, overwrite: true
     
@@ -923,6 +941,9 @@ def findNextAvailablePort(portString) {
     return restPortNumber
 }
 
+/**
+ * Releases the used port by removing it from the bt-port-registry.
+ */
 def releasePort(port) {
     def appDataDir = "%AppData%\\BTC\\JenkinsAutomation"
     def lockFile = "${appDataDir}\\.lock"
@@ -965,6 +986,7 @@ def releasePort(port) {
         @echo off
         COPY /Y .port-registry "%AppData%\\BTC\\JenkinsAutomation\\.port-registry"
         RMDIR /S /Q "$lockFile"
+        DEL ".port-registry"
         """
     } catch (err) {
         error("Unable to update btc-port-registry: " + err)
