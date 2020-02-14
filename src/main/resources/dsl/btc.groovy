@@ -992,5 +992,3 @@ def releasePort(port) {
         error("Unable to update btc-port-registry: " + err)
     }
 }
-
->>>>>>> dynamic-port-assignment
