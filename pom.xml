@@ -17,12 +17,12 @@
         <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
         <url>http://github.com/jenkinsci/${project.artifactId}-plugin</url>
-      <tag>btc-embeddedplatform-2.5.4</tag>
+      <tag>btc-embeddedplatform-2.5.10</tag>
   </scm>
 
     <name>BTC DSL for Pipeline</name>
     <description>BTC DSL for Pipeline allows easy access to test steps provided by the BTC Jenkins Automation Plugin.</description>
-    <url>https://wiki.jenkins.io/display/JENKINS/BTC+EmbeddedPlatform</url>
+    <url>https://github.com/jenkinsci/btc-embeddedplatform-plugin</url>
 
     <properties>
 		<jenkins-test-harness.version>2.19</jenkins-test-harness.version>
