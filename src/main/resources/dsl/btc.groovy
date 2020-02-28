@@ -483,7 +483,7 @@ def migrationSource(body) {
     def relativeExportPath = toRelPath(exportPath)
     archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeMigTmpDir}/profiles/*.epp"
     printToConsole("stashing files: ${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*")
-    stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*", name: "migration-source"
+    stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/**/*", name: "migration-source"
 }
 
 /**
@@ -848,8 +848,63 @@ def getJreDir(epInstallDir) {
  * Returns an unsorted collection of executionConfigs (Strings).
  */
 def getAvailableExecutionConfigs() {
-    cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
+    def cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
     return cfgs
+}
+
+/**
+ * Utility method to query a status summary struct
+ * Returns a struct with information about the profile:
+ *  - ProfileName
+ *  - Coverage
+ *    - RBT
+ *      - RequirementsCoverage
+ *      - StatementCoverage
+ *      - ConditionCoverage
+ *      - DecisionCoverage
+ *      - Condition_DecisionCoverage
+ *      - RelationalOperatorCoverage
+ *      - FunctionCoverage
+ *      - FunctionCallCoverage
+ *      - SwitchCaseCoverage
+ *      - DivisionByZeroRobustnessCheck
+ *      - DowncastRobustnessCheck
+ *    - B2B
+ *      - StatementCoverage
+ *      - ConditionCoverage
+ *      - DecisionCoverage
+ *      - Condition_DecisionCoverage
+ *      - RelationalOperatorCoverage
+ *      - FunctionCoverage
+ *      - FunctionCallCoverage
+ *      - SwitchCaseCoverage
+ *      - DivisionByZeroRobustnessCheck
+ *      - DowncastRobustnessCheck
+ *  - TestCases
+ *    - [List of objects]
+ *      - Name
+ *      - Description
+ *      - Result
+ *      - VerifiedRequirements
+ *          - [List of Strings]
+ *      - Length
+ *      - CreatedOn
+ *      - CreatedBy
+ */
+def getStatusSummary() {
+    def r = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getStatusSummary", validResponseCodes: '100:500'
+    return r.content
+}
+
+/**
+ * Utility method to query available execution configs
+ *
+ * Returns an unsorted collection of executionConfigs (Strings).
+ */
+def checkPlugin(qualifierOrListOfQualifiers) {
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: qualifierOrListOfQualifiers, url: "http://localhost:${restPort}/checkPlugin", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
+    return r.status
 }
 
 def getCallingMethodName(){
