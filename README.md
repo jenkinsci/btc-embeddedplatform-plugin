@@ -551,7 +551,6 @@ Report will be exported to the "exportDir" specified in the
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
 executionConfigString | Execution configs for the Test Execution (comma separated list)<br>(default: all available configs) | "TL MIL, SIL, PIL"<br>"SIL, PIL"<br>"SL MIL"
-debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains all failed test cases.<br>(default: no debug export) | "TL MIL"<br>"SIL (Generic)"<br>"SIL (Visual Studio 2013)"
 reportSource | String that specified if the report is based on scopes or requirement sources. Setting the report source to "REQUIREMENT" has no effect if no requirements are available in the profile.<br>*Please note: Test Execution Reports based on requirements only consider test cases that are linked to these requirements. Unlinked test cases will not be considered in the report.*<br>(default: SCOPE) | "SCOPE"<br>"REQUIREMENT"
 createReport | Boolean flag controlling whether or not the Test Execution Report is created by this step. The report can be created explicitly in its own step (see step "testExecutionReport").<br>(default: false) | true, false
 scopesWhitelist	| Comma separated String with scopes to include. If this string is not empty, only scopes that are listed here will be considered.<br>(default: "" - empty String: all scopes will be considered) | "toplevel"<br>"toplevel, subA, subB"
@@ -733,7 +732,6 @@ following optional settings are available:
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
 executionConfigString | Execution configs on which the Formal Test should run (comma separated list)<br>(default: all available configs) | "TL MIL, SIL, PIL"<br>"SIL, PIL"<br>"SL MIL"
-debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains all failed test cases.<br>(default: no debug export) | "TL MIL"<br>"SIL (Generic)"<br>"SIL (Visual Studio 2013)"
 
 **Possible Return values**
 
@@ -883,7 +881,6 @@ Property | Description | Example Value(s)
 ---------|-------------|-----------------
 reference | Execution config for the Back-to-Back test reference simulation.<br>(default: "TL MIL") | TL MIL, SIL, PIL, SL MIL
 comparison | Execution config for the Back-to-Back test comparison simulation.<br>(default: "SIL") | TL MIL, SIL, PIL, SL MIL
-debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains deviations which includes all vectors which lead to a deviation.<br>(default: no debug export) | "TL MIL"<br>"SIL (Visual Studio 2013)"
 
 **Possible Return values**
 
@@ -916,7 +913,6 @@ the "profileLoad" step. The following optional settings are available:
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
 executionConfigString | Execution configs for the simulation on the current SUT (comma separated list).<br>(default: SIL) | "TL MIL, SIL, PIL", "SL MIL", "SIL"
-debugConfigString | Debug configs for the debug export (comma separated list). There will be a debug export for each scope that contains deviations which includes all vectors which lead to a deviation.<br>(default: no debug export) | "TL MIL"<br>"SIL (Visual Studio 2013)"
 
 **Possible Return values**
 
