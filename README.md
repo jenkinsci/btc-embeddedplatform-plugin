@@ -76,6 +76,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.5.10 | - Matlab log is now also available for c-code workflows that include matlab startupScripts | 2.5 | X | X 
 2.5.8 | - Fixed: B2B Tests with status "FAILED_ACCPETED" will now yield the appropriate return code and will not be treated as failures in the JUnit report<br>- Added testsuite attribute "time" which carries the execution time of the test suites + the overall execution time<br>- Fixed an issue that caused execution records to be used twice in the migration suite context<br>- Ouput from the Matlab console will now be available in a log file that is archived automatically in the wrapUp step | 2.5 | X | X 
 2.5.5 | - Profile Creation steps now add some more information to the overview report<br>- Fixed an issue that could occur with certain versions of the DomainCoverageGoals plugin<br>- The headless application now only spawns one tasks: ep.exe (down from two: ep & javaw) | 2.5 | X | X 
 2.5.4 | - The Jenkins Automation plugin now writes its log messages to the default log file of BTC EmbeddedPlatform (usually found at %APPDATA%/BTC/ep/<version>/<port>/logs/current.log) | 2.5 | X | 
