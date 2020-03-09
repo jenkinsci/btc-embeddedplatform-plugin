@@ -82,6 +82,7 @@ Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 2.5.4 | - The Jenkins Automation plugin now writes its log messages to the default log file of BTC EmbeddedPlatform (usually found at %APPDATA%/BTC/ep/<version>/<port>/logs/current.log) | 2.5 | X | 
 2.5.3 | - Added workaround that allows EmbeddedCoder architecture udpate in Jenkins scenarios that currently don't work out of the box. CodeModel and Mapping XML must be provided in the btc.profileLoad step. | 2.5 | X | 
 2.5.2 | - Fixed: updating the default compiler in a model-based profile needed some additional efforts and could lead to problems before now. | 2.5 | X | 
+2.4.20 | - Added method to retrieve coverage and test status data as a struct (see step getStatusSummary)<br>- Fixed engine selection for vectorGeneration and added scope selection | 2.4.1 | X | 
 2.4.19 | - Fixed: updating the default compiler in a model-based profile needed some additional efforts and could lead to problems before now. | 2.4.1 | X | 
 2.4.17 | - Available execution configs can now be queried for a profile allowing a generic way to handle steps on different kinds of existing profiles. | 2.4.1 | X | X
 2.4.15 | - Fixed: model paths were only updated if updateRequired option was true. However, there are use cases where the model paths need to be updated even though updateRequired is false. | 2.4.1 | X | X
@@ -955,6 +956,58 @@ searchDepth | Search depth (Steps)<br>the number of executions of the scope unde
 | 301              | Unknown (status: UNKNOWN)                      |
 | 400              | BTC EmbeddedValidator package is not installed |
 | 500              | Unexpected Error                               |
+
+### Step "getStatusSummary"
+
+DSL Command: btc.getStatusSummary {...}
+
+**Required License**
+
+EmbeddedTester (ET COMPLETE)
+
+**Description**
+
+Retrieves the following struct:
+
+- ProfileName
+- Coverage
+  - RBT
+    - RequirementsCoverage
+    - StatementCoverage
+    - ConditionCoverage
+    - DecisionCoverage
+    - ModifiedConditionDecisionCoverage
+    - RelationalOperatorCoverage
+    - FunctionCoverage
+    - FunctionCallCoverage
+    - SwitchCaseCoverage
+    - UserDefinedCoverageGoalsCoverage
+    - DomainCoverageGoalsCoverage
+    - RangeViolationGoalsCoverage
+    - DivisionByZeroRobustnessCheck
+    - DowncastRobustnessCheck
+  - B2B
+    - StatementCoverage
+    - ConditionCoverage
+    - DecisionCoverage
+    - ModifiedConditionDecisionCoverage
+    - RelationalOperatorCoverage
+    - FunctionCoverage
+    - FunctionCallCoverage
+    - SwitchCaseCoverage
+    - UserDefinedCoverageGoalsCoverage
+    - DomainCoverageGoalsCoverage
+    - RangeViolationGoalsCoverage
+    - DivisionByZeroRobustnessCheck
+    - DowncastRobustnessCheck
+  - TestCases (list of objects with the following properties)
+    - Name
+    - Description
+    - Result
+    - VerifiedRequirements (list of strings)
+    - Length
+    - CreatedOn
+    - CreatedBy
 
 ### Step "wrapUp"
 
