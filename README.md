@@ -967,7 +967,7 @@ EmbeddedTester (ET COMPLETE)
 
 **Description**
 
-Retrieves the following struct:
+Retrieves a struct as a json text (see below) which can be passed on to external post-processing or evalulated directly (via readJSON of the Pipeline Utility Steps plugin):
 
 - ProfileName
 - Coverage
