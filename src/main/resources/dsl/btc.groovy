@@ -661,6 +661,8 @@ def createReqString(config, methodName) {
     
     
     // Vector Generation
+    if (config.scope != null)
+        reqString += '"scope": "' + "${config.scope}" + '", '
     if (config.pll != null)
         reqString += '"pll": "' + "${config.pll}" + '", '
     if (config.engine != null)
