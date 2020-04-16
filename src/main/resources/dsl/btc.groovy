@@ -342,6 +342,13 @@ def executionRecordImport(body) {
     return r.status
 }
 
+def removeIncompatibleVectors() {
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', url: "http://localhost:${restPort}/removeIncompatibleVectors", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
+    return r.status
+}
+
 // wrap up step
 
 /**
@@ -433,6 +440,11 @@ def migrationSource(body) {
         error("Error during profile creation (source)")
     }
     
+    // Import vectors if requested
+    if (config.importDir != null) {
+        vectorImport(body)
+    }
+
     // Vector Generation
     if (config.createReport == null) {
         config.createReport = true
@@ -614,6 +626,12 @@ def createReqString(config, methodName) {
         reqString += '"codeModelPath": "' + toAbsPath("${config.codeModelPath}") + '", '
     if (config.tlSubsystem != null)
         reqString += '"tlSubsystem": "' + "${config.tlSubsystem}" + '", '
+    if (config.tlCalibrationFilter != null)
+        reqString += '"tlCalibrationFilter": "' + "${config.tlCalibrationFilter}" + '", '
+    if (config.tlSubsystemFilter != null)
+        reqString += '"tlSubsystemFilter": "' + "${config.tlSubsystemFilter}" + '", '
+    if (config.tlCodeFileFilter != null)
+        reqString += '"tlCodeFileFilter": "' + "${config.tlCodeFileFilter}" + '", '
     if (config.compilerShortName != null)
         reqString += '"compilerShortName": "' + "${config.compilerShortName}" + '", '
     if (config.licenseLocationString != null)
@@ -661,6 +679,10 @@ def createReqString(config, methodName) {
     
     
     // Vector Generation
+    if (config.analyzeScopesHierachically != null)
+        reqString += '"analyzeScopesHierachically": "' + "${config.analyzeScopesHierachically}" + '", '
+    if (config.allowDenormalizedFloats != null)
+        reqString += '"allowDenormalizedFloats": "' + "${config.allowDenormalizedFloats}" + '", '
     if (config.scope != null)
         reqString += '"scope": "' + "${config.scope}" + '", '
     if (config.pll != null)
@@ -815,7 +837,11 @@ def toRelPath(path) {
     sPath = sPath.replaceAll("(/)+", "/")
     def wd = pwd().replace("\\", "/")
     wd = wd.replaceAll("(/)+", "/")
-    return sPath.replace(wd + "/", "")
+    if (sPath.contains(wd)) {
+        return sPath.replace(wd + "/", "")
+    } else {
+        return sPath
+    }    
 }
 
 def getParentDir(path) {
@@ -827,7 +853,11 @@ def getParentDir(path) {
     if (!path.contains("/"))
         return ""
     def parentDir = path.substring(0, path.lastIndexOf("/"))
-    return "/" + parentDir
+    if (parentDir.contains(":")) {
+        return parentDir
+    } else {
+        return "/" + parentDir
+    }
 }
 
 /**

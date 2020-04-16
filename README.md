@@ -41,31 +41,39 @@ Migration Suite below).
   - [Licensing for Jenkins Integration](#licensing-for-jenkins-integration)
   - [Configuration](#configuration)
 * [Workflow Steps](#workflow-steps)
-  - [Step "startup"](#step-startup)
-  - [Step "profileLoad"](#step-profileload)
-  - [Step "profileCreateTL"](#step-profilecreatetl)
-  - [Step "profileCreateEC"](#step-profilecreateec)
-  - [Step "profileCreateSL"](#step-profilecreatesl)
-  - [Step "profileCreateC"](#step-profilecreatec)
-  - [Step "vectorImport"](#step-vectorimport)
-  - [Step "toleranceImport"](#step-toleranceimport)
-  - [Step "toleranceExport"](#step-toleranceexport)
-  - [Step "inputRestrictionsImport"](#step-inputrestrictionsimport)
-  - [Step "executionRecordExport"](#step-executionrecordexport)
-  - [Step "inputRestrictionsExport"](#step-inputrestrictionsexport)
-  - [Step "rbtExecution"](#step-rbtexecution)
-  - [Step "testExecutionReport"](#step-testexecutionreport)
-  - [Step "xmlReport"](#step-xmlreport)
-  - [Step "codeAnalysisReport"](#step-codeanalysisreport)
-  - [Step "modelCoverageReport"](#step-modelcoveragereport)
-  - [Step "formalTest"](#step-formaltest)
-  - [Step "rangeViolationGoals"](#step-rangeviolationgoals)
-  - [Step "domainCoverageGoals"](#step-domaincoveragegoals)
-  - [Step "vectorGeneration"](#step-vectorgeneration)
-  - [Step "backToBack"](#step-backtoback)
-  - [Step "regressionTest"](#step-regressiontest)
-  - [Step "formalVerification"](#step-formalverification)
-  - [Step "wrapUp"](#step-wrapup)
+  - [Basics](#basics)
+    + [Step "startup"](#step-startup)
+    + [Step "profileLoad"](#step-profileload)
+    + [Step "profileCreateTL"](#step-profilecreatetl)
+    + [Step "profileCreateEC"](#step-profilecreateec)
+    + [Step "profileCreateSL"](#step-profilecreatesl)
+    + [Step "profileCreateC"](#step-profilecreatec)
+    + [Step "wrapUp"](#step-wrapup)
+  - [Import & Export](#import-export)
+    + [Step "vectorImport"](#step-vectorimport)
+    + [Step "vectorExport"](#step-vectorexport)
+    + [Step "toleranceImport"](#step-toleranceimport)
+    + [Step "toleranceExport"](#step-toleranceexport)
+    + [Step "inputRestrictionsImport"](#step-inputrestrictionsimport)
+    + [Step "inputRestrictionsExport"](#step-inputrestrictionsexport)
+    + [Step "executionRecordExport"](#step-executionrecordexport)
+  - [Analysis, Verification & Validation](#analysis-verification-validation)
+    + [Step "rbtExecution"](#step-rbtexecution)
+    + [Step "vectorGeneration"](#step-vectorgeneration)
+    + [Step "backToBack"](#step-backtoback)
+    + [Step "regressionTest"](#step-regressiontest)
+    + [Step "rangeViolationGoals"](#step-rangeviolationgoals)
+    + [Step "domainCoverageGoals"](#step-domaincoveragegoals)
+    + [Step "formalTest"](#step-formaltest)
+    + [Step "formalVerification"](#step-formalverification)
+  - [Reporting](#reporting)
+    + [Step "testExecutionReport"](#step-testexecutionreport)
+    + [Step "xmlReport"](#step-xmlreport)
+    + [Step "codeAnalysisReport"](#step-codeanalysisreport)
+    + [Step "modelCoverageReport"](#step-modelcoveragereport)
+  - [Misc](#misc)
+    + [Step "getStatusSummary"](#step-getstatussummary)
+  
 * [BTC Migration Suite](#btc-migration-suite)
   - [Step "migrationSource"](#step-migrationsource)
   - [Step "migrationTarget"](#step-migrationtarget)
@@ -76,6 +84,8 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.6.1 | - Added Parameters "analyzeSubscopesHierachichally" and "allowDenormalizedFloats" to vectorGeneration step<br>- Added Parameters "tlSubsystemFilter", "tlCalibrationFilter" and "tlCodeFileFilter" to profileCreateTL step<br>- Added vectorExport step for Test Cases & Stimuli Vectors | 2.6 | X |  X
+2.6.0 | - Minor reporting modifications for reference simulation in migration suite use case<br>- Adaptions to EP 2.6 | 2.6 | X |  X
 2.5.10 | - Matlab log is now also available for c-code workflows that include matlab startupScripts | 2.5 | X | X 
 2.5.8 | - Fixed: B2B Tests with status "FAILED_ACCPETED" will now yield the appropriate return code and will not be treated as failures in the JUnit report<br>- Added testsuite attribute "time" which carries the execution time of the test suites + the overall execution time<br>- Fixed an issue that caused execution records to be used twice in the migration suite context<br>- Ouput from the Matlab console will now be available in a log file that is archived automatically in the wrapUp step | 2.5 | X | X 
 2.5.5 | - Profile Creation steps now add some more information to the overview report<br>- Fixed an issue that could occur with certain versions of the DomainCoverageGoals plugin<br>- The headless application now only spawns one tasks: ep.exe (down from two: ep & javaw) | 2.5 | X | X 
@@ -205,7 +215,9 @@ node {
 
 ## Workflow Steps
 
-### Step "startup"
+### Basics
+
+#### Step "startup"
 
 DSL Command: btc.startup {...}
 
@@ -237,7 +249,7 @@ choosing Activate BTC EmbeddedPlatform in your start menu for the
 desired version and also ensure that the Jenkins Automation Plugin is
 installed for this version of EmbeddedPlatform._
 
-### Step "profileLoad"
+#### Step "profileLoad"
 
 DSL Command: btc.profileLoad {...}
 
@@ -287,7 +299,7 @@ licenseLocationString | String containing the license locations in the order of 
 | 400          | Error during profile creation. Throws an exception because further testing is not possible.                       |
 | 500          | Unexpected Error. Throws an exception because further testing is not possible.                                    |
 
-### Step "profileCreateTL"
+#### Step "profileCreateTL"
 
 DSL Command: btc.profileCreateTL {...}
 
@@ -306,9 +318,11 @@ tlScriptPath | Path of the model init script. The path can be absolute or relati
 tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
 environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
 reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use existing generated code from TargetLink. Requires the Code and the linking information in the data dictionary to be available.<br>(default: false) | true, false
+tlSubsystemFilter | Regular expression that controls which subsystems will be available for testing. Please note that removing a subsystem will cause its children to be removed as well.<br>(default: empty; all subsystems will be available for testing) | "scope_.*" (matches scope_a and scope_b but not new_scope_a)
+tlCalibrationFilter | Regular expression that controls which calibrations will be available for testing. <br>(default: empty; all detected calibrations will be available for testing) | "c.*" (matches cFooBar but noch mpFooBar)
+tlCodeFileFilter | Regular expression that controls which code files will be annotated for coverage. <br>(default: empty; all code files will be annotated for coverage) | "mod_a.*" (matches mod_a_controller.c but noch mod_b_library.c)
 
-
-### Step "profileCreateEC"
+#### Step "profileCreateEC"
 
 DSL Command: btc.profileCreateEC {...}
 
@@ -329,7 +343,7 @@ codeModelPath | Path of the code description file. The path can be absolute or r
 mappingFilePath | Path of the mapping file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "Mapping.xml"
 
 
-### Step "profileCreateSL"
+#### Step "profileCreateSL"
 
 DSL Command: btc.profileCreateSL {...}
 
@@ -347,7 +361,7 @@ Property | Description | Example Value(s)
 slScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
 **addModelInfoPath** | Path to the XML file with additional model info for SL use case. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for SL use case** | "AddGenModelInfo.xml"
 
-### Step "profileCreateC"
+#### Step "profileCreateC"
 
 DSL Command: btc.profileCreateC {...}
 
@@ -364,7 +378,24 @@ Property | Description | Example Value(s)
 **compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
 **codeModelPath** | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for hand code use case** | "CodeModel.xml"
 
-### Step "vectorImport"
+#### Step "wrapUp"
+
+DSL Command: btc.wrapUp {...}
+
+**Description**
+
+Publishes HTML reports and the JUnit XML report to Jenkins and closes
+BTC EmbeddedPlatform. The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+archiveProfiles | Boolean flag controlling whether BTC EmbeddedPlatform profiles are archived by Jenkins to be available on the Job Page. You can disable this and control the "archiveArtifacts" option yourself.<br>(default: true) | true, false
+publishReports | Boolean flag controlling whether the BTC EmbeddedPlatform reports are published in Jenkins to be available on the Job Page. You can disable this and control the "publishHTML" option yourself.<br>(default: true) | true, false
+publishResults | Boolean flag controlling whether BTC EmbeddedPlatform test results (JUnit XML) are published in Jenkins to be available on the Job Page and for further aggregations. You can disable this and control the "junit" option yourself.<br>(default: true) | true, false
+
+### Import & Export
+
+#### Step "vectorImport"
 
 DSL Command: btc.vectorImport {...}
 
@@ -388,7 +419,31 @@ vectorKind | A String that defines the type of the vectors to import. Can be "TC
 | 400          | Error during vector import.                   |
 | 500          | Unexpected Error                              |
 
-### Step "toleranceImport"
+#### Step "vectorExport"
+
+DSL Command: btc.vectorExport {...}
+
+**Description**
+
+Exports test cases or stimuli vectors to the specified location. The
+following settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+**dir** | The directory that contains the vectors to export. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\vectors", "E:\data\ImportExport"
+vectorFormat | String to specify the format of the vector export files in Standard BTC EmbeddedPlatform style.<br>(default: EXCEL, TC format only applicable for test cases) | "CSV", "EXCEL", "TC"
+vectorKind | A String that defines the type of the vectors to export. Can be "TC" (= Test Case) or "SV" (= Stimuli Vector).<br>(default: TC) | "TC", "SV"
+
+**Possible Return values**
+
+| Return Value | Description                                   |
+|--------------|-----------------------------------------------|
+| 200          | Successfully exported all vectors.            |
+| 300          | No valid vectors were found in the profile  . |
+| 400          | Error during vector export.                   |
+| 500          | Unexpected Error                              |
+
+#### Step "toleranceImport"
 
 DSL Command: btc.toleranceImport {...}
 
@@ -415,7 +470,7 @@ useCase | String to specify the use case for the Tolerances (Back-to-Back or Req
 | 402              | The specified useCase is invalid.             |
 | 500              | Unexpected Error                              |
 
-### Step "toleranceExport"
+#### Step "toleranceExport"
 
 DSL Command: btc.toleranceExport {...}
 
@@ -440,7 +495,7 @@ useCase | String to specify the use case for the Tolerances (Back-to-Back or Req
 | 402              | The specified useCase is invalid.             |
 | 500              | Unexpected Error                              |
 
-### Step "inputRestrictionsImport"
+#### Step "inputRestrictionsImport"
 
 DSL Command: btc.inputRestrictionsImport {...}
 
@@ -468,7 +523,34 @@ Property | Description | Example Value(s)
 | 401              | The file at specified path does not exist.    |
 | 500              | Unexpected Error                              |
 
-### Step "executionRecordExport"
+#### Step "inputRestrictionsExport"
+
+DSL Command: btc.inputRestrictionsExport {...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Description**
+
+Exports Input Restrictions to the specified file. The following options
+are available:
+
+**Possible Return values**
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+**path** | The Input Restrictions xml file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\inputrestrictions.xml", "E:\data\inputrestrictions.xml"
+
+**Possible Return values**
+
+|   Return Value   | Description                                   |
+|------------------|-----------------------------------------------|
+| 200              | Successfully exported the tolerance settings. |
+| 400              | No path specified.                            |
+| 500              | Unexpected Error                              |
+
+#### Step "executionRecordExport"
 
 DSL Command: btc.executionRecordExport {...}
 
@@ -509,34 +591,9 @@ something is whitelisted and blacklisted it will be excluded).*
 | 200              | Successfully exported the execution records. |
 | 500              | Unexpected Error                             |
 
-### Step "inputRestrictionsExport"
+### Analysis, Validation & Verification
 
-DSL Command: btc.inputRestrictionsExport {...}
-
-**Required License**
-
-EmbeddedTester (ET\_COMPLETE)
-
-**Description**
-
-Exports Input Restrictions to the specified file. The following options
-are available:
-
-**Possible Return values**
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-**path** | The Input Restrictions xml file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\inputrestrictions.xml", "E:\data\inputrestrictions.xml"
-
-**Possible Return values**
-
-|   Return Value   | Description                                   |
-|------------------|-----------------------------------------------|
-| 200              | Successfully exported the tolerance settings. |
-| 400              | No path specified.                            |
-| 500              | Unexpected Error                              |
-
-### Step "rbtExecution"
+#### Step "rbtExecution"
 
 DSL Command: btc.rbtExecution {...}
 
@@ -580,7 +637,255 @@ something is whitelisted and blacklisted it will be excluded).*
 | 400              | There were errors during test case execution (status: ERROR)  |
 | 500              | Unexpected Error                                              |
 
-### Step "testExecutionReport"
+
+#### Step "vectorGeneration"
+
+DSL Command: btc.vectorGeneration{...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Description**
+
+Executes the engines for analysis and stimuli vector generation for
+structural coverage. The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+pll | Semicolon separated list of PLLs used to set the goals for automatic stimuli vector generation.<br>(default: all goals will be analyzed) | "STM; D", "STM:3", … (see Back-to-Back & Vector Generation User Guide for more details about PLLs)
+engine | Engine to be used for vector generation (guided random, model checker, both)<br>
+(default: "ATG+CV", combined hierachical approach) | "ATG+CV", "ATG", "CV" (see Back-to-Back & Vector Generation User Guide for more details about engines)
+globalTimeout | Global timeout in seconds. 0 means no timeout.<br>(default: 600) | 600
+scopeTimeout | Scope timeout in seconds. 0 means no timeout.<br>(default: 300) | 300
+perPropertyTimeout | Timeout per coverage property in seconds. 0 means no timeout.<br>(default: 60) | 60
+considerSubscopes | Boolean flag controlling whether or not to consider coverage goals from subscopes.<br>(default: true) | true, false
+analyzeSubscopesHierachichally | Boolean flag controlling whether or not to analyze subscopes hierachically.<br>(default: true) | true, false
+allowDenormalizedFloats | Boolean flag controlling whether or not to allow denormalized floats.<br>(default: true) | true, false
+recheckUnreachable | Boolean flag controlling whether or not to recheck already calculated unreachable results.<br>(default: false) | true, false
+depthCv | Controls the maximum depth for the CV engine. Set to 0 for infinite depth.<br>(default: 10) | 0, 10, 20, 50
+depthAtg | Controls the maximum depth for the ATG engine. Must be greater than 0.<br>(default: 20) | 10, 20, 50
+loopUnroll | Number of loop interations to unroll for unpredictable loops.<br>(default: 50) | 10, 20, 50
+robustnessTestFailure | Boolean flag controlling whether or not robustness issues are added to the JUnit XML Report as "failed tests".<br>(default: false) | true, false
+createReport | Boolean flag controlling whether or not the Code Analysis Report is created by this step. The report can be created explicitly in its own step which is why you might want to tweak this setting.<br>(default: false) | true, false
+
+**Possible Return values**
+
+| Return Value     | Description                      |
+|------------------|------------------------------------------------------------------------------------------------------------------------------|
+| 200              | Successfully generated vectors and reached all selected coverage goals (see PLL property). No robustness goals were covered. |
+| 300              | Ran into timeouts before completely analyzing all selected goals (see PLL property). No robustness goals were covered.       |
+| 41x              | Covered Robustness Goal: Downcast                                                                                            |
+| 4x1              | Covered Robustness Goal: Division by Zero                                                                                    |
+| 500              | Unexpected Error                                                                                                             |
+
+#### Step "backToBack"
+
+DSL Command: btc.backToBack {...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Description**
+
+Executes a Back-to-Back Test between the specified reference and
+comparison configuration (e.g. TL MIL vs. SIL). This step requires
+stimuli vectors or functional test cases in the profile. A Back-to-Back
+Test Report will be exported to the "exportDir" specified in the
+"profileLoad" step.
+
+In automated scenarios the effort for manual reviews of frequently
+executed Back-to-Back tests can become quite high. The BTC plugin
+"ApplyFailedAccepted" deals with this challenge by applying your
+manually accepted deviations to all future Back-to-Back Tests as long as
+the deviating values are equal. For more information, please contact
+<support@btc-es.de>.
+
+  
+
+The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+reference | Execution config for the Back-to-Back test reference simulation.<br>(default: "TL MIL") | TL MIL, SIL, PIL, SL MIL
+comparison | Execution config for the Back-to-Back test comparison simulation.<br>(default: "SIL") | TL MIL, SIL, PIL, SL MIL
+
+**Possible Return values**
+
+| Return Value     | Description                                                                              |
+|------------------|------------------------------------------------------------------------------------------|
+| 200              | Back-to-Back Test passed (status: PASSED)                                                |
+| 201              | Back-to-Back Test has accepted failures (status: FAILED ACCEPTED)                        |
+| 300              | There were deviations between the reference and comparison architecture (status: FAILED) |
+| 400              | There were errors during the execution (status: ERROR)                                   |
+| 500              | Unexpected Error                                                                         |
+
+#### Step "regressionTest"
+
+DSL Command: btc.regressionTest {...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Description**
+
+Executes a Regression Test between the current SUT and old Execution
+Records that have been saved. If no saved Execution Records are
+available, the vectors will only be executed on the current SUT and the
+Execution Records will be stored for a later Regression Test. This
+requires stimuli vectors or functional test cases in the profile.  A
+Regression Test Report will be exported to the "exportDir" specified in
+the "profileLoad" step. The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+executionConfigString | Execution configs for the simulation on the current SUT (comma separated list).<br>(default: SIL) | "TL MIL, SIL, PIL", "SL MIL", "SIL"
+
+**Possible Return values**
+
+| Return Value     | Description                                                                |
+|------------------|----------------------------------------------------------------------------|
+| 200              | Regression Test passed (status: PASSED)                                    |
+| 201              | Nothing to compare. Simulation results stored for later Regression Tests.  |
+| 300              | There were deviations between the old and the new version (status: FAILED) |
+| 400              | There were errors during the execution (status: ERROR)                     |
+| 500              | Unexpected Error                                                           |
+
+#### Step "rangeViolationGoals"
+
+DSL Command: btc.rangeViolationGoals{...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Required Plugin**
+
+Plugin RangeViolationGoals
+
+**Description**
+
+Adds Range Violation Goals to the profile which contribute to the Code
+Analysis Report and can be considered during vector generation (pll:
+"RVG"). The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
+rvXmlPath | Path to an xml file containing Range Violation specs. | "RangeViolationGoals.xml"
+considerOutputs | Boolean flag controlling whether the goals should be created for Outputs.<br>(default: true) | true, false
+considerLocals | Boolean flag controlling whether the goals should be created for local displayables.<br>(default: true) | true, false
+checkRangeSpecification | Boolean flag controlling whether the goals should only be created if a signal has Min/Max values other than the data type range.<br>(default: true) | true, false
+
+**Possible Return values**
+
+| Return Value     | Description                                |
+|------------------|--------------------------------------------|
+| 200              | Success                                    |
+| 400              | Range Violation Goals plugin not installed |
+| 500              | Unexpected Error                           |
+
+#### Step "domainCoverageGoals"
+
+DSL Command: btc.domainCoverageGoals{...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Required Plugin**
+
+Plugin DomainCoverageGoals
+
+**Description**
+
+Adds Domain Coverage Goals to the profile which contribute to the Code
+Analysis Report and can be considered during vector generation (pll:
+"DCG"). The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
+dcXmlPath | Path to an xml file containing Domain Coverage specs. | "DomainCoverageGoals.xml"
+raster | String to specify a raster in %. Domain Coverage Goals will be created for equal according to the raster.<br>(default: 25) | "10", "25", "30"
+
+**Possible Return values**
+
+| Return Value     | Description                                |
+|------------------|--------------------------------------------|
+| 200              | Success                                    |
+| 400              | Domain Coverage Goals plugin not installed |
+| 500              | Unexpected Error                           |
+
+#### Step "formalTest"
+
+DSL Command: btc.formalTest{...}
+
+**Required License**
+
+EmbeddedTester (ET\_BASE) + Formal Test Add-On
+
+**Description**
+
+Executes a Formal Test based on all formal requirements in the profile.
+A Formal Test Report will be exported to the "exportDir" specified in
+the "profileLoad" step (and will be linked in the overview report). The
+following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+executionConfigString | Execution configs on which the Formal Test should run (comma separated list)<br>(default: all available configs) | "TL MIL, SIL, PIL"<br>"SIL, PIL"<br>"SL MIL"
+
+**Possible Return values**
+
+| Return Value     | Description                                                  |
+|------------------|--------------------------------------------------------------|
+| 200              | All test cases passed (status: PASSED / FULLFILLED)          |
+| 201              | Nothing to Execute (no formal requirements in the profile).  |
+| 300              | There were violations (status: FAILED / VIOLATED)            |
+| 400              | There were errors during test case execution (status: ERROR) |
+| 500              | Unexpected Error                                             |
+
+  
+
+#### Step "formalVerification"
+
+DSL Command: btc.formalVerification {...}
+
+**Required License**
+
+EmbeddedValidator (EV)
+
+**Description**
+
+Executes all existing proofs in the profile and generates a Formal
+Verification Report. The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+loopUnroll | If the code that is to be analyzed contains loops without explicit maximum number of iterations, e.g. a while(true) loop, these loops need to be unrolled. The given number provides the number of iterations for these loops that is used for the analysis. This unrolling is done in such a way that a "fulfilled" or "fulfilled (n steps)" result can only be obtained if this limit is not exceeded by any possible execution. Conversely, a trace that violates this limit can be found as a witness trace despite not strictly violating the formal requirement itself. This is indicated in the termination reason as "Loop unroll limit (n) exceeded".<br>(default: 32) | 10, 30, 50
+memoryLimit | Memory Limit (MB)<br>The maximum memory footprint to be used by the analysis tools of the EmbeddedPlatform. If an analysis cannot be completed within these limits, this may lead to termination reason "Memory limit (n MB) exceeded"<br>(default: unlimited)
+ | 0 (= unlimited), 1024, 3456
+timeLimit | Time Limit (Seconds)<br>The maximum duration the proof execution may take (excluding some of the pre- and postprocessing tasks, which in general are less time intensive than the actual model checking). This limit should be used especially whenever the proof execution is left unattended and multiple proofs are to be executed in batch. Otherwise, a single proof execution may consume most of the run time and no results would be obtained for the other proofs.<br>(default: unlimited) | 0 (= unlimited), 60, 1000
+searchDepth | Search depth (Steps)<br>the number of executions of the scope under test (i.e. how many execution steps may a counter example be long). This limit corresponds to the term "unwinding depth" employed in bounded model checking. Again, if no such limit is provided, the search for a counter example may in the worst case spend large amounts of time looking for longer and longer counter examples.<br>(default: unlimited) | 0 (= unlimited), 10, 50
+
+**Possible Return values**
+
+| Return Value     | Description                                    |
+|------------------|------------------------------------------------|
+| 200              | All proofs are fulfilled (status: FULFILLED)   |
+| 300              | There was a violation (status: VIOLATED)       |
+| 301              | Unknown (status: UNKNOWN)                      |
+| 400              | BTC EmbeddedValidator package is not installed |
+| 500              | Unexpected Error                               |
+
+
+
+### Reporting
+
+#### Step "testExecutionReport"
 
 DSL Command: btc.testExecutionReport{...}
 
@@ -609,7 +914,7 @@ reportSource | String that specified if the report is based on scopes or require
 | 200              | Success          |
 | 500              | Unexpected Error |
 
-### Step "xmlReport"
+#### Step "xmlReport"
 
 DSL Command: btc.xmlReport{...}
 
@@ -635,7 +940,7 @@ useCase | Controls for which use case the coverage is reported.<br>(default: B2B
 | 200              | Success          |
 | 500              | Unexpected Error |
 
-### Step "codeAnalysisReport"
+#### Step "codeAnalysisReport"
 
 DSL Command: btc.codeAnalysisReport{...}
 
@@ -685,7 +990,7 @@ Plugin](https://plugins.jenkins.io/plot):**
 plot csvFileName: 'plot-b2b-codecoverage.csv', csvSeries: [[displayTableFlag: false, exclusionValues: '', file: "reports/BTCCoverageOverview_B2B.csv", inclusionFlag: 'OFF', url: '']], group: 'BTC Code Coverage Overview', style: 'line', title: 'B2B Code Coverage (Structural)', yaxis: 'Coverage Percentage'
 ```
 
-### Step "modelCoverageReport"
+#### Step "modelCoverageReport"
 
 DSL Command: btc.modelCoverageReport{...}
 
@@ -714,250 +1019,10 @@ useCase | Controls for which use case the coverage is reported.<br>(default: RBT
 | 200              | Success          |
 | 500              | Unexpected Error |
 
-  
 
-### Step "formalTest"
+### Misc
 
-DSL Command: btc.formalTest{...}
-
-**Required License**
-
-EmbeddedTester (ET\_BASE) + Formal Test Add-On
-
-**Description**
-
-Executes a Formal Test based on all formal requirements in the profile.
-A Formal Test Report will be exported to the "exportDir" specified in
-the "profileLoad" step (and will be linked in the overview report). The
-following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-executionConfigString | Execution configs on which the Formal Test should run (comma separated list)<br>(default: all available configs) | "TL MIL, SIL, PIL"<br>"SIL, PIL"<br>"SL MIL"
-
-**Possible Return values**
-
-| Return Value     | Description                                                  |
-|------------------|--------------------------------------------------------------|
-| 200              | All test cases passed (status: PASSED / FULLFILLED)          |
-| 201              | Nothing to Execute (no formal requirements in the profile).  |
-| 300              | There were violations (status: FAILED / VIOLATED)            |
-| 400              | There were errors during test case execution (status: ERROR) |
-| 500              | Unexpected Error                                             |
-
-  
-
-### Step "rangeViolationGoals"
-
-DSL Command: btc.rangeViolationGoals{...}
-
-**Required License**
-
-EmbeddedTester (ET\_COMPLETE)
-
-**Required Plugin**
-
-Plugin RangeViolationGoals
-
-**Description**
-
-Adds Range Violation Goals to the profile which contribute to the Code
-Analysis Report and can be considered during vector generation (pll:
-"RVG"). The following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
-rvXmlPath | Path to an xml file containing Range Violation specs. | "RangeViolationGoals.xml"
-considerOutputs | Boolean flag controlling whether the goals should be created for Outputs.<br>(default: true) | true, false
-considerLocals | Boolean flag controlling whether the goals should be created for local displayables.<br>(default: true) | true, false
-checkRangeSpecification | Boolean flag controlling whether the goals should only be created if a signal has Min/Max values other than the data type range.<br>(default: true) | true, false
-
-**Possible Return values**
-
-| Return Value     | Description                                |
-|------------------|--------------------------------------------|
-| 200              | Success                                    |
-| 400              | Range Violation Goals plugin not installed |
-| 500              | Unexpected Error                           |
-
-### Step "domainCoverageGoals"
-
-DSL Command: btc.domainCoverageGoals{...}
-
-**Required License**
-
-EmbeddedTester (ET\_COMPLETE)
-
-**Required Plugin**
-
-Plugin DomainCoverageGoals
-
-**Description**
-
-Adds Domain Coverage Goals to the profile which contribute to the Code
-Analysis Report and can be considered during vector generation (pll:
-"DCG"). The following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
-dcXmlPath | Path to an xml file containing Domain Coverage specs. | "DomainCoverageGoals.xml"
-raster | String to specify a raster in %. Domain Coverage Goals will be created for equal according to the raster.<br>(default: 25) | "10", "25", "30"
-
-**Possible Return values**
-
-| Return Value     | Description                                |
-|------------------|--------------------------------------------|
-| 200              | Success                                    |
-| 400              | Domain Coverage Goals plugin not installed |
-| 500              | Unexpected Error                           |
-
-### Step "vectorGeneration"
-
-DSL Command: btc.vectorGeneration{...}
-
-**Required License**
-
-EmbeddedTester (ET\_COMPLETE)
-
-**Description**
-
-Executes the engines for analysis and stimuli vector generation for
-structural coverage. The following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-pll | Semicolon separated list of PLLs used to set the goals for automatic stimuli vector generation.<br>(default: all goals will be analyzed) | "STM; D", "STM:3", … (see Back-to-Back & Vector Generation User Guide for more details about PLLs)
-engine | Engine to be used for vector generation (guided random, model checker, both)<br>
-(default: "ATG+CV", combined hierachical approach) | "ATG+CV", "ATG", "CV" (see Back-to-Back & Vector Generation User Guide for more details about engines)
-globalTimeout | Global timeout in seconds. 0 means no timeout.<br>(default: 600) | 600
-scopeTimeout | Scope timeout in seconds. 0 means no timeout.<br>(default: 300) | 300
-perPropertyTimeout | Timeout per coverage property in seconds. 0 means no timeout.<br>(default: 60) | 60
-considerSubscopes | Boolean flag controlling whether or not to consider coverage goals from subscopes.<br>(default: true) | true, false
-recheckUnreachable | Boolean flag controlling whether or not to recheck already calculated unreachable results.<br>(default: false) | true, false
-depthCv | Controls the maximum depth for the CV engine. Set to 0 for infinite depth.<br>(default: 10) | 0, 10, 20, 50
-depthAtg | Controls the maximum depth for the ATG engine. Must be greater than 0.<br>(default: 20) | 10, 20, 50
-loopUnroll | Number of loop interations to unroll for unpredictable loops.<br>(default: 50) | 10, 20, 50
-robustnessTestFailure | Boolean flag controlling whether or not robustness issues are added to the JUnit XML Report as "failed tests".<br>(default: false) | true, false
-createReport | Boolean flag controlling whether or not the Code Analysis Report is created by this step. The report can be created explicitly in its own step which is why you might want to tweak this setting.<br>(default: false) | true, false
-
-**Possible Return values**
-
-| Return Value     | Description                      |
-|------------------|------------------------------------------------------------------------------------------------------------------------------|
-| 200              | Successfully generated vectors and reached all selected coverage goals (see PLL property). No robustness goals were covered. |
-| 300              | Ran into timeouts before completely analyzing all selected goals (see PLL property). No robustness goals were covered.       |
-| 41x              | Covered Robustness Goal: Downcast                                                                                            |
-| 4x1              | Covered Robustness Goal: Division by Zero                                                                                    |
-| 500              | Unexpected Error                                                                                                             |
-
-### Step "backToBack"
-
-DSL Command: btc.backToBack {...}
-
-**Required License**
-
-EmbeddedTester (ET\_COMPLETE)
-
-**Description**
-
-Executes a Back-to-Back Test between the specified reference and
-comparison configuration (e.g. TL MIL vs. SIL). This step requires
-stimuli vectors or functional test cases in the profile. A Back-to-Back
-Test Report will be exported to the "exportDir" specified in the
-"profileLoad" step.
-
-In automated scenarios the effort for manual reviews of frequently
-executed Back-to-Back tests can become quite high. The BTC plugin
-"ApplyFailedAccepted" deals with this challenge by applying your
-manually accepted deviations to all future Back-to-Back Tests as long as
-the deviating values are equal. For more information, please contact
-<support@btc-es.de>.
-
-  
-
-The following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-reference | Execution config for the Back-to-Back test reference simulation.<br>(default: "TL MIL") | TL MIL, SIL, PIL, SL MIL
-comparison | Execution config for the Back-to-Back test comparison simulation.<br>(default: "SIL") | TL MIL, SIL, PIL, SL MIL
-
-**Possible Return values**
-
-| Return Value     | Description                                                                              |
-|------------------|------------------------------------------------------------------------------------------|
-| 200              | Back-to-Back Test passed (status: PASSED)                                                |
-| 201              | Back-to-Back Test has accepted failures (status: FAILED ACCEPTED)                        |
-| 300              | There were deviations between the reference and comparison architecture (status: FAILED) |
-| 400              | There were errors during the execution (status: ERROR)                                   |
-| 500              | Unexpected Error                                                                         |
-
-### Step "regressionTest"
-
-DSL Command: btc.regressionTest {...}
-
-**Required License**
-
-EmbeddedTester (ET\_COMPLETE)
-
-**Description**
-
-Executes a Regression Test between the current SUT and old Execution
-Records that have been saved. If no saved Execution Records are
-available, the vectors will only be executed on the current SUT and the
-Execution Records will be stored for a later Regression Test. This
-requires stimuli vectors or functional test cases in the profile.  A
-Regression Test Report will be exported to the "exportDir" specified in
-the "profileLoad" step. The following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-executionConfigString | Execution configs for the simulation on the current SUT (comma separated list).<br>(default: SIL) | "TL MIL, SIL, PIL", "SL MIL", "SIL"
-
-**Possible Return values**
-
-| Return Value     | Description                                                                |
-|------------------|----------------------------------------------------------------------------|
-| 200              | Regression Test passed (status: PASSED)                                    |
-| 201              | Nothing to compare. Simulation results stored for later Regression Tests.  |
-| 300              | There were deviations between the old and the new version (status: FAILED) |
-| 400              | There were errors during the execution (status: ERROR)                     |
-| 500              | Unexpected Error                                                           |
-
-### Step "formalVerification"
-
-DSL Command: btc.formalVerification {...}
-
-**Required License**
-
-EmbeddedValidator (EV)
-
-**Description**
-
-Executes all existing proofs in the profile and generates a Formal
-Verification Report. The following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-loopUnroll | If the code that is to be analyzed contains loops without explicit maximum number of iterations, e.g. a while(true) loop, these loops need to be unrolled. The given number provides the number of iterations for these loops that is used for the analysis. This unrolling is done in such a way that a "fulfilled" or "fulfilled (n steps)" result can only be obtained if this limit is not exceeded by any possible execution. Conversely, a trace that violates this limit can be found as a witness trace despite not strictly violating the formal requirement itself. This is indicated in the termination reason as "Loop unroll limit (n) exceeded".<br>(default: 32) | 10, 30, 50
-memoryLimit | Memory Limit (MB)<br>The maximum memory footprint to be used by the analysis tools of the EmbeddedPlatform. If an analysis cannot be completed within these limits, this may lead to termination reason "Memory limit (n MB) exceeded"<br>(default: unlimited)
- | 0 (= unlimited), 1024, 3456
-timeLimit | Time Limit (Seconds)<br>The maximum duration the proof execution may take (excluding some of the pre- and postprocessing tasks, which in general are less time intensive than the actual model checking). This limit should be used especially whenever the proof execution is left unattended and multiple proofs are to be executed in batch. Otherwise, a single proof execution may consume most of the run time and no results would be obtained for the other proofs.<br>(default: unlimited) | 0 (= unlimited), 60, 1000
-searchDepth | Search depth (Steps)<br>the number of executions of the scope under test (i.e. how many execution steps may a counter example be long). This limit corresponds to the term "unwinding depth" employed in bounded model checking. Again, if no such limit is provided, the search for a counter example may in the worst case spend large amounts of time looking for longer and longer counter examples.<br>(default: unlimited) | 0 (= unlimited), 10, 50
-
-**Possible Return values**
-
-| Return Value     | Description                                    |
-|------------------|------------------------------------------------|
-| 200              | All proofs are fulfilled (status: FULFILLED)   |
-| 300              | There was a violation (status: VIOLATED)       |
-| 301              | Unknown (status: UNKNOWN)                      |
-| 400              | BTC EmbeddedValidator package is not installed |
-| 500              | Unexpected Error                               |
-
-### Step "getStatusSummary"
+#### Step "getStatusSummary"
 
 DSL Command: btc.getStatusSummary {...}
 
@@ -1009,20 +1074,7 @@ Retrieves a struct as a json text (see below) which can be passed on to external
     - CreatedOn
     - CreatedBy
 
-### Step "wrapUp"
 
-DSL Command: btc.wrapUp {...}
-
-**Description**
-
-Publishes HTML reports and the JUnit XML report to Jenkins and closes
-BTC EmbeddedPlatform. The following optional settings are available:
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-archiveProfiles | Boolean flag controlling whether BTC EmbeddedPlatform profiles are archived by Jenkins to be available on the Job Page. You can disable this and control the "archiveArtifacts" option yourself.<br>(default: true) | true, false
-publishReports | Boolean flag controlling whether the BTC EmbeddedPlatform reports are published in Jenkins to be available on the Job Page. You can disable this and control the "publishHTML" option yourself.<br>(default: true) | true, false
-publishResults | Boolean flag controlling whether BTC EmbeddedPlatform test results (JUnit XML) are published in Jenkins to be available on the Job Page and for further aggregations. You can disable this and control the "junit" option yourself.<br>(default: true) | true, false
   
 
 ## BTC Migration Suite
@@ -1037,7 +1089,7 @@ components on model and code level.
 
 EmbeddedTester (ET\_COMPLETE)
 
-### Step "migrationSource"
+#### Step "migrationSource"
 
 DSL Command: btc.migrationSource {...}
 
@@ -1047,7 +1099,7 @@ Creates a profile on the source configuration (e.g. old Matlab /
 TargetLink version), generates vectors for full coverage and exports the
 simulation results.
 
-### Step "migrationTarget"
+#### Step "migrationTarget"
 
 DSL Command: btc.migrationTarget {...}
 
