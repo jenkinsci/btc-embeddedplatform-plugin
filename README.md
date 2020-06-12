@@ -1024,7 +1024,7 @@ useCase | Controls for which use case the coverage is reported.<br>(default: RBT
 
 #### Step "getStatusSummary"
 
-DSL Command: btc.getStatusSummary {...}
+DSL Command: btc.getStatusSummary()
 
 **Required License**
 
