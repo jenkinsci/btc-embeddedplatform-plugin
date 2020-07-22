@@ -272,6 +272,16 @@ def vectorImport(body) {
     return r.status
 }
 
+def vectorExport(body) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config, 'vectorExport')
+    // call EP
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorExport", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
+    return r.status
+}
+
 def toleranceImport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
@@ -342,9 +352,11 @@ def executionRecordImport(body) {
     return r.status
 }
 
-def removeIncompatibleVectors() {
+def removeIncompatibleVectors(body) {
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', url: "http://localhost:${restPort}/removeIncompatibleVectors", validResponseCodes: '100:500'
+    def config = resolveConfig(body)
+    def reqString = createReqString(config, 'removeIncompatibleVectors')
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/removeIncompatibleVectors", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
