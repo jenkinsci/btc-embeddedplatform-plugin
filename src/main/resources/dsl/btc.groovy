@@ -361,6 +361,15 @@ def removeIncompatibleVectors(body) {
     return r.status
 }
 
+def setDefaultTolerances(body) {
+    // call EP
+    def config = resolveConfig(body)
+    def reqString = createReqString(config, 'setDefaultTolerances')
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/setDefaultTolerances", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
+    return r.status
+}
+
 // wrap up step
 
 /**
@@ -432,20 +441,27 @@ def migrationSource(body) {
     migrationTmpDir = toAbsPath("MigrationTmp")
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
     config.exportPath = migrationTmpDir + "/reports"
-    config.profilePath = migrationTmpDir + "/profiles/profile.epp"
     config.saveProfileAfterEachStep = true
     
     // Startup
     startup(body)
     // Profile Creation
-    if (config.tlModelPath != null) {
-        r = profileCreateTL(config)
-    } else if (config.slModelPath != null) {
-        r = profileCreateEC(config)
-    } else if (config.codeModelPath != null) {
-        r = profileCreateC(config)
+    if (config.profilePath == null) {
+        // create a new profile
+        config.profilePath = migrationTmpDir + "/profiles/profile.epp"
+        if (config.tlModelPath != null) {
+            r = profileCreateTL(config)
+        } else if (config.slModelPath != null) {
+            r = profileCreateEC(config)
+        } else if (config.codeModelPath != null) {
+            r = profileCreateC(config)
+        } else {
+            error("Please specify the model to be tested (target configuration).")
+        }
     } else {
-        error("Please specify the model to be tested (target configuration).")
+        // load existing profile
+        config.updateRequired = true
+        r = profileLoad(config)
     }
     if (r >= 300) {
         wrapUp(body)
