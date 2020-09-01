@@ -84,6 +84,8 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.7.2 | - An issue was introduced by a recent windows update. Added a workaround for that which ensures that the report.json file (migration suite use case) is always encoded in utf-8.<br>Adapted to 2.7 | 2.7 | X |
+2.6.2 | - An issue was introduced by a recent windows update. Added a workaround for that which ensures that the report.json file (migration suite use case) is always encoded in utf-8. | 2.6 | X | 
 2.6.1 | - Added Parameters "analyzeSubscopesHierachichally" and "allowDenormalizedFloats" to vectorGeneration step<br>- Added Parameters "tlSubsystemFilter", "tlCalibrationFilter" and "tlCodeFileFilter" to profileCreateTL step<br>- Added vectorExport step for Test Cases & Stimuli Vectors | 2.6 | X |  X
 2.6.0 | - Minor reporting modifications for reference simulation in migration suite use case<br>- Adaptions to EP 2.6 | 2.6 | X |  X
 2.5.10 | - Matlab log is now also available for c-code workflows that include matlab startupScripts | 2.5 | X | X 
@@ -1119,8 +1121,7 @@ Property | Description | Example Value(s)
 **tlModelPath** | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace.< | "tlModel.slx", "model.mdl"
 matlabVersion | Controls which matlab version will be used by the tool.<br>String containing the release version (e.g. "2016b"), optionally followed by "32-bit" or "64-bit". The version and 32/64-bit part should be separated by a space character. | "2010a 32-bit"<br>"2016b"
 
-In Addition, you can add all other the parameters from the
-steps btc.profileLoad and btc.vectorGeneration if required.
+In Addition, you can add all other the parameters from the steps btc.profileLoad, btc.profileCreate, btc.vectorImport and btc.vectorGeneration if required. If the parameter "importDir" is specified existing vectors will be imported before the vector generation. You can use this to include existing functional test cases or stimuli vectors in the workflow.
 
 ### Migration Suite Example: Jenkinsfile
 
