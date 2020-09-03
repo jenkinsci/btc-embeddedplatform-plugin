@@ -24,8 +24,8 @@ The following workflow steps are available for Jenkins Pipeline:
 
 For these workflow steps many additional settings can be configured
 (optional) in order to adapt the automated test runs to your individual
-project needs. In addition, two utility methods help you to connect to
-instances of BTC EmbeddedPlatform and to close them if again required.
+project needs. Two utility methods help you to connect to
+instances of BTC EmbeddedPlatform and to close them again.
 In addition, the Migration Suite use case can be addressed (see section
 Migration Suite below).
 
