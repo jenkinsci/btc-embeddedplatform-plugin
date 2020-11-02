@@ -1,3 +1,20 @@
+## Quick-Start Checklist
+In order to use BTC EmbeddedPlatform in your CI/CD pipeline the following things are required:
+1. The btc-embeddedplatform-plugin (BTC DSL for Jenkins) must be installed on your Jenkins master (Manage Jenkins > Manage Plugins)
+  * This extends the Jenkins Pipeline lanuage with the btc-steps described below
+2. The agent(s) that shall execute the tests must be prepared with the required software
+  1. Windows 7 (supported for EP versions up to 2.5) or Windows 10
+  2. Matlab Simulink + Code Generator + supported mex-compiler (for model-in-the-loop & software-in-the-loop)
+  3. Supported standalone compiler (Visual Studio, MinGW, ...) (if you are only testing code)
+  4. BTC EmbeddedPlatform + Jenkins Automation Plugin (can be installed via the BTC Plugin Manager)
+    * A license server must be configured which serves a license that supports all desired use cases
+    * Additionally, the floating network license feature "Test Automation Server" (ET_AUTOMATION_SERVER) or "Test Automation Server BASE" (ET_AUTOMATION_SERVER_BASE) are required depending on the use case (use case can be configured via "licensingPackage" property of the [startup step](#step-startup))
+    * The license server can be configured via the GUI directly on the agent machine or by specifying a "licenseLocationString" (see [profileLoad step](#step-profileload))
+  5. The agent(s) must be configured to run its tasks as a specific user (the "Local System" log-on option is not recommended because it leads to a lot of issues with access rights)
+3. A Jenkins Pipeline script using the BTC steps described below
+
+Contact us at support@btc-es.de if you require assistance.
+
 ## Description
 
 The Jenkins Automation Plugin for BTC EmbeddedPlatform provides easy to
@@ -267,17 +284,17 @@ mandatory starting point for all automation workflows._
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
-**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
-tlModelPath | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace. | "model.slx"
-tlScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+**profilePath** | Path of the profile, relative to the jenkins job's workspace or an enclosing "dir" block. If it does not exist, it will be created.<br>**mandatory** | "profile.epp"
+tlModelPath | Path of the TargetLink model, relative to the jenkins job's workspace or an enclosing "dir" block. | "model.slx"
+tlScriptPath | Path of the model init script, relative to the jenkins job's workspace or an enclosing "dir" block. | "init.m"
 tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
-environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
-startupScriptPath | Path to a Startup Script which can be used to initialize matlab (e.g. toolchain startup, etc.). The path can be absolute or relative to the jenkins job's workspace. | "startup_toolchain.m"
-codeModelPath | Path of the hand code description file. The path can be absolute or relative to the jenkins job's workspace. | "CodeModel.xml"
+environmentXmlPath | Path to the XML file with additional include paths, etc., relative to the jenkins job's workspace or an enclosing "dir" block. | "Environment.xml"
+startupScriptPath | Path to a Startup Script which can be used to initialize matlab (e.g. toolchain startup, etc.), relative to the jenkins job's workspace or an enclosing "dir" block. | "startup_toolchain.m"
+codeModelPath | Path of the hand code description file, relative to the jenkins job's workspace or an enclosing "dir" block. | "CodeModel.xml"
 compilerShortName | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found. | "MSSDK71", "MSVC140", "MinGW64"
-slModelPath | Path of the Simulink model. The path can be absolute or relative to the jenkins job's workspace. | "slModel.slx"
-slScriptPath | Path of the model init script for the Simulink model. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
-addModelInfoPath | Path to the XML file with additional model info for SL use case. The path can be absolute or relative to the jenkins job's workspace. | "AddGenModelInfo.xml"
+slModelPath | Path of the Simulink model, relative to the jenkins job's workspace or an enclosing "dir" block. | "slModel.slx"
+slScriptPath | Path of the model init script for the Simulink model, relative to the jenkins job's workspace or an enclosing "dir" block. | "init.m"
+addModelInfoPath | Path to the XML file with additional model info for SL use case, relative to the jenkins job's workspace or an enclosing "dir" block. | "AddGenModelInfo.xml"
 pilConfig | Name of the PIL configuration to use. This config must exist in TargetLink. Setting a PIL Config will activate PIL in the profile and enable you to choose "PIL" as an execution config. | "default EVM"
 pilTimeout | Timeout in seconds for the download process to the PIL board.<br>(default: 60) | 60, 120
 calibrationHandling | The calibration handling controls how calibrations are recognized during architecture import.<br>(default: "EXPLICIT PARAM") | "EXPLICIT PARAM", "LIMITED BLOCKSET", "OFF"
@@ -285,10 +302,10 @@ testMode | The test mode controls whether local displayables will be available f
 reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use existing generated code from TargetLink. Requires the Code and the linking information in the data dictionary to be available.<br>(default: false) | true, false
 matlabVersion | Controls which matlab version will be used by the tool.<br>String containing the release version (e.g. "2016b"), optionally followed by "32-bit" or "64-bit". The version and 32/64-bit part should be separated by a space character. | "2010a 32-bit"<br>"2013b"<br>"2016b 64-bit"
 matlabInstancePolicy | String that controls when EmbeddedPlatform will start a new Matlab instance. When selecting "NEVER" another process needs to ensure that a Matlab instance is available on the agent machine.<br>Default: "AUTO" (i.e. a new instance is only started if no instance of the specified version is available) | "AUTO", "ALWAYS", "NEVER"
-exportPath | Path to a folder where reports shall be stored. The path can be absolute or relative to the jenkins job's workspace. | "reports" (default)
+exportPath | Path to a folder where reports shall be stored, relative to the jenkins job's workspace or an enclosing "dir" block. | "reports" (default)
 updateRequired | Boolean flag that controls whether or not the profile is being update after loading.<br>(default: false) | true, false
 saveProfileAfterEachStep | Boolean flag that controls whether or not the profile is being saved after each step.(default: false) | true, false
-logFilePath | Path for the log file. The path can be absolute or relative to the jenkins job's workspace. | "log.txt" (default)
+logFilePath | Path for the log file, relative to the jenkins job's workspace or an enclosing "dir" block. | "log.txt" (default)
 licenseLocationString | String containing the license locations in the order of their priority. Multiple locations are to be separated by a semicolon. If not specified explicitly, the license locations will still be retrieved from the registry (via FlexLM) in the way they have been configured in the EP license dialog. | "C:\Licenses\EP21_30.01.2019.lic"<br>"@192.168.0.1"<br>"9000@myserver.com"
 
 **Possible Return values**
@@ -314,11 +331,11 @@ of the properties listed in the "profileLoad" step also apply here.
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
-**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
-**tlModelPath** | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for TL use case** | "model.slx"
-tlScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+**profilePath** | Path of the profile. If it does not exist, it will be created, relative to the jenkins job's workspace or an enclosing "dir" block.<br>**mandatory** | "profile.epp"
+**tlModelPath** | Path of the TargetLink model, relative to the jenkins job's workspace or an enclosing "dir" block.<br>**mandatory for TL use case** | "model.slx"
+tlScriptPath | Path of the model init script, relative to the jenkins job's workspace or an enclosing "dir" block. | "init.m"
 tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
-environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
+environmentXmlPath | Path to the XML file with additional include paths, etc., relative to the jenkins job's workspace or an enclosing "dir" block. | "Environment.xml"
 reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use existing generated code from TargetLink. Requires the Code and the linking information in the data dictionary to be available.<br>(default: false) | true, false
 tlSubsystemFilter | Regular expression that controls which subsystems will be available for testing. Please note that removing a subsystem will cause its children to be removed as well.<br>(default: empty; all subsystems will be available for testing) | "scope_.*" (matches scope_a and scope_b but not new_scope_a)
 tlCalibrationFilter | Regular expression that controls which calibrations will be available for testing. <br>(default: empty; all detected calibrations will be available for testing) | "c.*" (matches cFooBar but noch mpFooBar)
@@ -337,12 +354,12 @@ of the properties listed in the "profileLoad" step also apply here.
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
-**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
-**slModelPath** | Path of the EmbeddedCoder model. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for EC use case** | "model.slx"
-slScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
+**profilePath** | Path of the profile, relative to the jenkins job's workspace or an enclosing "dir" block. If it does not exist, it will be created.<br>**mandatory** | "profile.epp"
+**slModelPath** | Path of the EmbeddedCoder model, relative to the jenkins job's workspace or an enclosing "dir" block.<br>**mandatory for EC use case** | "model.slx"
+slScriptPath | Path of the model init script, relative to the jenkins job's workspace or an enclosing "dir" block. | "init.m"
 **compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
-codeModelPath | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "CodeModel.xml"
-mappingFilePath | Path of the mapping file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "Mapping.xml"
+codeModelPath | Path of the code description file, relative to the jenkins job's workspace or an enclosing "dir" block.<br>_This currently required for the architecture update to work with EP 2.5!_ | "CodeModel.xml"
+mappingFilePath | Path of the mapping file, relative to the jenkins job's workspace or an enclosing "dir" block.<br>_This currently required for the architecture update to work with EP 2.5!_ | "Mapping.xml"
 
 
 #### Step "profileCreateSL"
@@ -358,10 +375,10 @@ of the properties listed in the "profileLoad" step also apply here.
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
-**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
-**slModelPath** | Path of the EmbeddedCoder model. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for EC use case** | "model.slx"
-slScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
-**addModelInfoPath** | Path to the XML file with additional model info for SL use case. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for SL use case** | "AddGenModelInfo.xml"
+**profilePath** | Path of the profile, relative to the jenkins job's workspace or an enclosing "dir" block. If it does not exist, it will be created.<br>**mandatory** | "profile.epp"
+**slModelPath** | Path of the EmbeddedCoder model, relative to the jenkins job's workspace or an enclosing "dir" block.<br>**mandatory for EC use case** | "model.slx"
+slScriptPath | Path of the model init script, relative to the jenkins job's workspace or an enclosing "dir" block. | "init.m"
+**addModelInfoPath** | Path to the XML file with additional model info for SL use case, relative to the jenkins job's workspace or an enclosing "dir" block.<br>**mandatory for SL use case** | "AddGenModelInfo.xml"
 
 #### Step "profileCreateC"
 
@@ -376,9 +393,9 @@ the properties listed in the "profileLoad" step also apply here.
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
-**profilePath** | Path of the profile. If it does not exist, it will be created. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "profile.epp"
+**profilePath** | Path of the profile, relative to the jenkins job's workspace or an enclosing "dir" block. If it does not exist, it will be created.<br>**mandatory** | "profile.epp"
 **compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
-**codeModelPath** | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory for hand code use case** | "CodeModel.xml"
+**codeModelPath** | Path of the code description file, relative to the jenkins job's workspace or an enclosing "dir" block.<br>**mandatory for hand code use case** | "CodeModel.xml"
 
 #### Step "wrapUp"
 
