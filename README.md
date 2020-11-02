@@ -1,17 +1,17 @@
 ## Quick-Start Checklist
 In order to use BTC EmbeddedPlatform in your CI/CD pipeline the following things are required:
-1. The btc-embeddedplatform-plugin (BTC DSL for Jenkins) must be installed on your Jenkins master (Manage Jenkins > Manage Plugins)
-  * This extends the Jenkins Pipeline lanuage with the btc-steps described below
-2. The agent(s) that shall execute the tests must be prepared with the required software
-  1. Windows 7 (supported for EP versions up to 2.5) or Windows 10
-  2. Matlab Simulink + Code Generator + supported mex-compiler (for model-in-the-loop & software-in-the-loop)
-  3. Supported standalone compiler (Visual Studio, MinGW, ...) (if you are only testing code)
-  4. BTC EmbeddedPlatform + Jenkins Automation Plugin (can be installed via the BTC Plugin Manager)
-    * A license server must be configured which serves a license that supports all desired use cases
-    * Additionally, the floating network license feature "Test Automation Server" (ET_AUTOMATION_SERVER) or "Test Automation Server BASE" (ET_AUTOMATION_SERVER_BASE) are required depending on the use case (use case can be configured via "licensingPackage" property of the [startup step](#step-startup))
-    * The license server can be configured via the GUI directly on the agent machine or by specifying a "licenseLocationString" (see [profileLoad step](#step-profileload))
-  5. The agent(s) must be configured to run its tasks as a specific user (the "Local System" log-on option is not recommended because it leads to a lot of issues with access rights)
-3. A Jenkins Pipeline script using the BTC steps described below
+* The btc-embeddedplatform-plugin (BTC DSL for Jenkins) must be installed on your Jenkins master (Manage Jenkins > Manage Plugins)
+  + This extends the Jenkins Pipeline lanuage with the btc-steps described below
+* The agent(s) that shall execute the tests must be prepared with the required software
+  + Windows 7 (supported for EP versions up to 2.5) or Windows 10
+  + Matlab Simulink + Code Generator + supported mex-compiler (for model-in-the-loop & software-in-the-loop)
+  + Supported standalone compiler (Visual Studio, MinGW, ...) (if you are only testing code)
+  + BTC EmbeddedPlatform + Jenkins Automation Plugin (can be installed via the BTC Plugin Manager)
+    - A license server must be configured which serves a license that supports all desired use cases
+    - Additionally, the floating network license feature "Test Automation Server" (ET_AUTOMATION_SERVER) or "Test Automation Server BASE" (ET_AUTOMATION_SERVER_BASE) are required depending on the use case (use case can be configured via "licensingPackage" property of the [startup step](#step-startup))
+    - The license server can be configured via the GUI directly on the agent machine or by specifying a "licenseLocationString" (see [profileLoad step](#step-profileload))
+  + The agent(s) must be configured to run its tasks as a specific user (the "Local System" log-on option is not recommended because it leads to a lot of issues with access rights)
+* A Jenkins Pipeline script using the BTC steps described below
 
 Contact us at support@btc-es.de if you require assistance.
 
