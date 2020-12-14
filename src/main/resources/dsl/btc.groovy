@@ -1,7 +1,7 @@
 package dsl
 // vars/btc.groovy
 
-def restPort = null       // the port to use for communication with EP
+def epJenkinsPort = null       // the port to use for communication with EP
 def isDebug  = null       // specifies if a debug environment should be exported and archived (true, false)
 def mode     = null       // mode for migration suite (source, target)
 
@@ -14,9 +14,9 @@ def startup(body = {}) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
     if (config.port != null) {
-        restPort = config.port
+        epJenkinsPort = config.port
     } else {
-        restPort = "29267" // default as fallback
+        epJenkinsPort = "29267" // default as fallback
     }
     def timeoutSeconds = 120
     if (config.timeout != null)
@@ -61,7 +61,7 @@ def startup(body = {}) {
     
     def responseCode = 500
     if (isEpAvailable()) {
-        printToConsole("(201) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${restPort}.")
+        printToConsole("(201) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${epJenkinsPort}.")
         responseCode = 201 // connected to an existing instance
     } else { // try to connect to EP until timeout is reached
         // configure license packages (required since 2.4.0 to support ET_BASE)
@@ -73,9 +73,10 @@ def startup(body = {}) {
         } else if (licensingPackage.equals('ET_BASE')) {
             licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
         }
-        restPort = findNextAvailablePort(restPort)
-        def epPort = getEPPort(restPort)
-        printToConsole("Connecting to EP ${epVersion} using port ${restPort}. (timeout: " + timeoutSeconds + " seconds)")
+        epJenkinsPort = findNextAvailablePort(epJenkinsPort)
+        def epMatlabPort = getEpMatlabPort(epJenkinsPort)
+
+        printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds)")
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
                 epJreDir = getJreDir(epInstallDir)
@@ -85,19 +86,24 @@ def startup(body = {}) {
                 }
                 def startCmd = "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
                 -application com.btc.ep.application.headless -nosplash${epJreString} \
-                -vmargs -Dep.runtime.batch=com.btc.ep -Dep.runtime.api.port=${epPort} \
-                -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${restPort}/configuration\" \
-                -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${restPort}/workspace\" \
-                -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${restPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${restPort} \
-                -Dep.licensing.package=${licensingPackage} -Dep.rest.port=${restPort}"
+                -vmargs -Dep.runtime.batch=com.btc.ep -Dep.runtime.api.port=${epMatlabPort} \
+                -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration\" \
+                -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace\" \
+                -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort} \
+                -Dep.licensing.package=${licensingPackage}"
+                if (epVersion.compareTo("2.8") >= 0) { // version >= 2.8
+                    startCmd += " -Dep.jenkins.port=${epJenkinsPort} -Djna.nosys=true -Dprism.order=sw -XX:+UseParallelGC"
+                } else { // version < 2.8
+                    startCmd += " -Dep.rest.port=${epJenkinsPort}"
+                }
                 printToConsole(startCmd.substring(9).replaceAll(/\s+/, " ").replaceAll(" -", "\n    -"))
                 bat label: 'Starting BTC EmbeddedPlatform', returnStdout: true, script: startCmd
                 waitUntil {
-                    r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
+                    r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
                     // exit waitUntil closure
                     return (r.status == 200)
                 }
-                printToConsole("(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${restPort}.")
+                printToConsole("(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${epJenkinsPort}.")
                 responseCode = 200 // connected to a new instance
             } catch(err) {
                 error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
@@ -105,6 +111,10 @@ def startup(body = {}) {
         }
     }
     return responseCode
+}
+
+def handleError(e) {
+    try { wrapUp {} } catch (err) {} finally { error(e) }
 }
 
 // Profile Creation steps
@@ -136,7 +146,7 @@ def profileInit(body, method) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, method)
     // call EP to invoke profile creation / loading / update
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/${method}", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/${method}", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     isDebug = false
     if (r.status >= 400) {
@@ -157,7 +167,7 @@ def testExecutionReport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'testExecutionReport')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testExecutionReport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/testExecutionReport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -167,7 +177,7 @@ def codeAnalysisReport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'codeAnalysisReport')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/codeAnalysisReport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/codeAnalysisReport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -177,7 +187,7 @@ def modelCoverageReport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'modelCoverageReport')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/modelCoverageReport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/modelCoverageReport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -187,7 +197,7 @@ def xmlReport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'xmlReport')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/xmlReportExport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/xmlReportExport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -197,7 +207,7 @@ def rbtExecution(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'rbtExecution')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/testexecution", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/testexecution", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -207,7 +217,7 @@ def formalTest(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'formalTest')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalTest", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/formalTest", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -217,7 +227,7 @@ def vectorGeneration(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'vectorGeneration')
     // call EP to invoke vector generation and analysis
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorGeneration", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/vectorGeneration", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -227,7 +237,7 @@ def backToBack(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'backToBack')
     // call EP to invoke back-to-back test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/backToBack", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/backToBack", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -237,7 +247,7 @@ def regressionTest(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'regressionTest')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/regressionTest", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/regressionTest", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -247,7 +257,7 @@ def rangeViolationGoals(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'rangeViolationGoals')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addRangeViolationGoals", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addRangeViolationGoals", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -257,7 +267,7 @@ def domainCoverageGoals(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'domainCoverageGoals')
     // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -267,7 +277,7 @@ def vectorImport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'vectorImport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorImport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/vectorImport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -277,7 +287,7 @@ def vectorExport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'vectorExport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/vectorExport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/vectorExport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -287,7 +297,7 @@ def toleranceImport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'toleranceImport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceImport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/toleranceImport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -297,7 +307,7 @@ def toleranceExport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'toleranceExport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/toleranceExport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/toleranceExport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -307,7 +317,7 @@ def inputRestrictionsImport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'inputRestrictionsImport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsImport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/inputRestrictionsImport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -317,7 +327,7 @@ def inputRestrictionsExport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'inputRestrictionsExport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/inputRestrictionsExport", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/inputRestrictionsExport", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -327,7 +337,7 @@ def formalVerification(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'formalVerification')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/formalVerification", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/formalVerification", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -337,7 +347,7 @@ def executionRecordExport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'executionRecordExport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/exportExecutionRecords", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/exportExecutionRecords", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -347,7 +357,7 @@ def executionRecordImport(body) {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'executionRecordImport')
     // call EP
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/importExecutionRecords", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/importExecutionRecords", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -356,7 +366,7 @@ def removeIncompatibleVectors(body) {
     // call EP
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'removeIncompatibleVectors')
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/removeIncompatibleVectors", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/removeIncompatibleVectors", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -365,7 +375,7 @@ def setDefaultTolerances(body) {
     // call EP
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'setDefaultTolerances')
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/setDefaultTolerances", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/setDefaultTolerances", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -397,11 +407,11 @@ def wrapUp(body = {}) {
         // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
         // will throw an exception as soon as the tool closes. This is expected.
         def reqString = "" // removed closeEp parameter, it was only causing problems
-        httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/kill", validResponseCodes: '100:500'
+        httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
         printToConsole('BTC EmbeddedPlatform successfully closed.')
     } finally {
-        releasePort(restPort)
+        releasePort(epJenkinsPort)
     }
     def relativeReportPath = toRelPath(exportPath)
     def profilePathParentDir = getParentDir(toRelPath(profilePath))
@@ -513,11 +523,11 @@ def migrationSource(body) {
     }
     try {
         def reqString = "MIGRATION_SOURCE"
-        httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${restPort}/kill", validResponseCodes: '100:500'
+        httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
         printToConsole('BTC EmbeddedPlatform successfully closed.')
     } finally {
-        releasePort(restPort)
+        releasePort(epJenkinsPort)
     }
     def relativeMigTmpDir = toRelPath(migrationTmpDir)
     def relativeExportPath = toRelPath(exportPath)
@@ -644,8 +654,8 @@ def createReqString(config, methodName) {
         reqString += '"slScriptPath": "' + toAbsPath("${config.slScriptPath}") + '", '
     if (config.addModelInfoPath != null)
         reqString += '"addModelInfoPath": "' + toAbsPath("${config.addModelInfoPath}") + '", '
-    if (config.mappingXmlPath != null)
-        reqString += '"mappingXmlPath": "' + toAbsPath("${config.mappingXmlPath}") + '", '
+    if (config.mappingFilePath != null)
+        reqString += '"mappingFilePath": "' + toAbsPath("${config.mappingFilePath}") + '", '
     if (config.matlabVersion != null)
         reqString += '"matlabVersion": "' + "${config.matlabVersion}" + '", '
     if (config.matlabInstancePolicy != null)
@@ -812,12 +822,12 @@ def getReportPath() {
     exportPath
 }
 
-def getEPPort(restPort) {
-    def epPort = 29300 + Integer.parseInt("" + restPort) % 100
+def getEpMatlabPort(epJenkinsPort) {
+    def epMatlabPort = 29300 + Integer.parseInt("" + epJenkinsPort) % 100
     // in case the ports are equal
-    if (epPort == Integer.parseInt("" + restPort))
-        epPort = epPort - 100
-    return epPort
+    if (epMatlabPort == Integer.parseInt("" + epJenkinsPort))
+        epMatlabPort = epMatlabPort - 100
+    return epMatlabPort
 }
 
 /**
@@ -894,12 +904,23 @@ def getParentDir(path) {
 def getJreDir(epInstallDir) {
     def output = bat returnStdout: true, script: "dir \"${epInstallDir}/jres\" /b /A:D"
     def foldersList = output.trim().tokenize('\n').collect() { it }
+    def jdkFolder = null
+    def jreFolder = null
     for (folder in foldersList) {
+        if (folder.startsWith('jdk')) {
+            jdkFolder = epInstallDir + '/jres/' + folder + '/bin'
+            break // no need to search further, jdk folder is preferred
+        }
         if (folder.startsWith('jre')) {
-            return epInstallDir + '/jres/' + folder + '/bin'
+            jreFolder = epInstallDir + '/jres/' + folder + '/bin'
         }
     }
-    return null
+    if (jdkFolder == null) {
+        return jreFolder
+    } else {
+        return jdkFolder
+    }
+    
 }
 
 /**
@@ -908,7 +929,7 @@ def getJreDir(epInstallDir) {
  * Returns an unsorted collection of executionConfigs (Strings).
  */
 def getAvailableExecutionConfigs() {
-    def cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
+    def cfgs = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${epJenkinsPort}/getAvailableExecutionConfigs", validResponseCodes: '100:500'
     return cfgs
 }
 
@@ -952,7 +973,7 @@ def getAvailableExecutionConfigs() {
  *      - CreatedBy
  */
 def getStatusSummary() {
-    def r = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${restPort}/getStatusSummary", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'GET', url: "http://localhost:${epJenkinsPort}/getStatusSummary", validResponseCodes: '100:500'
     return r.content
 }
 
@@ -962,7 +983,7 @@ def getStatusSummary() {
  * Returns an unsorted collection of executionConfigs (Strings).
  */
 def checkPlugin(qualifierOrListOfQualifiers) {
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: qualifierOrListOfQualifiers, url: "http://localhost:${restPort}/checkPlugin", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: qualifierOrListOfQualifiers, url: "http://localhost:${epJenkinsPort}/checkPlugin", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -978,10 +999,10 @@ def printToConsole(string) {
 
 
 /**
- * Returns true if EP is available at the current restPort, false otherwise
+ * Returns true if EP is available at the current epJenkinsPort, false otherwise
  */
 def isEpAvailable() {
-    def r = httpRequest quiet: true, url: "http://localhost:${restPort}/check", validResponseCodes: '100:500'
+    def r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
     return r.status == 200
 }
 
@@ -1030,16 +1051,16 @@ def findNextAvailablePort(portString) {
     def portList = readYaml file: '.port-registry'
     //Collections.sort(portList) // sort list to make sure port numbers are ascending
     portList.sort()
-    def restPortNumber = Integer.parseInt("" + portString)
+    def epJenkinsPortNumber = Integer.parseInt("" + portString)
     for (port in portList) {
-        if (port == restPortNumber) {
-            restPortNumber++
-        } else if (port > restPortNumber) {
+        if (port == epJenkinsPortNumber) {
+            epJenkinsPortNumber++
+        } else if (port > epJenkinsPortNumber) {
             // sorted list ensures that no other ports collide with this one
             break
         }
     }
-    portList += restPortNumber
+    portList += epJenkinsPortNumber
     writeYaml file: '.port-registry', data: portList, overwrite: true
     
     try {
@@ -1053,7 +1074,7 @@ def findNextAvailablePort(portString) {
         error("Unable to update btc-port-registry: " + err)
     }
 
-    return restPortNumber
+    return epJenkinsPortNumber
 }
 
 /**
@@ -1092,8 +1113,8 @@ def releasePort(port) {
         error("Could not get lock on btc-port-registry: " + err)
     }    
     def portList = readYaml file: '.port-registry'
-    def restPortNumber = Integer.parseInt("" + port)
-    portList -= restPortNumber
+    def epJenkinsPortNumber = Integer.parseInt("" + port)
+    portList -= epJenkinsPortNumber
     writeYaml file: '.port-registry', data: portList, overwrite: true    
     try {
         bat label: 'Update port registry', returnStdout: true, script:

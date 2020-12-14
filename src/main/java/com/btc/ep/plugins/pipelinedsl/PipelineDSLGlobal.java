@@ -23,17 +23,15 @@
  */
 package org.jenkinsci.plugins.pipelinedsl;
 
-import groovy.lang.Binding;
-import groovy.lang.GroovyCodeSource;
-import hudson.Extension;
-import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.ProxyWhitelist;
-import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.StaticWhitelist;
+import java.io.InputStreamReader;
+import java.io.Reader;
+
 import org.jenkinsci.plugins.workflow.cps.CpsScript;
 import org.jenkinsci.plugins.workflow.cps.CpsThread;
 import org.jenkinsci.plugins.workflow.cps.GlobalVariable;
 
-import java.io.*;
-import java.net.URL;
+import groovy.lang.Binding;
+import groovy.lang.GroovyCodeSource;
 
 public abstract class PipelineDSLGlobal extends GlobalVariable {
 
@@ -43,8 +41,6 @@ public abstract class PipelineDSLGlobal extends GlobalVariable {
     public String getName() {
         return getFunctionName();
     }
-
-
 
     @Override
     public Object getValue(CpsScript script) throws Exception {
@@ -59,18 +55,19 @@ public abstract class PipelineDSLGlobal extends GlobalVariable {
         String scriptPath = "dsl/" + getFunctionName() + ".groovy";
         Reader r = new InputStreamReader(cl.getResourceAsStream(scriptPath), "UTF-8");
 
-        GroovyCodeSource gsc = new GroovyCodeSource(r, getFunctionName() + ".groovy", cl.getResource(scriptPath).getFile());
+        GroovyCodeSource gsc =
+            new GroovyCodeSource(r, getFunctionName() + ".groovy", cl.getResource(scriptPath).getFile());
         gsc.setCachable(true);
 
-
+        @SuppressWarnings ("unchecked")
         Object pipelineDSL = c.getExecution()
-                .getShell()
-                .getClassLoader()
-                .parseClass(gsc)
-                .newInstance();
+            .getShell()
+            .getClassLoader()
+            .parseClass(gsc)
+            .getDeclaredConstructor()
+            .newInstance();
         binding.setVariable(getName(), pipelineDSL);
         r.close();
-
 
         return pipelineDSL;
     }
