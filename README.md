@@ -84,7 +84,12 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.8.1 | - Added option to control the rmi port used for the matlab connection (matlabPort -> btc.startup) | 2.8 | | X 
+2.8.0 | - Adapted to EP 2.8<br>- NOTE: requires BTC DSL for Pipeline (btc-embeddedplatform-plugin) on the Jenkins master in version 2.8.0 or higher! | 2.8 | X | X 
+2.7.3 | - Fixed an encoding issue introduced by a recent windows update (now ensures utf-8 charset)<br>- Fixed an issue that prevented the architecture update for manually created merged architectures (SL + C-Code). NOTE: this fix requires BTC DSL for Pipeline (btc-embeddedplatform-plugin) on the Jenkins master in version 2.8.0 or higher! | 2.7 | X | X 
+2.6.2<br>2.5.11<br>2.4.23 | - An issue was introduced by a recent windows update. Added a workaround for that which ensures that the report.json file (migration suite use case) is always encoded in utf-8. | 2.6 | X |  
 2.6.1 | - Added Parameters "analyzeSubscopesHierachichally" and "allowDenormalizedFloats" to vectorGeneration step<br>- Added Parameters "tlSubsystemFilter", "tlCalibrationFilter" and "tlCodeFileFilter" to profileCreateTL step<br>- Added vectorExport step for Test Cases & Stimuli Vectors | 2.6 | X |  X
+2.7.0 | - Adapted to EP 2.7 | 2.7 | X |  
 2.6.0 | - Minor reporting modifications for reference simulation in migration suite use case<br>- Adaptions to EP 2.6 | 2.6 | X |  X
 2.5.10 | - Matlab log is now also available for c-code workflows that include matlab startupScripts | 2.5 | X | X 
 2.5.8 | - Fixed: B2B Tests with status "FAILED_ACCPETED" will now yield the appropriate return code and will not be treated as failures in the JUnit report<br>- Added testsuite attribute "time" which carries the execution time of the test suites + the overall execution time<br>- Fixed an issue that caused execution records to be used twice in the migration suite context<br>- Ouput from the Matlab console will now be available in a log file that is archived automatically in the wrapUp step | 2.5 | X | X 

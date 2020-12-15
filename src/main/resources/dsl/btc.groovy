@@ -18,6 +18,10 @@ def startup(body = {}) {
     } else {
         epJenkinsPort = "29267" // default as fallback
     }
+    epMatlabPort = null
+    if (config.matlabPort != null) {
+        epMatlabPort = config.matlabPort
+    }
     def timeoutSeconds = 120
     if (config.timeout != null)
         timeoutSeconds = config.timeout
@@ -74,7 +78,9 @@ def startup(body = {}) {
             licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
         }
         epJenkinsPort = findNextAvailablePort(epJenkinsPort)
-        def epMatlabPort = getEpMatlabPort(epJenkinsPort)
+        if (epMatlabPort == null) {
+            epMatlabPort = getEpMatlabPort(epJenkinsPort)
+        }
 
         printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds)")
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
