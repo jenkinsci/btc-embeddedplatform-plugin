@@ -235,6 +235,7 @@ until it is available. The following optional settings are available:
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
 port | Port used to connect to EmbeddedPlatform.<br>(default: 29267) | 1234, 29268, 8073
+matlabPort | RMI port used to connect EmbeddedPlatform to Matlab.<br>(default: 29300 + (port % 100)) | 1090, 29300, 1234
 timeout | Timeout in seconds before the attempt to connect to EmbeddedPlatform is cancelled. This timeout should consider the worst case CPU & IO performance which influences the tool startup.<br>(default: 120) | 40, 60, 120
 licensingPackage | Name of the licensing package to use, e.g. to use a EmbeddedTester BASE.<br>(default: ET_COMPLETE) | ET_BASE
 
