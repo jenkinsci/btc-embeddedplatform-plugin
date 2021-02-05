@@ -215,6 +215,9 @@ def rbtExecution(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/testexecution", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
+    if (r.status == 300) {
+        unstable('Tests failed.')
+    }
     return r.status
 }
 
@@ -225,6 +228,9 @@ def formalTest(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/formalTest", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
+    if (r.status == 300) {
+        unstable('FormalTest failed.')
+    }
     return r.status
 }
 
@@ -245,6 +251,9 @@ def backToBack(body) {
     // call EP to invoke back-to-back test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/backToBack", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
+    if (r.status == 300) {
+        unstable('Back-to-Back Test failed.')
+    }
     return r.status
 }
 
@@ -810,6 +819,12 @@ def createReqString(config, methodName) {
         reqString += '"includeSourceCode": "' + "${config.includeSourceCode}" + '", '
     if (config.reportName != null)
         reqString += '"reportName": "' + "${config.reportName}" + '", '
+    // default tolerances
+    if (config.configFilePath != null)
+        reqString += '"configFilePath": "' + toAbsPath("${config.configFilePath}") + '", '
+    if (config.tolerancesFilePath != null)
+        reqString += '"tolerancesFilePath": "' + toAbsPath("${config.tolerancesFilePath}") + '", '
+    
     
     reqString = reqString.trim()
     if (reqString.endsWith(','))
