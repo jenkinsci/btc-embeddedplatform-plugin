@@ -2,10 +2,10 @@
 
 In order to use BTC EmbeddedPlatform steps in your Jenkins Pipeline, here's what should be prepared upfront:
 
-# Jenkins Controller
+### Jenkins Controller
 - Have the btc-embeddedplatform-plugin (BTC DSL for Pipeline) installed on the Jenkins Controller
 
-# Jenkins Agent
+### Jenkins Agent
 - A Jenkins Agent with:
   - Windows 10 or Windows Server 2019 LTSC
   - BTC EmbeddedPlatform
@@ -15,7 +15,7 @@ In order to use BTC EmbeddedPlatform steps in your Jenkins Pipeline, here's what
 ![jenkins-service-user](https://user-images.githubusercontent.com/5657657/109487642-c687ea80-7a84-11eb-9c85-c12f0c275cc6.png)
 
 
-# Licensing
+### Licensing
 - A multi-site network license for "EmbeddedTester" and "Test Automation Server"
   - The license server can be configured via the "licenseLocationString" parameter in the profileLoad / profileCreateXX step
   - it can also be configured directly on the Jenkins Agent via the BTC EmbeddedPlatform GUI on the Jenkins Agent
