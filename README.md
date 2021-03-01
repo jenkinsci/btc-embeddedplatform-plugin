@@ -1,3 +1,27 @@
+## Quick Start Checklist
+
+In order to use BTC EmbeddedPlatform steps in your Jenkins Pipeline, here's what should be prepared upfront:
+
+# Jenkins Controller
+- Have the btc-embeddedplatform-plugin (BTC DSL for Pipeline) installed on the Jenkins Controller
+
+# Jenkins Agent
+- A Jenkins Agent with:
+  - Windows 10 or Windows Server 2019 LTSC
+  - BTC EmbeddedPlatform
+  - JenkinsAutomation Plugin for BTC EmbeddedPlatform (installed manually or via the BTC Plugin Manager)
+
+- In order to prevent problems with user access rights it is important to let the Jenkins agent process run as a specific user. In case your connection to the Controller uses a Windows Service, you need to make it log on as a specific user instead of "Local System Accout":
+![jenkins-service-user](https://user-images.githubusercontent.com/5657657/109487642-c687ea80-7a84-11eb-9c85-c12f0c275cc6.png)
+
+
+# Licensing
+- A multi-site network license for "EmbeddedTester" and "Test Automation Server"
+  - The license server can be configured via the "licenseLocationString" parameter in the profileLoad / profileCreateXX step
+  - it can also be configured directly on the Jenkins Agent via the BTC EmbeddedPlatform GUI on the Jenkins Agent
+
+In case Jenkins initially fails to connect to BTC EmbeddedPlatform ("400: Timeout while connecting to BTC EmbeddedPlatform") you may have forgotten to install the "Jenkins Automation Plugin for BTC EmbeddedPlatform" (see above: Jenkins Agent). If you did install the plugin, you might want to go to %APPDATA%/BTC/ep and delete the directory matching the EP version you're using. This is normally done during the plugin installation sometimes there are issues with non-admin users or other applications interfering.
+
 ## Description
 
 The Jenkins Automation Plugin for BTC EmbeddedPlatform provides easy to
