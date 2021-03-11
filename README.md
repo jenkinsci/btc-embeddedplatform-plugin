@@ -108,6 +108,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.8.2 | - Added suppport for blacklist/whitelist filtering for rbtExecution based on linked requirements<br>- Added possibility to specify additional jvm arguments on startup (e.g. -Xmx2g)<br>- Added option for DomainCoverageGoals to only apply to inputs/cals (see step btc.domainCoverageGoals) | 2.8 | X | X 
 2.8.1 | - Added option to control the rmi port used for the matlab connection (matlabPort -> btc.startup) | 2.8 | | X 
 2.8.0 | - Adapted to EP 2.8<br>- NOTE: requires BTC DSL for Pipeline (btc-embeddedplatform-plugin) on the Jenkins master in version 2.8.0 or higher! | 2.8 | X | X 
 2.7.3 | - Fixed an encoding issue introduced by a recent windows update (now ensures utf-8 charset)<br>- Fixed an issue that prevented the architecture update for manually created merged architectures (SL + C-Code). NOTE: this fix requires BTC DSL for Pipeline (btc-embeddedplatform-plugin) on the Jenkins master in version 2.8.0 or higher! | 2.7 | X | X 
@@ -263,6 +264,7 @@ matlabPort | RMI port used to connect EmbeddedPlatform to Matlab.<br>(default: 2
 timeout | Timeout in seconds before the attempt to connect to EmbeddedPlatform is cancelled. This timeout should consider the worst case CPU & IO performance which influences the tool startup.<br>(default: 120) | 40, 60, 120
 licensingPackage | Name of the licensing package to use, e.g. to use a EmbeddedTester BASE.<br>(default: ET_COMPLETE) | ET_BASE
 installPath | Path to the BTC EmbeddedPlatform installation directory<br>Usually this can be omitted, the "active" EP version will be chosen (queried from the windows registry) | "C:/Program Files/BTC/ep2.8p0"
+additionalJvmArgs | String with space separated arguments to be passed to the JVM<br>(expert property - only use if you know what you're doing!) | "-Xmx2g"
 
 **Possible Return values**
 
@@ -603,6 +605,8 @@ Property | Description | Example Value(s)
 exportFormat | String specifying the export format for the execution records<br>(default: mdf) | "mdf", "excel"
 scopesWhitelist	| Comma separated String with scopes to include. If this string is not empty, only scopes that are listed here will be considered.<br>(default: "" - empty String: all scopes will be considered) | "toplevel"<br>"toplevel, subA, subB"
 scopesBlacklist | Comma separated String with scopes to exclude. If this string is not empty, only scopes that are not listed here will be considered.<br>(default: "" - empty String: no scopes will be excluded) | "toplevel"<br>"toplevel, subA, subB"
+requirementsWhitelist	| Comma separated String with requirement names or externalIDs. If this string is not empty, only test cases linked to one of these requirements will be considered.<br>(default: "" - empty String: all test cases will be considered) | "toplevel"<br>"req_a, r124"
+requirementsBlacklist | Comma separated String with requirement names or externalIDs. If this string is not empty, test cases linked to one of these requirements will not be considered.<br>(default: "" - empty String: all test cases will be considered) | "toplevel"<br>"req_a, r124"
 foldersWhitelist | Comma separated String with folders to include. If this string is not empty, only folders that are listed here will be considered.<br>(default: "" - empty String: all folders will be considered) | "Old Execution Records"<br>"FolderA, FolderB"
 foldersBlacklist | Comma separated String with folders to exclude. If this string is not empty, only folders that are not listed here will be considered.<br>(default: "" - empty String: no folders will be excluded) | "Old Execution Records"<br>"FolderA, FolderB"
 testCasesWhitelist | Comma separated String with testcases to include. If this string is not empty, only testcases that are listed here will be considered.<br>(default: "" - empty String: all testcases will be considered) | "tc1"<br>"tc1, tc2, tc44"
@@ -645,6 +649,8 @@ reportSource | String that specified if the report is based on scopes or require
 createReport | Boolean flag controlling whether or not the Test Execution Report is created by this step. The report can be created explicitly in its own step (see step "testExecutionReport").<br>(default: false) | true, false
 scopesWhitelist	| Comma separated String with scopes to include. If this string is not empty, only scopes that are listed here will be considered.<br>(default: "" - empty String: all scopes will be considered) | "toplevel"<br>"toplevel, subA, subB"
 scopesBlacklist | Comma separated String with scopes to exclude. If this string is not empty, only scopes that are not listed here will be considered.<br>(default: "" - empty String: no scopes will be excluded) | "toplevel"<br>"toplevel, subA, subB"
+requirementsWhitelist	| Comma separated String with requirement names or externalIDs. If this string is not empty, only test cases linked to one of these requirements will be considered.<br>(default: "" - empty String: all test cases will be considered) | "toplevel"<br>"req_a, r124"
+requirementsBlacklist | Comma separated String with requirement names or externalIDs. If this string is not empty, test cases linked to one of these requirements will not be considered.<br>(default: "" - empty String: all test cases will be considered) | "toplevel"<br>"req_a, r124"
 foldersWhitelist | Comma separated String with folders to include. If this string is not empty, only folders that are listed here will be considered.<br>(default: "" - empty String: all folders will be considered) | "Old Execution Records"<br>"FolderA, FolderB"
 foldersBlacklist | Comma separated String with folders to exclude. If this string is not empty, only folders that are not listed here will be considered.<br>(default: "" - empty String: no folders will be excluded) | "Old Execution Records"<br>"FolderA, FolderB"
 testCasesWhitelist | Comma separated String with testcases to include. If this string is not empty, only testcases that are listed here will be considered.<br>(default: "" - empty String: all testcases will be considered) | "tc1"<br>"tc1, tc2, tc44"
@@ -685,8 +691,7 @@ structural coverage. The following optional settings are available:
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
 pll | Semicolon separated list of PLLs used to set the goals for automatic stimuli vector generation.<br>(default: all goals will be analyzed) | "STM; D", "STM:3", … (see Back-to-Back & Vector Generation User Guide for more details about PLLs)
-engine | Engine to be used for vector generation (guided random, model checker, both)<br>
-(default: "ATG+CV", combined hierachical approach) | "ATG+CV", "ATG", "CV" (see Back-to-Back & Vector Generation User Guide for more details about engines)
+engine | Engine to be used for vector generation (guided random, model checker, both)<br>(default: "ATG+CV", combined hierachical approach) | "ATG+CV", "ATG", "CV" (see Back-to-Back & Vector Generation User Guide for more details about engines)
 globalTimeout | Global timeout in seconds. 0 means no timeout.<br>(default: 600) | 600
 scopeTimeout | Scope timeout in seconds. 0 means no timeout.<br>(default: 300) | 300
 perPropertyTimeout | Timeout per coverage property in seconds. 0 means no timeout.<br>(default: 60) | 60
@@ -841,6 +846,7 @@ Property | Description | Example Value(s)
 scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
 dcXmlPath | Path to an xml file containing Domain Coverage specs. | "DomainCoverageGoals.xml"
 raster | String to specify a raster in %. Domain Coverage Goals will be created for equal according to the raster.<br>(default: 25) | "10", "25", "30"
+addDomainBoundaryForInputs | Flag that controls whether the goals are only applied to inputs / cals.<br>(default: false) | true, false
 
 **Possible Return values**
 

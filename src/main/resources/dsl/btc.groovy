@@ -102,6 +102,9 @@ def startup(body = {}) {
                 } else { // version < 2.8
                     startCmd += " -Dep.rest.port=${epJenkinsPort}"
                 }
+                if (config.additionalJvmArgs != null) {
+                    startCmd += " ${config.additionalJvmArgs}"
+                }
                 printToConsole(startCmd.substring(9).replaceAll(/\s+/, " ").replaceAll(" -", "\n    -"))
                 bat label: 'Starting BTC EmbeddedPlatform', returnStdout: true, script: startCmd
                 waitUntil {
@@ -717,6 +720,10 @@ def createReqString(config, methodName) {
         reqString += '"reference": "' + "${config.reference}" + '", '
     if (config.comparison != null)
         reqString += '"comparison": "' + "${config.comparison}" + '", '
+    if (config.requirementsWhitelist != null)
+        reqString += '"requirementsWhitelist": "' + "${config.requirementsWhitelist}" + '", '
+    if (config.requirementsBlacklist != null)
+        reqString += '"requirementsBlacklist": "' + "${config.requirementsBlacklist}" + '", '    
     if (config.scopesWhitelist != null)
         reqString += '"scopesWhitelist": "' + "${config.scopesWhitelist}" + '", '
     if (config.scopesBlacklist != null)
@@ -790,6 +797,8 @@ def createReqString(config, methodName) {
         reqString += '"dcXmlPath": "' + toAbsPath("${config.dcXmlPath}") + '", '
     if (config.raster != null)
         reqString += '"raster": "' + "${config.raster}" + '", '
+    if (config.addDomainBoundaryForInputs != null)
+        reqString += '"addDomainBoundaryForInputs": "' + "${config.addDomainBoundaryForInputs}" + '", '
     
     // Vector Import
     if (config.importDir != null)
@@ -929,11 +938,11 @@ def getJreDir(epInstallDir) {
     def jreFolder = null
     for (folder in foldersList) {
         if (folder.startsWith('jdk')) {
-            jdkFolder = epInstallDir + '/jres/' + folder + '/bin'
+            jdkFolder = epInstallDir + '/jres/' + folder.trim() + '/bin'
             break // no need to search further, jdk folder is preferred
         }
         if (folder.startsWith('jre')) {
-            jreFolder = epInstallDir + '/jres/' + folder + '/bin'
+            jreFolder = epInstallDir + '/jres/' + folder.trim() + '/bin'
         }
     }
     if (jdkFolder == null) {
