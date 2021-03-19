@@ -280,6 +280,16 @@ def rangeViolationGoals(body) {
     return r.status
 }
 
+def addInputCombinationGoals(body) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config, 'inputCombinationGoals')
+    // call EP to invoke test execution
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addUdcgInputCombinationGoals", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
+    return r.status
+}
+
 def domainCoverageGoals(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
@@ -398,6 +408,33 @@ def setDefaultTolerances(body) {
     return r.status
 }
 
+def collectProjectOverview(body)  {
+    def config = resolveConfig(body)
+    def reqString = createReqString(config, 'collectProjectOverview')
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/collectProjectOverview", validResponseCodes: '100:500'
+    projectOverview = readJSON text: r.content
+    if (!binding.hasVariable('projectOverviewList')) {
+        initProjectOverview()
+    }
+    projectOverviewList.add(projectOverview)
+    printToConsole(" -> (${r.status}) Collected project status for overview report.")
+    return r.status
+}
+
+def createOverallReport(path)  {
+    def config = [:]
+    config.path = toAbsPath(path)
+    config.projects = projectOverviewList
+    def payload = toJson(config)
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: payload, url: "http://localhost:${epJenkinsPort}/createOverallReport", validResponseCodes: '100:500'
+    if (r.status == 404) {
+        printToConsole(" -> Overview Report feature not supported by the JenkinsAutomation Plugin version you have installed on the Agent machine.")
+    } else {
+        printToConsole(" -> (${r.status}) ${r.content}")
+    }
+    return r.status
+}
+
 // wrap up step
 
 /**
@@ -415,27 +452,35 @@ def wrapUp(body = {}) {
     def archiveProfiles = true
     if (config.archiveProfiles != null)
         archiveProfiles = config.archiveProfiles
-    publishReports = true
+    def publishReports = true
     if (config.publishReports != null)
         publishReports = config.publishReports
-    publishResults = true
+    def publishResults = true
     if (config.publishResults != null)
         publishResults = config.publishResults
     try {
         // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
         // will throw an exception as soon as the tool closes. This is expected.
         def reqString = "" // removed closeEp parameter, it was only causing problems
+        if (config.closeEp != null && config.closeEp == false) {
+            reqString = "false"
+        }
+        // this overrides "false" or anything else
+        if (config.exit != null && config.exit == true) {
+            reqString = "exit"
+        }
         httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
         printToConsole('BTC EmbeddedPlatform successfully closed.')
     } finally {
-        releasePort(epJenkinsPort)
+        if (config.closeEp == null || config.closeEp == true) {
+            releasePort(epJenkinsPort)
+        }
     }
     def relativeReportPath = toRelPath(exportPath)
     def profilePathParentDir = getParentDir(toRelPath(profilePath))
     try {
         // archiveArtifacts works with relative paths
-        archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeReportPath}/*.log"
         if (archiveProfiles) {
             archiveArtifacts allowEmptyArchive: true, artifacts: "${profilePathParentDir}/*.epp"
         }
@@ -449,9 +494,28 @@ def wrapUp(body = {}) {
     }
     // JUnit works with relative paths
     if (publishResults) {
-        printToConsole("Looking for junit results in '" + "${relativeReportPath}/junit-report.xml" + "'")
-        junit allowEmptyResults: true, testResults: "${relativeReportPath}/junit-report.xml"
+        printToConsole("Looking for junit results in '" + "**/*junit-report.xml" + "'")
+        junit allowEmptyResults: true, testResults: "**/*junit-report.xml"
     }
+}
+
+def finalWrapUp(body = {}) {
+    def config = resolveConfig(body)
+    def relativePath = toRelPath(config.path)
+    createOverallReport("${relativePath}/OverviewReport.html")
+    try {
+        // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
+        // will throw an exception as soon as the tool closes. This is expected.
+        httpRequest quiet: true, httpMode: 'POST', requestBody: 'exit', url: "http://localhost:${epJenkinsPort}/kill", validResponseCodes: '100:500'
+    } catch (err) {
+        printToConsole('BTC EmbeddedPlatform successfully closed.')
+    } finally {
+        releasePort(epJenkinsPort)
+    }
+    if (fileExists("${relativePath}/OverviewReport.html")) {
+        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativePath}", reportFiles: 'OverviewReport.html', reportName: 'Test Automation Overview Report'])
+    }
+    junit allowEmptyResults: true, testResults: "**/*junit-report.xml"
 }
 
 /**
@@ -648,6 +712,8 @@ def createReqString(config, methodName) {
         profilePath = toAbsPath("${config.profilePath}")
         exportPath = toAbsPath(getParentDir("${config.profilePath}") + "/reports")
     }
+    if (config.uniqueName != null)
+        reqString += '"uniqueName": "' + "${config.uniqueName}" + '", '
     if (config.tlModelPath != null)
         reqString += '"tlModelPath": "' + toAbsPath("${config.tlModelPath}") + '", '
     if (config.tlScriptPath != null)
@@ -800,6 +866,10 @@ def createReqString(config, methodName) {
     if (config.addDomainBoundaryForInputs != null)
         reqString += '"addDomainBoundaryForInputs": "' + "${config.addDomainBoundaryForInputs}" + '", '
     
+    // UDCG
+    if (config.valueRegions != null)
+        reqString += '"valueRegions": "' + "${config.valueRegions}" + '", '
+
     // Vector Import
     if (config.importDir != null)
         reqString += '"importDir": "' + toAbsPath("${config.importDir}") + '", '
@@ -953,6 +1023,11 @@ def getJreDir(epInstallDir) {
     
 }
 
+def initProjectOverview() {
+    projectOverviewList = []
+}
+
+
 /**
  * Utility method to query available execution configs
  *
@@ -1105,6 +1180,13 @@ def findNextAvailablePort(portString) {
     }
 
     return epJenkinsPortNumber
+}
+
+def toJson(object) {
+    writeJSON file: 'temp1906235690.json', json: object
+    def rJSON = readFile encoding: 'utf-8', file: 'temp1906235690.json'
+    def ignore = bat returnStdout: true, script: 'del /f /q temp1906235690.json'
+    return rJSON
 }
 
 /**
