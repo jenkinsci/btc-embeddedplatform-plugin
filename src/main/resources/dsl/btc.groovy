@@ -18,10 +18,6 @@ def startup(body = {}) {
     } else {
         epJenkinsPort = "29267" // default as fallback
     }
-    epMatlabPort = null
-    if (config.matlabPort != null) {
-        epMatlabPort = config.matlabPort
-    }
     def timeoutSeconds = 120
     if (config.timeout != null)
         timeoutSeconds = config.timeout
@@ -78,9 +74,6 @@ def startup(body = {}) {
             licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
         }
         epJenkinsPort = findNextAvailablePort(epJenkinsPort)
-        if (epMatlabPort == null) {
-            epMatlabPort = getEpMatlabPort(epJenkinsPort)
-        }
 
         printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds)")
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
@@ -92,7 +85,7 @@ def startup(body = {}) {
                 }
                 def startCmd = "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
                 -application com.btc.ep.application.headless -nosplash${epJreString} \
-                -vmargs -Dep.runtime.batch=com.btc.ep -Dep.runtime.api.port=${epMatlabPort} \
+                -vmargs -Dep.runtime.batch=com.btc.ep \
                 -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration\" \
                 -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace\" \
                 -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort} \
@@ -920,14 +913,6 @@ def getPort() {
 
 def getReportPath() {
     exportPath
-}
-
-def getEpMatlabPort(epJenkinsPort) {
-    def epMatlabPort = 29300 + Integer.parseInt("" + epJenkinsPort) % 100
-    // in case the ports are equal
-    if (epMatlabPort == Integer.parseInt("" + epJenkinsPort))
-        epMatlabPort = epMatlabPort - 100
-    return epMatlabPort
 }
 
 /**
