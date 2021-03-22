@@ -1164,6 +1164,7 @@ This is a somewhat special step that requires some preparation:
   ```
   
 </details>
+
 ![btc-embeddedplatform-plugin-createoverallreport](https://user-images.githubusercontent.com/5657657/111972115-62919880-8afd-11eb-95c9-565eeae2e0f6.png)
 
 **Possible Return values**
