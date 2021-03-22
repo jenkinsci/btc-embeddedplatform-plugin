@@ -2,10 +2,13 @@
 
 In order to use BTC EmbeddedPlatform steps in your Jenkins Pipeline, here's what should be prepared upfront:
 
-### Jenkins Controller
+<details>
+  <summary>Jenkins Controller</summary>
 - Have the btc-embeddedplatform-plugin (BTC DSL for Pipeline) installed on the Jenkins Controller
+</details>
 
-### Jenkins Agent
+<details>
+  <summary>Jenkins Agent</summary>
 - A Jenkins Agent with:
   - Windows 10 or Windows Server 2019 LTSC
   - BTC EmbeddedPlatform
@@ -13,14 +16,16 @@ In order to use BTC EmbeddedPlatform steps in your Jenkins Pipeline, here's what
 
 - In order to prevent problems with user access rights it is important to let the Jenkins agent process run as a specific user. In case your connection to the Controller uses a Windows Service, you need to make it log on as a specific user instead of "Local System Accout":
 ![jenkins-service-user](https://user-images.githubusercontent.com/5657657/109487642-c687ea80-7a84-11eb-9c85-c12f0c275cc6.png)
+</details>
 
+<details>
+  <summary>Licensing</summary>
+  - you'll need a multi-site network license for "EmbeddedTester" and "Test Automation Server"
+    - The license server can be configured via the "licenseLocationString" parameter in the profileLoad / profileCreateXX step
+    - it can also be configured directly on the Jenkins Agent via the BTC EmbeddedPlatform GUI on the Jenkins Agent
 
-### Licensing
-- A multi-site network license for "EmbeddedTester" and "Test Automation Server"
-  - The license server can be configured via the "licenseLocationString" parameter in the profileLoad / profileCreateXX step
-  - it can also be configured directly on the Jenkins Agent via the BTC EmbeddedPlatform GUI on the Jenkins Agent
-
-In case Jenkins initially fails to connect to BTC EmbeddedPlatform ("400: Timeout while connecting to BTC EmbeddedPlatform") you may have forgotten to install the "Jenkins Automation Plugin for BTC EmbeddedPlatform" (see above: Jenkins Agent). If you did install the plugin, you might want to go to %APPDATA%/BTC/ep and delete the directory matching the EP version you're using. This is normally done during the plugin installation sometimes there are issues with non-admin users or other applications interfering.
+  In case Jenkins initially fails to connect to BTC EmbeddedPlatform ("400: Timeout while connecting to BTC EmbeddedPlatform") you may have forgotten to install the "Jenkins Automation Plugin for BTC EmbeddedPlatform" (see above: Jenkins Agent). If you did install the plugin, you might want to go to %APPDATA%/BTC/ep and delete the directory matching the EP version you're using. This is normally done during the plugin installation sometimes there are issues with non-admin users or other applications interfering.
+</details>
 
 ## Description
 
@@ -88,6 +93,7 @@ Migration Suite below).
     + [Step "regressionTest"](#step-regressiontest)
     + [Step "rangeViolationGoals"](#step-rangeviolationgoals)
     + [Step "domainCoverageGoals"](#step-domaincoveragegoals)
+    + [Step "addInputCombinationGoals"](#step-addinputcombinationgoals)
     + [Step "formalTest"](#step-formaltest)
     + [Step "formalVerification"](#step-formalverification)
   - [Reporting](#reporting)
@@ -95,6 +101,7 @@ Migration Suite below).
     + [Step "xmlReport"](#step-xmlreport)
     + [Step "codeAnalysisReport"](#step-codeanalysisreport)
     + [Step "modelCoverageReport"](#step-modelcoveragereport)
+    + [Step "overallReport"](#step-overallreport)
   - [Misc](#misc)
     + [Step "getStatusSummary"](#step-getstatussummary)
   
@@ -108,6 +115,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.8.4 | - Added overview report capabilities when working with more than one project<br>- fixed an alignment issue in the reports<br>- Added overall report option to report on multiple projects<br>Added addInputCombinationGoals step to add input combination goals based on the User Defined Coverage Goals feature | 2.8 | X | X 
 2.8.2 | - Added suppport for blacklist/whitelist filtering for rbtExecution based on linked requirements<br>- Added possibility to specify additional jvm arguments on startup (e.g. -Xmx2g)<br>- Added option for DomainCoverageGoals to only apply to inputs/cals (see step btc.domainCoverageGoals) | 2.8 | X | X 
 2.8.1 | - Added option to control the rmi port used for the matlab connection (matlabPort -> btc.startup) | 2.8 | | X 
 2.8.0 | - Adapted to EP 2.8<br>- NOTE: requires BTC DSL for Pipeline (btc-embeddedplatform-plugin) on the Jenkins master in version 2.8.0 or higher! | 2.8 | X | X 
@@ -856,6 +864,33 @@ addDomainBoundaryForInputs | Flag that controls whether the goals are only appli
 | 400              | Domain Coverage Goals plugin not installed |
 | 500              | Unexpected Error                           |
 
+#### Step "addInputCombinationGoals"
+
+DSL Command: btc.addInputCombinationGoals{...}
+
+**Required License**
+- EmbeddedTester (ET\_COMPLETE)
+- User Defined Coverage Goals Add-On (ET\_UDEF\_COVGOAL)
+
+**Description**
+
+Adds Input Combination Goals to the profile using the User Defined Coverage Goals feature. You can define certin value regions that shall be covered and this step will add all combinations of those values for all Inputs. Due to the big number of goals this can produce (#ValueRegions<sup>#Inputs</sup>), this step is recommended for library functions or small modules and is not advised bigger systems such as software components.
+- The goals created by this step will be listed in the "User Defined Coverage Goals" section of the Code Analysis Report. 
+- You can add the PLL "UDCG" to the btc.vectorGeneration step to generate vectors for these goals
+- ZERO will only be applied if ZERO is part of the value range. Otherwise the minimum value will be selected. 
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+valueRegions | Comma separated string with value regions.<br>MIN, MAX, CENTER, ZERO | "MIN, MAX"<br>"MIN, CENTER, MAX"
+
+**Possible Return values**
+
+| Return Value     | Description                                |
+|------------------|--------------------------------------------|
+| 200              | Success                                    |
+| 400              | User Defined Goals Add-On not installed    |
+| 500              | Unexpected Error                           |
+
 #### Step "formalTest"
 
 DSL Command: btc.formalTest{...}
@@ -1042,6 +1077,90 @@ Simulink Coverage (formerly V&V)
 Creates the Model Coverage Report and exports it to the "exportDir"
 specified in the "profileLoad" / "profileCreate" step. The following
 optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+executionConfig | The execution config for the MIL execution used for model coverage measurement.<br>(default: first available MIL execution config, arbitrary if more than one exists) | "TL MIL", "SL MIL"
+reportName | The filename (String) for the resulting html file.<br>(default: "report.html") | "report.html", "BTCCodeCoverage.html"
+useCase | Controls for which use case the coverage is reported.<br>(default: RBT) | "B2B", "RBT"
+
+**Possible Return values**
+
+| Return Value     | Description      |
+|------------------|------------------|
+| 200              | Success          |
+| 500              | Unexpected Error |
+
+#### "overallReport"
+
+DSL Command: btc.finalWrapUp{...}
+
+**Description**
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+path* | Relative or absolute path of a workspace directory to temporarily store the reporting data<br>**MANDATORY** | "reports"
+
+Creates an Overall Report to provide an overview over multiple test projects. In cases where you have a set of models and are running tests in multiple test projects, this report will summarize the overall status and provide links to the *.epp files and the individual reports. Requires all projects to have been tested on the same agent (for inter-report linking).
+
+This is a somewhat special step that requires some preparation:
+- btc.collectProjectOverview{} needs to be called for each project *before* the wrapUp method is called. This stores the projects overview data.
+- btc.wrapUp needs to be called for each project in order to generate the individual project reports (Test Automation report + detailed reports)
+- btc.finalWrapUp{} will take the data collected previously to create the overview report. Since the report generation works based on the BTC EmbeddedPlatform report template engine, this requires an instance of BTC EmbeddedPlatform to be available. The finalWrapUp step will then close BTC EmbeddedPlatform.
+
+Here's an example of a pipeline with an overview report:
+``` groovy
+node {
+    // checkout changes from SCM
+    checkout scm
+    
+    // one profile for each *.slx file
+    def models = findFiles glob: '*.slx'
+    // start EmbeddedPlatform and connect to it
+    btc.startup {}
+
+    // create a test project for each model (for Back-to-Back Test MIL vs. SIL)
+    for (modelFile in models) {
+      def modelName = "$modelFile".substring(0, "$modelFile".lastIndexOf('.'))
+      // load / create / update a profile
+      btc.profileCreateTL {
+        profilePath = "${this.modelName}.epp"
+        tlModelPath = "${this.modelFile}"
+        matlabVersion = "2020b"
+      }
+      // generate stimuli vectors
+      btc.vectorGeneration {
+        pll = "STM, D, MCDC"
+        createReport = true
+      }
+      // execute back-to-back test MIL vs. SIL
+      btc.backToBack {
+        reference = "TL MIL"
+        comparison = "SIL"
+      }
+      /*
+      * Collect the status information regarding the current
+      * project for an overview report (this enables you to
+      * get an OverviewReport when you call btc.finalWrapUp later)
+      */
+      btc.collectProjectOverview{}
+      // generate reports for this project but skip archiving, etc.
+      // keep EP alive
+      btc.wrapUp {
+        closeEp = false
+        archiveProfiles = false
+        publishReports = false
+        publishResults = false
+      }
+    }
+
+    // create the overall report based on the collectedProjectOverview data
+    btc.finalWrapUp {
+      path = 'reports'
+    }
+}
+```
+
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
