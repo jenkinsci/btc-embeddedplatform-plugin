@@ -1109,58 +1109,60 @@ This is a somewhat special step that requires some preparation:
 - btc.finalWrapUp{} will take the data collected previously to create the overview report. Since the report generation works based on the BTC EmbeddedPlatform report template engine, this requires an instance of BTC EmbeddedPlatform to be available. The finalWrapUp step will then close BTC EmbeddedPlatform.
 
 <details>
-  <summary>Example of a pipeline with an overview report:</summary>
-``` groovy
-node {
-    // checkout changes from SCM
-    checkout scm
-    
-    // one profile for each *.slx file
-    def models = findFiles glob: '*.slx'
-    // start EmbeddedPlatform and connect to it
-    btc.startup {}
+  <summary>Example of a pipeline with an overview report</summary>
 
-    // create a test project for each model (for Back-to-Back Test MIL vs. SIL)
-    for (modelFile in models) {
-      def modelName = "$modelFile".substring(0, "$modelFile".lastIndexOf('.'))
-      // load / create / update a profile
-      btc.profileCreateTL {
-        profilePath = "${this.modelName}.epp"
-        tlModelPath = "${this.modelFile}"
-        matlabVersion = "2020b"
-      }
-      // generate stimuli vectors
-      btc.vectorGeneration {
-        pll = "STM, D, MCDC"
-        createReport = true
-      }
-      // execute back-to-back test MIL vs. SIL
-      btc.backToBack {
-        reference = "TL MIL"
-        comparison = "SIL"
-      }
-      /*
-      * Collect the status information regarding the current
-      * project for an overview report (this enables you to
-      * get an OverviewReport when you call btc.finalWrapUp later)
-      */
-      btc.collectProjectOverview{}
-      // generate reports for this project but skip archiving, etc.
-      // keep EP alive
-      btc.wrapUp {
-        closeEp = false
-        archiveProfiles = false
-        publishReports = false
-        publishResults = false
-      }
-    }
+  ``` groovy
+  node {
+      // checkout changes from SCM
+      checkout scm
 
-    // create the overall report based on the collectedProjectOverview data
-    btc.finalWrapUp {
-      path = 'reports'
-    }
-}
-```
+      // one profile for each *.slx file
+      def models = findFiles glob: '*.slx'
+      // start EmbeddedPlatform and connect to it
+      btc.startup {}
+
+      // create a test project for each model (for Back-to-Back Test MIL vs. SIL)
+      for (modelFile in models) {
+        def modelName = "$modelFile".substring(0, "$modelFile".lastIndexOf('.'))
+        // load / create / update a profile
+        btc.profileCreateTL {
+          profilePath = "${this.modelName}.epp"
+          tlModelPath = "${this.modelFile}"
+          matlabVersion = "2020b"
+        }
+        // generate stimuli vectors
+        btc.vectorGeneration {
+          pll = "STM, D, MCDC"
+          createReport = true
+        }
+        // execute back-to-back test MIL vs. SIL
+        btc.backToBack {
+          reference = "TL MIL"
+          comparison = "SIL"
+        }
+        /*
+        * Collect the status information regarding the current
+        * project for an overview report (this enables you to
+        * get an OverviewReport when you call btc.finalWrapUp later)
+        */
+        btc.collectProjectOverview{}
+        // generate reports for this project but skip archiving, etc.
+        // keep EP alive
+        btc.wrapUp {
+          closeEp = false
+          archiveProfiles = false
+          publishReports = false
+          publishResults = false
+        }
+      }
+
+      // create the overall report based on the collectedProjectOverview data
+      btc.finalWrapUp {
+        path = 'reports'
+      }
+  }
+  ```
+  
 </details>
 ![btc-embeddedplatform-plugin-createoverallreport](https://user-images.githubusercontent.com/5657657/111972115-62919880-8afd-11eb-95c9-565eeae2e0f6.png)
 
