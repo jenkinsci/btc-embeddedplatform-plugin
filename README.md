@@ -1108,7 +1108,8 @@ This is a somewhat special step that requires some preparation:
 - btc.wrapUp needs to be called for each project in order to generate the individual project reports (Test Automation report + detailed reports)
 - btc.finalWrapUp{} will take the data collected previously to create the overview report. Since the report generation works based on the BTC EmbeddedPlatform report template engine, this requires an instance of BTC EmbeddedPlatform to be available. The finalWrapUp step will then close BTC EmbeddedPlatform.
 
-Here's an example of a pipeline with an overview report:
+<details>
+  <summary>Example of a pipeline with an overview report:</summary>
 ``` groovy
 node {
     // checkout changes from SCM
@@ -1160,6 +1161,7 @@ node {
     }
 }
 ```
+</details>
 ![btc-embeddedplatform-plugin-createoverallreport](https://user-images.githubusercontent.com/5657657/111972115-62919880-8afd-11eb-95c9-565eeae2e0f6.png)
 
 **Possible Return values**
