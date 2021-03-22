@@ -1160,13 +1160,7 @@ node {
     }
 }
 ```
-
-
-Property | Description | Example Value(s)
----------|-------------|-----------------
-executionConfig | The execution config for the MIL execution used for model coverage measurement.<br>(default: first available MIL execution config, arbitrary if more than one exists) | "TL MIL", "SL MIL"
-reportName | The filename (String) for the resulting html file.<br>(default: "report.html") | "report.html", "BTCCodeCoverage.html"
-useCase | Controls for which use case the coverage is reported.<br>(default: RBT) | "B2B", "RBT"
+![btc-embeddedplatform-plugin-createoverallreport](https://user-images.githubusercontent.com/5657657/111972115-62919880-8afd-11eb-95c9-565eeae2e0f6.png)
 
 **Possible Return values**
 
