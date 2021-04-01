@@ -247,7 +247,7 @@ def backToBack(body) {
     // call EP to invoke back-to-back test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/backToBack", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
-    if (r.status == 300) {
+    if (r.status >= 300) {
         unstable('Back-to-Back Test failed.')
     }
     return r.status
