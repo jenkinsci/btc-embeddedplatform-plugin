@@ -115,6 +115,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.8.6 | - Fixed an issue with ZERO and CENTER calculation of input combination goals<br>- Added robustness improvement for overview report | 2.8 | X |  
 2.8.4 | - Added overview report capabilities when working with more than one project<br>- fixed an alignment issue in the reports<br>- Added overall report option to report on multiple projects<br>Added addInputCombinationGoals step to add input combination goals based on the User Defined Coverage Goals feature | 2.8 | X | X 
 2.8.2 | - Added suppport for blacklist/whitelist filtering for rbtExecution based on linked requirements<br>- Added possibility to specify additional jvm arguments on startup (e.g. -Xmx2g)<br>- Added option for DomainCoverageGoals to only apply to inputs/cals (see step btc.domainCoverageGoals) | 2.8 | X | X 
 2.8.1 | - Added option to control the rmi port used for the matlab connection (matlabPort -> btc.startup) | 2.8 | | X 
