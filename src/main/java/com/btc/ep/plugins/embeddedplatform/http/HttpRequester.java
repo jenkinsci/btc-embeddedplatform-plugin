@@ -57,8 +57,7 @@ public class HttpRequester {
         Map<String, Object> responseObject = new HashMap<>();
         GenericResponse r;
         try {
-
-            r = HttpRequester.get(getBasePath() + "/ep/progress/" + jobId);
+            r = HttpRequester.get("/ep/progress/" + jobId);
             String responseString = r.getContent();
             int statusCode = r.getStatus().getStatusCode();
             responseObject.put("statusCode", statusCode);
