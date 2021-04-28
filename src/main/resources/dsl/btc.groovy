@@ -51,7 +51,7 @@ def startup(body = {}) {
             error("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
         }
     }
-    def epVersion = null
+    epVersion = null
     try {
         def split = "${epInstallDir}".split("\\\\")
         epVersion = split[split.length - 1].substring(2)
@@ -90,7 +90,7 @@ def startup(body = {}) {
                 -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace\" \
                 -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort} \
                 -Dep.licensing.package=${licensingPackage}"
-                if (epVersion.compareTo("2.8") >= 0) { // version >= 2.8
+                if (compareVersions(epVersion, '2.8p0') >= 0) {
                     startCmd += " -Dep.jenkins.port=${epJenkinsPort} -Djna.nosys=true -Dprism.order=sw -XX:+UseParallelGC"
                 } else { // version < 2.8
                     startCmd += " -Dep.rest.port=${epJenkinsPort}"
@@ -113,6 +113,32 @@ def startup(body = {}) {
         }
     }
     return responseCode
+}
+
+/**
+ * versions must match the format <number>.<number>p<number>
+ * e.g. 2.10p3
+ */
+def compareVersions(v1, v2) {
+    def regex = /.*(\d+)\.(\d+)p(\d+).*/
+    int v1_1 = v1.replaceAll(regex, '$1')
+    int v2_1 = v2.replaceAll(regex, '$1')
+    int comparison = v1_1.compareTo(v2_1)
+    if (comparison != 0) {
+        return comparison
+    }
+
+    int v1_2 = v1.replaceAll(regex, '$2')
+    int v2_2 = v2.replaceAll(regex, '$2')
+    comparison = v1_2.compareTo(v2_2)
+    if (comparison != 0) {
+        return comparison
+    }
+
+    int v1_3 = v1.replaceAll(regex, '$3')
+    int v2_3 = v2.replaceAll(regex, '$3')
+    comparison = v1_3.compareTo(v2_3)
+    return comparison
 }
 
 def handleError(e) {
@@ -211,9 +237,6 @@ def rbtExecution(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/testexecution", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
-    if (r.status == 300) {
-        unstable('Tests failed.')
-    }
     return r.status
 }
 
@@ -224,9 +247,6 @@ def formalTest(body) {
     // call EP to invoke test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/formalTest", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
-    if (r.status == 300) {
-        unstable('FormalTest failed.')
-    }
     return r.status
 }
 
@@ -247,9 +267,6 @@ def backToBack(body) {
     // call EP to invoke back-to-back test execution
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/backToBack", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
-    if (r.status >= 300) {
-        unstable('Back-to-Back Test failed.')
-    }
     return r.status
 }
 
@@ -264,13 +281,19 @@ def regressionTest(body) {
 }
 
 def rangeViolationGoals(body) {
-    // evaluate the body block, and collect configuration into the object
-    def config = resolveConfig(body)
-    def reqString = createReqString(config, 'rangeViolationGoals')
-    // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addRangeViolationGoals", validResponseCodes: '100:500'
-    printToConsole(" -> (${r.status}) ${r.content}")
-    return r.status
+    if (compareVersions(epVersion, '2.9p0') >= 0) {
+        // this method only exist in older versions
+        printToConsole(" -> Skipped RVG step (has been replaced by btc.addDomainCheckGoals)")
+        return 400
+    } else {
+        // evaluate the body block, and collect configuration into the object
+        def config = resolveConfig(body)
+        def reqString = createReqString(config, 'rangeViolationGoals')
+        // call EP to invoke test execution
+        def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addRangeViolationGoals", validResponseCodes: '100:500'
+        printToConsole(" -> (${r.status}) ${r.content}")
+        return r.status
+    }
 }
 
 def addInputCombinationGoals(body) {
@@ -284,13 +307,35 @@ def addInputCombinationGoals(body) {
 }
 
 def domainCoverageGoals(body) {
-    // evaluate the body block, and collect configuration into the object
-    def config = resolveConfig(body)
-    def reqString = createReqString(config, 'domainCoverageGoals')
-    // call EP to invoke test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
-    printToConsole(" -> (${r.status}) ${r.content}")
-    return r.status
+    if (compareVersions(epVersion, '2.9p0') >= 0) {
+        // this method only exist in older versions
+        printToConsole(" -> Skipped DCG step (has been replaced by btc.addDomainCheckGoals)")
+        return 400
+    } else {
+        // evaluate the body block, and collect configuration into the object
+        def config = resolveConfig(body)
+        def reqString = createReqString(config, 'domainCoverageGoals')
+        // call EP to invoke test execution
+        def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addDomainCoverageGoals", validResponseCodes: '100:500'
+        printToConsole(" -> (${r.status}) ${r.content}")
+        return r.status
+    }
+}
+
+def addDomainCheckGoals(body) {
+    if (compareVersions(epVersion, '2.9p0') >= 0) {
+        // evaluate the body block, and collect configuration into the object
+        def config = resolveConfig(body)
+        def reqString = createReqString(config, 'addDomainCheckGoals')
+        // call EP to invoke test execution
+        def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/addDomainCheckGoals", validResponseCodes: '100:500'
+        printToConsole(" -> (${r.status}) ${r.content}")
+        return r.status
+    } else {
+        // this method only exist in older versions
+        printToConsole(" -> Skipped Domain Checks Goals step (not available before EP 2.9p0)")
+        return 400
+    }
 }
 
 def vectorImport(body) {
@@ -832,6 +877,10 @@ def createReqString(config, methodName) {
         reqString += '"inputRestrictions": "' + toAbsPath("${config.inputRestrictions}") + '", '
     if (config.createReport != null)
         reqString += '"createReport": "' + "${config.createReport}" + '", '
+    if (config.numberOfThreads != null)
+        reqString += '"numberOfThreads": "' + "${config.numberOfThreads}" + '", '
+    if (config.parallelExecutionMode != null)
+        reqString += '"parallelExecutionMode": "' + "${config.parallelExecutionMode}" + '", '
     
     // Formal Verification
     if (config.searchDepth != null)
@@ -856,6 +905,10 @@ def createReqString(config, methodName) {
         reqString += '"dcXmlPath": "' + toAbsPath("${config.dcXmlPath}") + '", '
     if (config.raster != null)
         reqString += '"raster": "' + "${config.raster}" + '", '
+    if (config.activateRangeViolationCheck != null)
+        reqString += '"activateRangeViolationCheck": "' + "${config.activateRangeViolationCheck}" + '", '
+    if (config.activateBoundaryCheck != null)
+        reqString += '"activateBoundaryCheck": "' + "${config.activateBoundaryCheck}" + '", '
     if (config.addDomainBoundaryForInputs != null)
         reqString += '"addDomainBoundaryForInputs": "' + "${config.addDomainBoundaryForInputs}" + '", '
     

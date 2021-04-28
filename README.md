@@ -93,6 +93,7 @@ Migration Suite below).
     + [Step "regressionTest"](#step-regressiontest)
     + [Step "rangeViolationGoals"](#step-rangeviolationgoals)
     + [Step "domainCoverageGoals"](#step-domaincoveragegoals)
+    + [Step "addDomainCheckGoals"](#step-adddomaincheckgoals)
     + [Step "addInputCombinationGoals"](#step-addinputcombinationgoals)
     + [Step "formalTest"](#step-formaltest)
     + [Step "formalVerification"](#step-formalverification)
@@ -104,6 +105,7 @@ Migration Suite below).
     + [Overall Report](#overallreport)
   - [Misc](#misc)
     + [Step "getStatusSummary"](#step-getstatussummary)
+    + ["Error handling"](#error-handling)
   
 * [BTC Migration Suite](#btc-migration-suite)
   - [Step "migrationSource"](#step-migrationsource)
@@ -115,6 +117,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.9.0 | - Adapted to EP 2.9<br>- Added domain checks step<br>- Added options for parallel execution (vectoGeneration)<br>- Test steps no longer automatically set the Pipeline to unstable | 2.9 | X | X 
 2.8.6 | - Fixed an issue with ZERO and CENTER calculation of input combination goals<br>- Added robustness improvement for overview report | 2.8 | X |  
 2.8.4 | - Added overview report capabilities when working with more than one project<br>- fixed an alignment issue in the reports<br>- Added overall report option to report on multiple projects<br>Added addInputCombinationGoals step to add input combination goals based on the User Defined Coverage Goals feature | 2.8 | X | X 
 2.8.2 | - Added suppport for blacklist/whitelist filtering for rbtExecution based on linked requirements<br>- Added possibility to specify additional jvm arguments on startup (e.g. -Xmx2g)<br>- Added option for DomainCoverageGoals to only apply to inputs/cals (see step btc.domainCoverageGoals) | 2.8 | X | X 
@@ -713,6 +716,8 @@ depthAtg | Controls the maximum depth for the ATG engine. Must be greater than 0
 loopUnroll | Number of loop interations to unroll for unpredictable loops.<br>(default: 50) | 10, 20, 50
 robustnessTestFailure | Boolean flag controlling whether or not robustness issues are added to the JUnit XML Report as "failed tests".<br>(default: false) | true, false
 createReport | Boolean flag controlling whether or not the Code Analysis Report is created by this step. The report can be created explicitly in its own step which is why you might want to tweak this setting.<br>(default: false) | true, false
+numberOfThreads | Integer to specify the number of parallel threads for vector generation (CV engine) *Note: this may lead to increased memory consumption*.<br>(default: 1) | 4, 6, 8
+parallelExecutionMode | String to specify the parallel execution mode for vector generation with the CV engine. Only takes effect if numberOfThreads is > 1.<br>(default: "BALANCED") | "BALANCED", "ENGINES", "GOALS"
 
 **Possible Return values**
 
@@ -856,6 +861,38 @@ scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to tar
 dcXmlPath | Path to an xml file containing Domain Coverage specs. | "DomainCoverageGoals.xml"
 raster | String to specify a raster in %. Domain Coverage Goals will be created for equal according to the raster.<br>(default: 25) | "10", "25", "30"
 addDomainBoundaryForInputs | Flag that controls whether the goals are only applied to inputs / cals.<br>(default: false) | true, false
+
+**Possible Return values**
+
+| Return Value     | Description                                |
+|------------------|--------------------------------------------|
+| 200              | Success                                    |
+| 400              | Domain Coverage Goals plugin not installed |
+| 500              | Unexpected Error                           |
+
+#### Step "addDomainCheckGoals"
+
+DSL Command: btc.addDomainCheckGoals{...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Description**
+
+*Requires EP 2.9p0 or higher*
+
+Adds Domain Check Goals to the profile which contribute to the Code
+Analysis Report and can be considered during vector generation (pll:
+"VDCG;IDCG"). The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
+dcXmlPath | Path to an xml file containing Domain Coverage specs. | "DomainCoverageGoals.xml"
+raster | String to specify a raster in %. Domain Coverage Goals will be created for equal according to the raster.<br>(default: 25) | "10", "25", "30"
+activateRangeViolationCheck | flag that controls if range violation checks are added in the form of invalid ranges: [dataTypeMin, specifiedMin) / (specifiedMax, dataTypeMax].<br>(default: false) | true, false
+activateBoundaryCheck | flag that controls if boundary value goals are added.<br>(default: false) | true, false
 
 **Possible Return values**
 
@@ -1230,8 +1267,9 @@ Retrieves a struct as a json text (see below) which can be passed on to external
     - CreatedOn
     - CreatedBy
 
-
-  
+#### Error Handling
+It is important that the EP process is closed to free the used resources and that the reserved port on the agent is released.
+To ensure this in an easy manner, the DSL command btc.handleError(errorMsg) is provided. It will safely close EP, release the used port and then call the Jenkins error(...) command with the given error message.
 
 ## BTC Migration Suite
 
