@@ -35,16 +35,20 @@ public class TestStuff {
 
     private static ApiClient apiClient = new ApiClientThatDoesntSuck().setBasePath("http://localhost:29267");
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         try {
 
             Configuration.setDefaultApiClient(apiClient);
 
             ProfilesApi profilesApi = new ProfilesApi();
-            profilesApi.saveProfile(new ProfilePath().path("E:/deleteme"));
-            Files.delete(Paths.get("E:/deleteme"));
+            try {
+                profilesApi.saveProfile(new ProfilePath().path("E:/deleteme"));
+                Files.delete(Paths.get("E:/deleteme"));
+            } catch (Exception e) {
+                //ignored
+            }
             Profile profile =
-                profilesApi.openProfile("E:/EP2/SupportPlugins/EPJenkinsAutomation/profile_ep29.epp");
+                profilesApi.openProfile("E:/profile_29.epp");
             System.out.println(profile);
             //FIXME: workaround for http://jira.osc.local:8080/browse/EP-2355 (#1)
             Job updateJob = new ArchitecturesApi().architectureUpdate();
@@ -74,7 +78,7 @@ public class TestStuff {
             info.setUiDs(scopes.stream().map(sc -> sc.getUid()).collect(Collectors.toList()));
             Report report = reportsApi.createRBTExecutionReportOnScopeList(info);
             ReportExportInfo reportExportInfo = new ReportExportInfo();
-            reportExportInfo.setExportPath("E:/EP2/SupportPlugins/EPJenkinsAutomation/reports");
+            reportExportInfo.setExportPath("E:/reports");
             new ReportsApi().exportReport(report.getUid(), reportExportInfo);
         } catch (ApiException e) {
             System.err.println(e.getResponseBody());
@@ -82,20 +86,5 @@ public class TestStuff {
 
         }
     }
-    //            File[] listFiles = new File("importDir").listFiles();
-    //            for (File file : listFiles) {
-    //                //vectorKind == "TC"
-    //                if (true) {
-    //                    RBTestCaseImportInfo info = new RBTestCaseImportInfo();
-    //                    info.addPathsItem(file.getPath());
-    //                    info.setOverwritePolicy("OVERWRITE");
-    //                    Job job = new RequirementBasedTestCasesApi().importRBTestCase(info);
-    //                    HttpRequester.waitForCompletion(job.getJobID());
-    //                } else {
-    //                    StimuliVectorImportInfo info = new StimuliVectorImportInfo();
-    //                    Job job = new StimuliVectorsApi().importStimuliVectors(info);
-    //                }
-    //
-    //                // finished importing test case from file 'file'
-    //            }
+
 }
