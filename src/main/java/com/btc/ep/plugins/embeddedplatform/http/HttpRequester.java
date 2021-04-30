@@ -17,7 +17,7 @@ import com.google.gson.Gson;
 public class HttpRequester {
 
     public static String host = "http://localhost";
-    public static String port = "29267";
+    public static int port = 29267;
 
     public static GenericResponse get(String route) throws IOException {
         return get(route, null);
@@ -27,6 +27,8 @@ public class HttpRequester {
         //FIXME: payload is ignored atm
         CloseableHttpClient httpClient = HttpClients.createDefault();
         HttpGet get = new HttpGet(getBasePath() + route);
+        get.setHeader("Content-Type", "application/json");
+        get.setHeader("Accept", "application/json");
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             HttpEntity entity = response.getEntity();
             if (entity != null) {
@@ -120,6 +122,7 @@ public class HttpRequester {
                     double progressDone = (double)progress.get("progressDone");
                     if (message != null && !message.equals(oldMsg)) {
                         System.out.println(message + " (" + progressDone + "%)");
+                        oldMsg = message;
                     }
                 }
             } else { // progress == null -> error
@@ -137,5 +140,45 @@ public class HttpRequester {
         } catch (InterruptedException e) {
             // ignored
         }
+    }
+
+    /**
+     * Attempts GET requests to the specified route. Returns true if successful (expected status) or false on timeout.
+     *
+     * @param route route to connect to
+     * @param expectedStatusCode the status code to expect
+     * @param timeoutInSeconds the timeout after which to return false
+     * @param delayInSeconds the delay between the connection attempts
+     * @throws Exception
+     */
+    public static boolean checkConnection(String route, int expectedStatusCode, int timeoutInSeconds,
+        int delayInSeconds)
+        throws Exception {
+        long startingTime = System.currentTimeMillis();
+        while (true) {
+            if (checkConnection(route, expectedStatusCode)) {
+                return true;
+            }
+            // try again after 2 seconds
+            Thread.sleep(delayInSeconds);
+            if ((System.currentTimeMillis() - startingTime) > (timeoutInSeconds * 1000)) {
+                System.out
+                    .println("Connection to " + getBasePath() + route + " timed out after " + timeoutInSeconds + "s");
+                return false;
+            }
+        }
+    }
+
+    public static boolean checkConnection(String route, int expectedStatusCode) {
+        try {
+            GenericResponse response = get(route);
+            if (response.getStatus().getStatusCode() == expectedStatusCode) {
+                System.out.println("Successfully connected to " + getBasePath() + route);
+                return true;
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return false;
     }
 }

@@ -1,0 +1,2 @@
+mvn hpi:run
+pause
