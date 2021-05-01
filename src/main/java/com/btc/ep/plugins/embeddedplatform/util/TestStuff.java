@@ -48,7 +48,7 @@ public class TestStuff {
                 //ignored
             }
             Profile profile =
-                profilesApi.openProfile("E:/profile_29.epp");
+                profilesApi.openProfile("E:/test02.epp");
             System.out.println(profile);
             //FIXME: workaround for http://jira.osc.local:8080/browse/EP-2355 (#1)
             Job updateJob = new ArchitecturesApi().architectureUpdate();
