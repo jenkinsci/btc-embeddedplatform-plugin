@@ -1,12 +1,15 @@
 package com.btc.ep.plugins.embeddedplatform.http;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -16,6 +19,8 @@ import com.google.gson.Gson;
 
 public class HttpRequester {
 
+    private static final int CREATED = 201;
+    private static final int IN_PROGRESS = 202;
     public static String host = "http://localhost";
     public static int port = 29267;
 
@@ -30,6 +35,33 @@ public class HttpRequester {
         get.setHeader("Content-Type", "application/json");
         get.setHeader("Accept", "application/json");
         try (CloseableHttpResponse response = httpClient.execute(get)) {
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                String responseString = EntityUtils.toString(entity);
+                GenericResponse r = new GenericResponse();
+                r.setContent(responseString);
+                r.setStatus(response.getStatusLine());
+                return r;
+            }
+        } catch (IOException e) {
+        } finally {
+            httpClient.close();
+        }
+        return null;
+    }
+
+    public static GenericResponse post(String route, Object payload) throws IOException {
+        String json = new Gson().toJson(payload);
+        return post(route, json);
+    }
+
+    public static GenericResponse post(String route, String json) throws IOException {
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        HttpPost post = new HttpPost(getBasePath() + route);
+        post.setHeader("Content-Type", "application/json");
+        post.setHeader("Accept", "application/json");
+        post.setEntity(new StringEntity(json));
+        try (CloseableHttpResponse response = httpClient.execute(post)) {
             HttpEntity entity = response.getEntity();
             if (entity != null) {
                 String responseString = EntityUtils.toString(entity);
@@ -99,34 +131,47 @@ public class HttpRequester {
 
     /**
      * Waits for the job to complete and returns the created object (if available) or null.
+     * Outputs are printed to System.out.
      *
      * @param jobId the job to wait for
      * @return the created object (if available) or null
      */
     public static String waitForCompletion(String jobId) {
+        return waitForCompletion(jobId, System.out);
+    }
+
+    /**
+     * Waits for the job to complete and returns the created object (if available) or null.
+     *
+     * @param jobId the job to wait for
+     * @param topic name of the topic being processed (may be null)
+     * @param out the print stream to use to report information
+     * @return the created object (if available) or null
+     */
+    public static String waitForCompletion(String jobId, PrintStream out) {
         String createdObjectId = null;
-        String oldMsg = null;
+        double oldProgressDone = 0d;
         while (true) {
             Map<String, Object> progress = getProgress(jobId);
             if (progress != null) {
                 int statusCode = (int)progress.get("statusCode");
-                if (statusCode == 201) {
+                if (statusCode == CREATED) {
                     createdObjectId = (String)progress.get("uid");
                 }
-                if (statusCode != 202) { // 202 -> in progress
+                if (statusCode != IN_PROGRESS) { // 202 -> in progress
                     break;
                 }
                 // job still in progress:
                 if (progress.containsKey("message") && progress.containsKey("progressDone")) {
                     String message = (String)progress.get("message");
                     double progressDone = (double)progress.get("progressDone");
-                    if (message != null && !message.equals(oldMsg)) {
-                        System.out.println(message + " (" + progressDone + "%)");
-                        oldMsg = message;
+                    if (progressDone > oldProgressDone) {
+                        System.out.println(message + " | " + progressDone + "%");
+                        oldProgressDone = progressDone;
                     }
                 }
             } else { // progress == null -> error
-                System.err.println("No progress info available!");
+                out.println("No progress info available!");
                 break;
             }
             sleep(2000);

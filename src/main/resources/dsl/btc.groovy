@@ -13,106 +13,8 @@ def mode     = null       // mode for migration suite (source, target)
 def startup(body = {}) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    if (config.port != null) {
-        epJenkinsPort = config.port
-    } else {
-        epJenkinsPort = "29267" // default as fallback
-    }
-    def timeoutSeconds = 120
-    if (config.timeout != null)
-        timeoutSeconds = config.timeout
-    
-    /*
-    * EP Startup configuration
-    */
-    def epInstallDir = null
-    if (config.installPath != null) {
-        epInstallDir = "${config.installPath}".replace("/", "\\")
-    } else {
-        try {
-            def epRegPath = bat returnStdout: true, label: 'Query Registry for active EP version', script: '''
-            @echo OFF
-            for /f "tokens=*" %%a in ('REG QUERY HKLM\\SOFTWARE\\BTC /reg:64 /s /f "EmbeddedPlatform" ') do (
-                call :parseEpVersion %%a
-            )
-            :parseEpVersion
-                set key=%1 %2
-                if "%key:~0,4%" == "HKEY" (
-                    for /f "tokens=2*" %%a in ('REG QUERY "%key%" /reg:64 /v EPACTIVE') do (
-                        if %%b == 1 (
-                            for /f "tokens=2*" %%a in ('REG QUERY "%key%" /reg:64 /v Path') do ( echo %%b )
-                        )
-                    )
-                )
-            '''
-            def split = "${epRegPath}".trim().split("\n")
-            epInstallDir = split[split.length - 1].trim()
-        } catch (err) {
-            error("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
-        }
-    }
-    def epVersion = null
-    try {
-        def split = "${epInstallDir}".split("\\\\")
-        epVersion = split[split.length - 1].substring(2)
-    } catch (err) {
-        error("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
-    }
-    
-    def responseCode = 500
-    if (isEpAvailable()) {
-        printToConsole("(201) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${epJenkinsPort}.")
-        responseCode = 201 // connected to an existing instance
-    } else { // try to connect to EP until timeout is reached
-        // configure license packages (required since 2.4.0 to support ET_BASE)
-        def licensingPackage = config.licensingPackage
-        if (licensingPackage == null) {
-            licensingPackage = 'ET_COMPLETE,ET_AUTOMATION_SERVER'
-        } else if (licensingPackage.equals('ET_COMPLETE')) {
-            licensingPackage += ',ET_AUTOMATION_SERVER'
-        } else if (licensingPackage.equals('ET_BASE')) {
-            licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
-        }
-        epJenkinsPort = findNextAvailablePort(epJenkinsPort)
-
-        printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds)")
-        timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
-            try {
-                epJreDir = getJreDir(epInstallDir)
-                epJreString = ''
-                if (epJreDir != null) {
-                    epJreString = ' -vm "' + epJreDir + '"'
-                }
-                def startCmd = "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
-                -application com.btc.ep.application.headless -nosplash${epJreString} \
-                -vmargs -Dep.runtime.batch=com.btc.ep \
-                -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration\" \
-                -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace\" \
-                -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort} \
-                -Dep.licensing.package=${licensingPackage}"
-                if (epVersion.compareTo("2.8") >= 0) { // version >= 2.8
-                    startCmd += " -Dep.jenkins.port=${epJenkinsPort} -Djna.nosys=true -Dprism.order=sw -XX:+UseParallelGC"
-                } else { // version < 2.8
-                    startCmd += " -Dep.rest.port=${epJenkinsPort}"
-                }
-                if (config.additionalJvmArgs != null) {
-                    startCmd += " ${config.additionalJvmArgs}"
-                }
-                printToConsole(startCmd.substring(9).replaceAll(/\s+/, " ").replaceAll(" -", "\n    -"))
-                bat label: 'Starting BTC EmbeddedPlatform', returnStdout: true, script: startCmd
-                waitUntil {
-                    r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
-                    // exit waitUntil closure
-                    return (r.status == 200)
-                }
-                printToConsole("(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${epJenkinsPort}.")
-                responseCode = 200 // connected to a new instance
-            } catch(err) {
-                error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
-            }
-        }
-    }
-    return responseCode
+    def r = btcStart(config)
+    return r
 }
 
 def handleError(e) {
@@ -122,44 +24,28 @@ def handleError(e) {
 // Profile Creation steps
 
 def profileLoad(body) {
-    return profileInit(body, 'profileLoad')
+    def config = resolveConfig(body)
+    return btcProfileLoad(config)
 }
 
 def profileCreateTL(body) {
-    return profileInit(body, 'profileCreateTL')
+    def config = resolveConfig(body)
+    return btcProfileCreateTL(config)
 }
 
 def profileCreateEC(body) {
     def config = resolveConfig(body)
-    config.enableEC = true
-    return profileInit(config, 'profileCreateEC')
+    return btcProfileCreateEC(config)
 }
 
 def profileCreateSL(body) {
-    return profileInit(body, 'profileCreateSL')
+    def config = resolveConfig(body)
+    return btcProfileCreateSL(config)
 }
 
 def profileCreateC(body) {
-    return profileInit(body, 'profileCreateC')
-}
-
-def profileInit(body, method) {
-    // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config, method)
-    // call EP to invoke profile creation / loading / update
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/${method}", validResponseCodes: '100:500'
-    printToConsole(" -> (${r.status}) ${r.content}")
-    isDebug = false
-    if (r.status >= 400) {
-        wrapUp {
-            publishResults = false
-        }
-        def relativeReportPath = toRelPath(exportPath)
-        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
-        error("Error during profile load / creation. Aborting (you cannot continue without a profile).")
-    }
-    return r.status
+    return btcProfileCreateC(config)
 }
 
 // Normal Steps
@@ -233,24 +119,12 @@ def formalTest(body) {
 def vectorGeneration(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config, 'vectorGeneration')
-    // call EP to invoke vector generation and analysis
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/vectorGeneration", validResponseCodes: '100:500'
-    printToConsole(" -> (${r.status}) ${r.content}")
-    return r.status
+    return btcVectorGeneration(config)
 }
 
 def backToBack(body) {
-    // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    def reqString = createReqString(config, 'backToBack')
-    // call EP to invoke back-to-back test execution
-    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/backToBack", validResponseCodes: '100:500'
-    printToConsole(" -> (${r.status}) ${r.content}")
-    if (r.status >= 300) {
-        unstable('Back-to-Back Test failed.')
-    }
-    return r.status
+    return btcBackToBack(config)
 }
 
 def regressionTest(body) {
@@ -442,54 +316,7 @@ def createOverallReport(path)  {
  */
 def wrapUp(body = {}) {
     def config = resolveConfig(body)
-    def archiveProfiles = true
-    if (config.archiveProfiles != null)
-        archiveProfiles = config.archiveProfiles
-    def publishReports = true
-    if (config.publishReports != null)
-        publishReports = config.publishReports
-    def publishResults = true
-    if (config.publishResults != null)
-        publishResults = config.publishResults
-    try {
-        // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
-        // will throw an exception as soon as the tool closes. This is expected.
-        def reqString = "" // removed closeEp parameter, it was only causing problems
-        if (config.closeEp != null && config.closeEp == false) {
-            reqString = "false"
-        }
-        // this overrides "false" or anything else
-        if (config.exit != null && config.exit == true) {
-            reqString = "exit"
-        }
-        httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/kill", validResponseCodes: '100:500'
-    } catch (err) {
-        printToConsole('BTC EmbeddedPlatform successfully closed.')
-    } finally {
-        if (config.closeEp == null || config.closeEp == true) {
-            releasePort(epJenkinsPort)
-        }
-    }
-    def relativeReportPath = toRelPath(exportPath)
-    def profilePathParentDir = getParentDir(toRelPath(profilePath))
-    try {
-        // archiveArtifacts works with relative paths
-        if (archiveProfiles) {
-            archiveArtifacts allowEmptyArchive: true, artifacts: "${profilePathParentDir}/*.epp"
-        }
-        if (isDebug)
-            archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeReportPath}/Debug_*.zip"
-        // fileExists check needs absolute path
-        if (publishReports && fileExists("${exportPath}/TestAutomationReport.html"))
-            publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'TestAutomationReport.html', reportName: 'Test Automation Report'])
-    } catch (err) {
-        printToConsole(err.message)
-    }
-    // JUnit works with relative paths
-    if (publishResults) {
-        printToConsole("Looking for junit results in '" + "**/*junit-report.xml" + "'")
-        junit allowEmptyResults: true, testResults: "**/*junit-report.xml"
-    }
+    return btcWrapUp(config)
 }
 
 def finalWrapUp(body = {}) {

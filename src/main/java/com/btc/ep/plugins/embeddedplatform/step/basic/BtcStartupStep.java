@@ -5,13 +5,11 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.TimerTask;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -24,6 +22,7 @@ import org.openapitools.client.Configuration;
 
 import com.btc.ep.plugins.embeddedplatform.http.ApiClientThatDoesntSuck;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
+import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -198,104 +197,62 @@ public class BtcStartupStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcStartupStepExecution extends StepExecution {
+class BtcStartupStepExecution extends BtcStepExecution {
 
     private static final long serialVersionUID = 1L;
-
     private BtcStartupStep step;
 
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private String status;
-
-    /**
-     * Constructor
-     *
-     * @param btcStartupStep
-     * @param context
-     */
     public BtcStartupStepExecution(BtcStartupStep btcStartupStep, StepContext context) {
-        super(context);
+        super(btcStartupStep, context);
         this.step = btcStartupStep;
     }
 
-    /*
-     * The start method must either
-     * - start an asychronous process in its own thread (e.g. TimerTask) and then return false or
-     * - perform the desired action immediately (shouldn't take more that 1-2 seconds) and then return true
-     */
     @Override
-    public boolean start() throws Exception {
-        /*
-         * We can use something like this timer task to implement the desired action, i.e.:
-         * - process the step parameters
-         * - check preconditions
-         * -> is the API already connected?
-         * -> is EP in the expected state (e.g. profile loaded, architecture imported, test cases available...)?
-         * -> do all referenced files exist?
-         * - perform action using EP SDK
-         */
-        TimerTask t = new TimerTask() {
+    protected void performAction() throws Exception {
+        // Prepare http connection
+        ApiClient apiClient =
+            new ApiClientThatDoesntSuck().setBasePath("http://localhost:" + step.getPort());
+        Configuration.setDefaultApiClient(apiClient);
+        HttpRequester.port = step.getPort();
 
-            @Override
-            public void run() {
-                // This is what's actually executed (currently just prints some text to the Jenkins console):
-                try {
-                    PrintStream jenkinsConsole = getContext().get(TaskListener.class).getLogger();
-                    // Prepare http connection
-                    ApiClient apiClient =
-                        new ApiClientThatDoesntSuck().setBasePath("http://localhost:" + step.getPort());
-                    Configuration.setDefaultApiClient(apiClient);
-                    HttpRequester.port = step.getPort();
+        boolean connected = HttpRequester.checkConnection("/test", 200);
+        if (connected) {
+            jenkinsConsole
+                .println("Successfully connected to a running instance of BTC EmbeddedPlatform on port "
+                    + step.getPort());
+            response = 201;
+        } else {
+            // Check preconditions
+            checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
+                "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
+            File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
+            checkArgument(epExecutable.exists(),
+                "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
 
-                    boolean connected = HttpRequester.checkConnection("/test", 200);
-                    if (connected) {
-                        jenkinsConsole
-                            .println("Successfully connected to a running instance of BTC EmbeddedPlatform on port "
-                                + step.getPort());
-                    } else {
-                        // Check preconditions
-                        checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
-                            "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
-                        File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
-                        checkArgument(epExecutable.exists(),
-                            "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
+            // prepare data for process call
+            String epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
+            String jreDirectory = getJreDir();
+            String licensingPackage = step.getLicensingPackage();
 
-                        // prepare data for process call
-                        String epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
-                        String jreDirectory = getJreDir();
-                        String licensingPackage = step.getLicensingPackage();
+            // prepare ep start command
+            List<String> command =
+                createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
+            ProcessBuilder pb = new ProcessBuilder(command);
+            // start process and save it for future use (e.g. to destroy it)
+            Store.epProcess = pb.start();
+            jenkinsConsole.println(String.join(" ", command));
 
-                        // prepare ep start command
-                        List<String> command =
-                            createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
-                        ProcessBuilder pb = new ProcessBuilder(command);
-                        // start process and save it for future use (e.g. to destroy it)
-                        Store.epProcess = pb.start();
-                        jenkinsConsole.println(String.join(" ", command));
-
-                        // wait for ep rest service to respond
-                        connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
-                        if (connected) {
-                            jenkinsConsole.println("Successfully connected to BTC EmbeddedPlatform " + epVersion
-                                + " on port " + step.getPort());
-                        } else {
-                            jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
-                        }
-                    }
-                    getContext().onSuccess("Done");
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                    getContext().onFailure(e1);
-                }
+            // wait for ep rest service to respond
+            connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
+            if (connected) {
+                jenkinsConsole.println("Successfully connected to BTC EmbeddedPlatform " + epVersion
+                    + " on port " + step.getPort());
+                response = 200;
+            } else {
+                jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
+                response = 400;
             }
-
-        };
-        // trigger the desired action by calling the run() method
-        t.run();
-        // return false (see explanation in comment on start() method)
-        return false;
+        }
     }
 
     /**
@@ -352,11 +309,6 @@ class BtcStartupStepExecution extends StepExecution {
         checkArgument(javaDirs.length > 0, "Failed to find the Java runtime in " + jreParentDir.getPath());
         String jreBinPath = javaDirs[0].getPath() + "/bin";
         return jreBinPath;
-    }
-
-    @Override
-    public String getStatus() {
-        return status;
     }
 
 }

@@ -1,90 +1,40 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.api.ArchitecturesApi;
-import org.openapitools.client.api.ProfilesApi;
-import org.openapitools.client.api.ReportsApi;
-import org.openapitools.client.api.RequirementBasedTestExecutionApi;
-import org.openapitools.client.api.RequirementBasedTestExecutionReportsApi;
-import org.openapitools.client.api.ScopesApi;
-import org.openapitools.client.model.Job;
-import org.openapitools.client.model.Profile;
-import org.openapitools.client.model.ProfilePath;
-import org.openapitools.client.model.RBTExecutionDataExtendedNoReport;
-import org.openapitools.client.model.RBTExecutionDataNoReport;
-import org.openapitools.client.model.RBTExecutionReportCreationInfo;
-import org.openapitools.client.model.Report;
-import org.openapitools.client.model.ReportExportInfo;
-import org.openapitools.client.model.Scope;
-
-import com.btc.ep.plugins.embeddedplatform.http.ApiClientThatDoesntSuck;
-import com.btc.ep.plugins.embeddedplatform.http.GenericResponse;
-import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcBackToBackTestStep;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
 
 public class TestStuff {
 
-    private static ApiClient apiClient = new ApiClientThatDoesntSuck().setBasePath("http://localhost:29267");
+    /*
+     * Currently requires minor modification in BtcStepExecution class to accept the fake step context
+     */
+    private static final StepContext DUMMY_CONTEXT = StepContextStub.getInstance();
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        try {
+    public static void main(String[] args) throws Exception {
 
-            Configuration.setDefaultApiClient(apiClient);
+        BtcStartupStep start = new BtcStartupStep();
+        start.setInstallPath("E:/Program Files/BTC/ep2.9p0");
+        start.start(DUMMY_CONTEXT).start();
 
-            ProfilesApi profilesApi = new ProfilesApi();
-            try {
-                profilesApi.saveProfile(new ProfilePath().path("E:/deleteme"));
-                Files.delete(Paths.get("E:/deleteme"));
-            } catch (Exception e) {
-                //ignored
-            }
-            Profile profile =
-                profilesApi.openProfile("E:/test02.epp");
-            System.out.println(profile);
-            //FIXME: workaround for http://jira.osc.local:8080/browse/EP-2355 (#1)
-            Job updateJob = new ArchitecturesApi().architectureUpdate();
-            HttpRequester.waitForCompletion(updateJob.getJobID());
+        BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("E:/profile_29.epp");
+        profileLoad.setUpdateRequired(true);
+        profileLoad.start(DUMMY_CONTEXT).start();
 
-            //FIXME: workaround for http://jira.osc.local:8080/browse/EP-2355 (#2)
-            //            List<RequirementBasedTestCase> testCases =
-            //                new RequirementBasedTestCasesApi().getAllRBTestCases();
-            //List<String> tcUids = testCases.stream().map(tc -> tc.getUid()).collect(Collectors.toList());
-            GenericResponse r = HttpRequester.get("/ep/test-cases-rbt");
-            List<String> tcUids =
-                r.getContentAsList().stream().map(m -> (String)((Map<?, ?>)m).get("uid")).collect(Collectors.toList());
-            System.out.println(tcUids);
-            RBTExecutionDataExtendedNoReport rbtExecution = new RBTExecutionDataExtendedNoReport();
-            RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
-            data.setExecConfigNames(Arrays.asList("SIL"));
-            rbtExecution.setUiDs(tcUids);
-            rbtExecution.setData(data);
-            Job executionJob =
-                new RequirementBasedTestExecutionApi().executeRBTOnRBTestCasesList(rbtExecution);
-            HttpRequester.waitForCompletion(executionJob.getJobID());
-            RequirementBasedTestExecutionReportsApi reportsApi =
-                new RequirementBasedTestExecutionReportsApi();
-            List<Scope> scopes = new ScopesApi().getScopesByQuery1(null, false);
-            RBTExecutionReportCreationInfo info = new RBTExecutionReportCreationInfo();
-            info.setExecConfigName("SIL");
-            info.setUiDs(scopes.stream().map(sc -> sc.getUid()).collect(Collectors.toList()));
-            Report report = reportsApi.createRBTExecutionReportOnScopeList(info);
-            ReportExportInfo reportExportInfo = new ReportExportInfo();
-            reportExportInfo.setExportPath("E:/reports");
-            new ReportsApi().exportReport(report.getUid(), reportExportInfo);
-        } catch (ApiException e) {
-            System.err.println(e.getResponseBody());
-            e.printStackTrace();
+        BtcVectorGenerationStep vectorGen = new BtcVectorGenerationStep();
+        vectorGen.start(DUMMY_CONTEXT).start();
 
-        }
+        BtcBackToBackTestStep b2b = new BtcBackToBackTestStep();
+        b2b.setReference("SIL");
+        b2b.setComparison("SIL");
+        b2b.start(DUMMY_CONTEXT).start();
+
+        BtcWrapUpStep wrapUp = new BtcWrapUpStep();
+        wrapUp.start(DUMMY_CONTEXT).start();
     }
 
 }

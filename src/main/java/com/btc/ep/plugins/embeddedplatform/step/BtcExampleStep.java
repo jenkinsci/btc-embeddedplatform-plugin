@@ -1,10 +1,9 @@
 package com.btc.ep.plugins.embeddedplatform.step;
 
-import java.io.PrintStream;
 import java.io.Serializable;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Set;
-import java.util.TimerTask;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -13,7 +12,10 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 
+import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
+
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /*
@@ -129,77 +131,32 @@ public class BtcExampleStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExampleStepExecution extends StepExecution {
+class BtcExampleStepExecution extends BtcStepExecution {
 
     private static final long serialVersionUID = 1L;
-
     private BtcExampleStep step;
 
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private String status;
-
-    /**
-     * Constructor
-     *
-     * @param btcStartupStep
-     * @param context
-     */
     public BtcExampleStepExecution(BtcExampleStep btcStartupStep, StepContext context) {
-        super(context);
+        super(btcStartupStep, context);
         this.step = btcStartupStep;
     }
 
     /*
-     * The start method must either
-     * - start an asychronous process in its own thread (e.g. TimerTask) and then return false or
-     * - perform the desired action immediately (shouldn't take more that 1-2 seconds) and then return true
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set resonse code (field: response)
      */
     @Override
-    public boolean start() throws Exception {
-        System.out.println("BtcExampleStepExecution.start() has been called!"); // this would go to the 'jenkins.out.log' file in JENKINS_HOME
-
-        /*
-         * We can use something like this timer task to implement the desired action, i.e.:
-         * - process the step parameters
-         * - check preconditions
-         * -> is the API already connected?
-         * -> is EP in the expected state (e.g. profile loaded, architecture imported, test cases available...)?
-         * -> do all referenced files exist?
-         * - perform action using EP SDK
-         */
-        TimerTask t = new TimerTask() {
-
-            @Override
-            public void run() {
-                // This is what's actually executed (currently just prints some text to the Jenkins console):
-                try {
-                    PrintStream jenkinsConsole = getContext().get(TaskListener.class).getLogger();
-                    jenkinsConsole.println("The value of the string parameter is " + step.getStrStepParam());
-                    jenkinsConsole.println("The value of the integer parameter is " + step.getIntStepParam());
-                    for (int i = 0; i < 5; i++) {
-                        jenkinsConsole.println("Hello there! " + i);
-                        Thread.sleep(2000);
-                    }
-
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                    getContext().onFailure(e1);
-                }
-                // Important: always call this method (unless onFailure is called), otherwise Jenkins will wait forever
-                getContext().onSuccess("Finished");
-            }
-        };
-        // trigger the desired action by calling the run() method
-        t.run();
-        // return false (see explanation in comment on start() method)
-        return false;
-    }
-
-    @Override
-    public String getStatus() {
-        return status;
+    protected void performAction() throws Exception {
+        jenkinsConsole.println("The value of the string parameter is " + step.getStrStepParam());
+        jenkinsConsole.println("The value of the integer parameter is " + step.getIntStepParam());
+        jenkinsConsole.println("Workspace: " + Paths.get(getContext().get(FilePath.class).toURI()).toString());
+        // print success message and return response code
+        jenkinsConsole.println("--> [200] Example step successfully executed.");
+        response = 200;
     }
 
 }

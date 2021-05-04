@@ -2,11 +2,9 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
-import java.util.TimerTask;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -20,6 +18,7 @@ import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ProfilePath;
 
 import com.btc.ep.plugins.embeddedplatform.http.ApiClientThatDoesntSuck;
+import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -108,86 +107,33 @@ public class BtcWrapUpStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExampleStepExecution extends StepExecution {
+class BtcExampleStepExecution extends BtcStepExecution {
 
     private static final long serialVersionUID = 1L;
-
     private BtcWrapUpStep step;
 
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private String status;
-
-    /**
-     * Constructor
-     *
-     * @param btcStartupStep
-     * @param context
-     */
     public BtcExampleStepExecution(BtcWrapUpStep btcStartupStep, StepContext context) {
-        super(context);
+        super(btcStartupStep, context);
         this.step = btcStartupStep;
     }
 
-    /*
-     * The start method must either
-     * - start an asychronous process in its own thread (e.g. TimerTask) and then return false or
-     * - perform the desired action immediately (shouldn't take more that 1-2 seconds) and then return true
-     */
-    @Override
-    public boolean start() throws Exception {
-        /*
-         * We can use something like this timer task to implement the desired action, i.e.:
-         * - process the step parameters
-         * - check preconditions
-         * -> is the API already connected?
-         * -> is EP in the expected state (e.g. profile loaded, architecture imported, test cases available...)?
-         * -> do all referenced files exist?
-         * - perform action using EP SDK
-         */
-        TimerTask t = new TimerTask() {
-
-            private ProfilesApi profilesApi = new ProfilesApi();
-            private ApplicationApi applicationApi = new ApplicationApi();
-
-            @Override
-            public void run() {
-                // This is what's actually executed (currently just prints some text to the Jenkins console):
-                try {
-                    PrintStream jenkinsConsole = getContext().get(TaskListener.class).getLogger();
-                    String profilePath = step.getProfilePath() == null ? Store.epp.getPath() : step.getProfilePath();
-                    checkArgument(Configuration.getDefaultApiClient() instanceof ApiClientThatDoesntSuck,
-                        "Unexpected Default Api Client");
-                    checkArgument(profilePath instanceof String, "Profile path not available");
-
-                    // save the epp to the designated location
-                    profilesApi.saveProfile(new ProfilePath().path(Store.epp.getPath()));
-                    // exit the application
-                    applicationApi.exitApplication(true);
-
-                    jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                    getContext().onFailure(e1);
-                } finally {
-                    // make sure that the application is closed
-                    if (Store.epProcess.isAlive()) {
-                        Store.epProcess.destroyForcibly();
-                    }
-                }
-                getContext().onSuccess("Done");
-            }
-        };
-        // trigger the desired action by calling the run() method
-        t.run();
-        // return false (see explanation in comment on start() method)
-        return false;
-    }
+    private ProfilesApi profileApi = new ProfilesApi();
+    private ApplicationApi applicationApi = new ApplicationApi();
 
     @Override
-    public String getStatus() {
-        return status;
+    protected void performAction() throws Exception {
+        String profilePath = step.getProfilePath() == null ? Store.epp.getPath() : step.getProfilePath();
+        checkArgument(Configuration.getDefaultApiClient() instanceof ApiClientThatDoesntSuck,
+            "Unexpected Default Api Client");
+        checkArgument(profilePath instanceof String, "Profile path not available");
+
+        // save the epp to the designated location
+        profileApi.saveProfile(new ProfilePath().path(Store.epp.getPath()));
+        // exit the application
+        applicationApi.exitApplication(true);
+
+        jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
+        response = 200;
     }
 
 }
