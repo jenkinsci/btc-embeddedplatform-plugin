@@ -437,11 +437,23 @@ def removeIncompatibleVectors(body) {
     return r.status
 }
 
+/*
+ * special PLUGIN use case
+ */
 def setDefaultTolerances(body) {
     // call EP
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'setDefaultTolerances')
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/setDefaultTolerances", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
+    return r.status
+}
+
+def defaultTolerances(body) {
+    // call EP
+    def config = resolveConfig(body)
+    def reqString = createReqString(config, 'defaultTolerances')
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/defaultTolerances", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
     return r.status
 }
@@ -804,8 +816,12 @@ def createReqString(config, methodName) {
         reqString += '"loadReportData": "' + "${config.loadReportData}" + '", '
     if (config.updateRequired != null)    
         reqString += '"updateRequired": "' + "${config.updateRequired}" + '", '
+    if (config.disableUpdate != null)    
+        reqString += '"disableUpdate": "' + "${config.disableUpdate}" + '", '
     if (config.enableEC != null)    
         reqString += '"enableEC": "' + "${config.enableEC}" + '", '
+    if (config.createWrapperModel != null)    
+        reqString += '"createWrapperModel": "' + "${config.createWrapperModel}" + '", '
     if (config.saveProfileAfterEachStep != null)
         reqString += '"saveProfileAfterEachStep": "' + "${config.saveProfileAfterEachStep}" + '", '
     if (config.logFilePath != null)
@@ -929,6 +945,16 @@ def createReqString(config, methodName) {
         reqString += '"path": "' + toAbsPath("${config.path}") + '", '
     if (config.useCase != null)
         reqString += '"useCase": "' + "${config.useCase}" + '", '
+    if (config.applyTo != null)
+        reqString += '"applyTo": "' + "${config.applyTo}" + '", '
+    if (config.relTolerance != null)
+        reqString += '"relTolerance": "' + "${config.relTolerance}" + '", '
+    if (config.absToleranceFlp != null)
+        reqString += '"absToleranceFlp": "' + "${config.absToleranceFlp}" + '", '
+    if (config.absToleranceFxp != null)
+        reqString += '"absToleranceFxp": "' + "${config.absToleranceFxp}" + '", '
+    if (config.fxpIsMultipleOfLsb != null)
+        reqString += '"fxpIsMultipleOfLsb": "' + "${config.fxpIsMultipleOfLsb}" + '", '
     
     // Execution Record Import / Export + Model Coverage Report
     if (config.isMigration != null)
