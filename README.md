@@ -240,7 +240,7 @@ node {
  
     // generate stimuli vectors
     btc.vectorGeneration {
-        pll = "STM, D, MCDC"
+        pll = "STM;D;MCDC"
         createReport = true
     }
  
