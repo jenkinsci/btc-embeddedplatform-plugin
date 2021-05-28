@@ -95,6 +95,7 @@ Migration Suite below).
     + [Step "domainCoverageGoals"](#step-domaincoveragegoals)
     + [Step "addDomainCheckGoals"](#step-adddomaincheckgoals)
     + [Step "addInputCombinationGoals"](#step-addinputcombinationgoals)
+    + [Step "defaultTolerances"](#step-defaulttolerances)
     + [Step "formalTest"](#step-formaltest)
     + [Step "formalVerification"](#step-formalverification)
   - [Reporting](#reporting)
@@ -117,7 +118,10 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
-2.9.0 | - Adapted to EP 2.9<br>- Added domain checks step<br>- Added options for parallel execution (vectoGeneration)<br>- Test steps no longer automatically set the Pipeline to unstable | 2.9 | X | X 
+2.9.1 | - Added protection against unsupported execution on agents using "Local System" user<br>- Added support for EC wrapper model creation
+- Added check for model version change to automatically invoke an architecture update if required (can be forced with "updateRequired = true" or prevented with "disableUpdate = true")
+- Added defaultTolerances step to add tolerances for RBT or B2B | 2.9 | X | X 
+2.9.0 | - Adapted to EP 2.9<br>- Added domain checks step<br>- Added options for parallel execution (vectorGeneration)<br>- Test steps no longer automatically set the Pipeline to unstable | 2.9 | X | X 
 2.8.6 | - Fixed an issue with ZERO and CENTER calculation of input combination goals<br>- Added robustness improvement for overview report | 2.8 | X |  
 2.8.4 | - Added overview report capabilities when working with more than one project<br>- fixed an alignment issue in the reports<br>- Added overall report option to report on multiple projects<br>Added addInputCombinationGoals step to add input combination goals based on the User Defined Coverage Goals feature | 2.8 | X | X 
 2.8.2 | - Added suppport for blacklist/whitelist filtering for rbtExecution based on linked requirements<br>- Added possibility to specify additional jvm arguments on startup (e.g. -Xmx2g)<br>- Added option for DomainCoverageGoals to only apply to inputs/cals (see step btc.domainCoverageGoals) | 2.8 | X | X 
@@ -329,7 +333,8 @@ reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use exis
 matlabVersion | Controls which matlab version will be used by the tool.<br>String containing the release version (e.g. "2016b"), optionally followed by "32-bit" or "64-bit". The version and 32/64-bit part should be separated by a space character. | "2010a 32-bit"<br>"2013b"<br>"2016b 64-bit"
 matlabInstancePolicy | String that controls when EmbeddedPlatform will start a new Matlab instance. When selecting "NEVER" another process needs to ensure that a Matlab instance is available on the agent machine.<br>Default: "AUTO" (i.e. a new instance is only started if no instance of the specified version is available) | "AUTO", "ALWAYS", "NEVER"
 exportPath | Path to a folder where reports shall be stored. The path can be absolute or relative to the jenkins job's workspace. | "reports" (default)
-updateRequired | Boolean flag that controls whether or not the profile is being update after loading.<br>(default: false) | true, false
+updateRequired | Boolean flag that controls if the architecture update will be performed, even if the model has not changed.<br>(default: false) | true, false
+disableUpdate | Boolean flag that controls if the architecture update will be disabled, even if the model has changed.<br>(default: false) | true, false
 saveProfileAfterEachStep | Boolean flag that controls whether or not the profile is being saved after each step.(default: false) | true, false
 logFilePath | Path for the log file. The path can be absolute or relative to the jenkins job's workspace. | "log.txt" (default)
 licenseLocationString | String containing the license locations in the order of their priority. Multiple locations are to be separated by a semicolon. If not specified explicitly, the license locations will still be retrieved from the registry (via FlexLM) in the way they have been configured in the EP license dialog. | "C:\Licenses\EP21_30.01.2019.lic"<br>"@192.168.0.1"<br>"9000@myserver.com"
@@ -386,6 +391,7 @@ slScriptPath | Path of the model init script. The path can be absolute or relati
 **compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
 codeModelPath | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "CodeModel.xml"
 mappingFilePath | Path of the mapping file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "Mapping.xml"
+createWrapperModel | Boolean flag that controls if the BTC wrapper model shall be created or the specified EmbeddedCoder model. This is required in case of multiple Runnables or Client-Server communication.<br>(default: false) | true, false
 
 
 #### Step "profileCreateSL"
@@ -927,6 +933,36 @@ valueRegions | Comma separated string with value regions.<br>MIN, MAX, CENTER, Z
 |------------------|--------------------------------------------|
 | 200              | Success                                    |
 | 400              | User Defined Goals Add-On not installed    |
+| 500              | Unexpected Error                           |
+
+#### Step "defaultTolerances"
+
+DSL Command: btc.defaultTolerances{...}
+
+**Description**
+
+Adds default tolerances for floating point and fixed point outputs / locals. The default setting aims to cover minimal deviations that occur due to the precisions involved. You can change in which cases the tolerances are applied via the applyTo option. When calling this step without parameters the following tolerances will be set:
+- a relative tolerance of 1E-10%
+- an abolute tolerance of 1E-10 for floating point outputs/locals
+- an abolute tolerance of 2*LSB for fixed point outputs/locals
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+applyTo | Controls which kinds of outputs/locals get are considered<br>FLP_OUT -> Floating Point Outputs<br>FXP_OUT -> Fixed-Point outputs<br>FLOAT_FLOAT -> Float outputs, only if there is at least 1 float Input/Parameter<br>(default: all flp & fxp outputs will be considered) | "FLP_OUT"<br>"FXP_OUT"<br>"FLOAT_FLOAT"
+useCase | Controls which use case the tolerances will be valid for (B2B, RBT)<br>(default: B2B use case) | "B2B"<br>"RBT"
+relTolerance | A decimal value for the relative tolerance (in percent).<br>default: 1E-10 | 2.4E-6<br>7E-14
+absToleranceFlp | A decimal value for the abolute tolerance for floating point signals.<br>default: 1E-10 | 2.4E-6<br>7E-14
+absToleranceFxp | A decimal value for the abolute tolerance for fixed point signals. Can be a fixed value or a factor of the resolution (lsb, controlled by fxpIsMultipleOfLsb option)<br>default: 2 | 2.4E-6<br>1
+fxpIsMultipleOfLsb | Boolean flag that controls if the value specified for absToleranceFxp shall be multiplied by the resolution (lsb).<br>(default: true) | true, false
+onlyToplevel | Boolean flag that controls if the tolerances shall only be applied to the toplevel scope or to all scopes<br>(default: false -> apply to all scopes) | true, false
+
+
+**Possible Return values**
+
+| Return Value     | Description                                |
+|------------------|--------------------------------------------|
+| 200              | Success                                    |
+| 300              | Tolerances were applied to zero outputs    |
 | 500              | Unexpected Error                           |
 
 #### Step "formalTest"

@@ -11,6 +11,11 @@ def mode     = null       // mode for migration suite (source, target)
  * is then checked until success or until the timeout (default: 2 minutes) has expired.
  */
 def startup(body = {}) {
+    // important check, prevents trouble down the line
+    if (env.USERPROFILE.toLowerCase().contains('system32')) {
+        error('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
+    }
+
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
     if (config.port != null) {
