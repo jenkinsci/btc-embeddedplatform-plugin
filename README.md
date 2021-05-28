@@ -118,9 +118,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
-2.9.1 | - Added protection against unsupported execution on agents using "Local System" user<br>- Added support for EC wrapper model creation
-- Added check for model version change to automatically invoke an architecture update if required (can be forced with "updateRequired = true" or prevented with "disableUpdate = true")
-- Added defaultTolerances step to add tolerances for RBT or B2B | 2.9 | X | X 
+2.9.1 | - Added protection against unsupported execution on agents using "Local System" user<br>- Added support for EC wrapper model creation<br>- Added check for model version change to automatically invoke an architecture update if required (can be forced with "updateRequired = true" or prevented with "disableUpdate = true")<br>- Added defaultTolerances step to add tolerances for RBT or B2B | 2.9 | X | X 
 2.9.0 | - Adapted to EP 2.9<br>- Added domain checks step<br>- Added options for parallel execution (vectorGeneration)<br>- Test steps no longer automatically set the Pipeline to unstable | 2.9 | X | X 
 2.8.6 | - Fixed an issue with ZERO and CENTER calculation of input combination goals<br>- Added robustness improvement for overview report | 2.8 | X |  
 2.8.4 | - Added overview report capabilities when working with more than one project<br>- fixed an alignment issue in the reports<br>- Added overall report option to report on multiple projects<br>Added addInputCombinationGoals step to add input combination goals based on the User Defined Coverage Goals feature | 2.8 | X | X 
