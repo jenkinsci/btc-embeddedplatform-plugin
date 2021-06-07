@@ -317,7 +317,7 @@ Property | Description | Example Value(s)
 tlModelPath | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace. | "model.slx"
 tlScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
 tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
-environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
+environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. (only relevant for TargetLink use cases) | "Environment.xml"
 startupScriptPath | Path to a Startup Script which can be used to initialize matlab (e.g. toolchain startup, etc.). The path can be absolute or relative to the jenkins job's workspace. | "startup_toolchain.m"
 codeModelPath | Path of the hand code description file. The path can be absolute or relative to the jenkins job's workspace. | "CodeModel.xml"
 compilerShortName | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found. | "MSSDK71", "MSVC140", "MinGW64"
