@@ -2,18 +2,60 @@ package dsl
 // vars/btc.groovy
 
 def epJenkinsPort = null       // the port to use for communication with EP
-def isDebug  = null       // specifies if a debug environment should be exported and archived (true, false)
+def isDebug  = false       // specifies if a debug environment should be exported and archived (true, false)
 def mode     = null       // mode for migration suite (source, target)
 
 /**
- * Tries to connect to EP using the default port 29267 (unless specified differently).
- * If EP is not available a new instance is started via a batch command. Availability
+ * Connects to a running instance of BTC EmbeddedPlatform.
+ * If EP is not available, availability is checked until success
+ * or until the timeout (default: 2 minutes) has expired.
+ */
+def connect(body = {}) {
+    // important check, prevents trouble down the line
+    if (env.USERPROFILE.toLowerCase().contains('system32')) {
+        throw new Exception('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
+    }
+
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    if (config.port != null) {
+        epJenkinsPort = config.port
+    } else {
+        epJenkinsPort = "29267" // default as fallback
+    }
+    def timeoutSeconds = 120
+    if (config.timeout != null)
+        timeoutSeconds = config.timeout
+    def responseCode = 500;
+    if (isEpAvailable()) {
+        printToConsole("(200) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${epJenkinsPort}.")
+        responseCode = 200 // connected to an existing instance
+    } else {
+        timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
+            try {
+                waitUntil {
+                    // exit waitUntil closure
+                    return isEpAvailable()
+                }
+                printToConsole("(200) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${epJenkinsPort}.")
+                responseCode = 200 // connected to an existing instance
+            } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException err) {
+                throw new Exception("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
+            }
+        }
+    }
+    return responseCode
+}
+
+/**
+ * Start BTC EmbeddedPlatform on the node.
+ * If EP is not available a new instance is started via a powershell command. Availability
  * is then checked until success or until the timeout (default: 2 minutes) has expired.
  */
 def startup(body = {}) {
     // important check, prevents trouble down the line
     if (env.USERPROFILE.toLowerCase().contains('system32')) {
-        error('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
+        throw new Exception('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
     }
 
     // evaluate the body block, and collect configuration into the object
@@ -53,7 +95,7 @@ def startup(body = {}) {
             def split = "${epRegPath}".trim().split("\n")
             epInstallDir = split[split.length - 1].trim()
         } catch (err) {
-            error("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
+            throw new Exception("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
         }
     }
     epVersion = null
@@ -61,63 +103,77 @@ def startup(body = {}) {
         def split = "${epInstallDir}".split("\\\\")
         epVersion = split[split.length - 1].substring(2)
     } catch (err) {
-        error("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
+        throw new Exception("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
     }
     
     def responseCode = 500
-    if (isEpAvailable()) {
-        printToConsole("(201) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${epJenkinsPort}.")
-        responseCode = 201 // connected to an existing instance
-    } else { // try to connect to EP until timeout is reached
-        // configure license packages (required since 2.4.0 to support ET_BASE)
-        def licensingPackage = config.licensingPackage
-        if (licensingPackage == null) {
-            licensingPackage = 'ET_COMPLETE,ET_AUTOMATION_SERVER'
-        } else if (licensingPackage.equals('ET_COMPLETE')) {
-            licensingPackage += ',ET_AUTOMATION_SERVER'
-        } else if (licensingPackage.equals('ET_BASE')) {
-            licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
-        }
-        epJenkinsPort = findNextAvailablePort(epJenkinsPort)
+    // configure license packages (required since 2.4.0 to support ET_BASE)
+    def licensingPackage = config.licensingPackage
+    if (licensingPackage == null) {
+        licensingPackage = 'ET_COMPLETE,ET_AUTOMATION_SERVER'
+    } else if (licensingPackage.equals('ET_COMPLETE')) {
+        licensingPackage += ',ET_AUTOMATION_SERVER'
+    } else if (licensingPackage.equals('ET_BASE')) {
+        licensingPackage += ',ET_AUTOMATION_SERVER_BASE'
+    }
+    epJenkinsPort = findNextAvailablePort(epJenkinsPort)
 
-        printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds)")
-        timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
-            try {
-                epJreDir = getJreDir(epInstallDir)
-                epJreString = ''
-                if (epJreDir != null) {
-                    epJreString = ' -vm "' + epJreDir + '"'
-                }
-                def startCmd = "start \"\" \"${epInstallDir}/rcp/ep.exe\" -clearPersistedState \
-                -application com.btc.ep.application.headless -nosplash${epJreString} \
-                -vmargs -Dep.runtime.batch=com.btc.ep \
-                -Dosgi.configuration.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration\" \
-                -Dosgi.instance.area.default=\"%USERPROFILE%/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace\" \
-                -Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs -Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort} \
-                -Dep.licensing.package=${licensingPackage}"
-                if (compareVersions(epVersion, '2.8p0') >= 0) {
-                    startCmd += " -Dep.jenkins.port=${epJenkinsPort} -Djna.nosys=true -Dprism.order=sw -XX:+UseParallelGC"
-                } else { // version < 2.8
-                    startCmd += " -Dep.rest.port=${epJenkinsPort}"
-                }
-                if (config.additionalJvmArgs != null) {
-                    startCmd += " ${config.additionalJvmArgs}"
-                }
-                printToConsole(startCmd.substring(9).replaceAll(/\s+/, " ").replaceAll(" -", "\n    -"))
-                bat label: 'Starting BTC EmbeddedPlatform', returnStdout: true, script: startCmd
-                waitUntil {
-                    r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
-                    // exit waitUntil closure
-                    return (r.status == 200)
-                }
-                printToConsole("(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${epJenkinsPort}.")
-                responseCode = 200 // connected to a new instance
-            } catch(err) {
-                error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
+    printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds)")
+    timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
+        try {
+            epJreDir = getJreDir(epInstallDir)
+            epJreString = ''
+            if (epJreDir != null) {
+                epJreString = " '-vm', '\"${epJreDir}\"',"
             }
+            def startCmd = """\$p = Start-Process '${epInstallDir}/rcp/ep.exe' -PassThru -ArgumentList \
+                '-clearPersistedState', \
+                '-application com.btc.ep.application.headless', \
+                '-nosplash',${epJreString} \
+                '-vmargs', \
+                '-Dep.runtime.batch=com.btc.ep', \
+            \"-Dosgi.configuration.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration`\"\", \
+            \"-Dosgi.instance.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace`\"\", \
+            '-Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs', \
+            '-Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort}', \
+            '-Dep.licensing.package=${licensingPackage}',"""
+            if (compareVersions(epVersion, '2.8p0') >= 0) {
+                startCmd += " '-Dep.jenkins.port=${epJenkinsPort}', '-Djna.nosys=true', '-Dprism.order=sw', '-XX:+UseParallelGC'"
+            } else { // version < 2.8
+                startCmd += " '-Dep.rest.port=${epJenkinsPort}'"
+            }
+            if (config.additionalJvmArgs != null) {
+                startCmd += ", '${config.additionalJvmArgs}'"
+            }
+            startCmd += '; echo $p.id'
+            def startCmdOutput = powershell label: 'Starting BTC EmbeddedPlatform', returnStdout: true, script: startCmd
+            PID = startCmdOutput.trim()
+            reservePortAndReleaseRegistryLock(epJenkinsPort)
+            waitUntil {
+                r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
+                // exit waitUntil closure
+                return (r.status == 200)
+            }
+            printToConsole("(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${epJenkinsPort}.")
+            responseCode = 200 // connected to a new instance
+        } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException err) {
+            throw new Exception("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
         }
     }
     return responseCode
+}
+
+def killEp(body = {}) {
+    // if we don't have a PID (e.g., because the process was started earlier and we connected to it)
+    // we use the port to find the PID
+    if (!binding.hasVariable('PID') || PID == null) {
+        def nsOut = powershell returnStdout: true, script: "netstat -ona -p tcp | Select-String 0.0.0.0:${epJenkinsPort} | Select-String LISTENING"
+        PID = nsOut.trim().split(/\s/).last()
+    }
+    def status = bat returnStatus: true, script: "@echo off & taskkill /f /pid $PID 1>nul 2>nul"
+    if (status == 0) {
+        printToConsole("Successfully closed BTC EmbeddedPlatform instance.")
+    }
 }
 
 /**
@@ -147,7 +203,7 @@ def compareVersions(v1, v2) {
 }
 
 def handleError(e) {
-    try { wrapUp {} } catch (err) {} finally { error(e) }
+    try { wrapUp {} } catch (err) {} finally { printToConsole(e) }
 }
 
 // Profile Creation steps
@@ -181,14 +237,10 @@ def profileInit(body, method) {
     // call EP to invoke profile creation / loading / update
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/${method}", validResponseCodes: '100:500'
     printToConsole(" -> (${r.status}) ${r.content}")
-    isDebug = false
     if (r.status >= 400) {
-        wrapUp {
-            publishResults = false
-        }
         def relativeReportPath = toRelPath(exportPath)
         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
-        error("Error during profile load / creation. Aborting (you cannot continue without a profile).")
+        throw new Exception("Error during profile load / creation.")
     }
     return r.status
 }
@@ -530,16 +582,20 @@ def wrapUp(body = {}) {
     } finally {
         if (config.closeEp == null || config.closeEp == true) {
             releasePort(epJenkinsPort)
+            killEp()
         }
     }
-    def relativeReportPath = toRelPath(exportPath)
-    def profilePathParentDir = getParentDir(toRelPath(profilePath))
     try {
+        def relativeReportPath = null
+        if ((binding.hasVariable('isDebug') && isDebug) || publishReports) {
+            relativeReportPath = toRelPath(exportPath)
+        }
         // archiveArtifacts works with relative paths
         if (archiveProfiles) {
+            def profilePathParentDir = getParentDir(toRelPath(profilePath))
             archiveArtifacts allowEmptyArchive: true, artifacts: "${profilePathParentDir}/*.epp"
         }
-        if (isDebug)
+        if (binding.hasVariable('isDebug') && isDebug)
             archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeReportPath}/Debug_*.zip"
         // fileExists check needs absolute path
         if (publishReports && fileExists("${exportPath}/TestAutomationReport.html"))
@@ -603,7 +659,7 @@ def migrationSource(body) {
         } else if (config.codeModelPath != null) {
             r = profileCreateC(config)
         } else {
-            error("Please specify the model to be tested (target configuration).")
+            throw new Exception("Please specify the model to be tested (target configuration).")
         }
     } else {
         // load existing profile
@@ -612,7 +668,7 @@ def migrationSource(body) {
     }
     if (r >= 300) {
         wrapUp(body)
-        error("Error during profile creation (source)")
+        throw new Exception("Error during profile creation (source)")
     }
     
     // Import vectors if requested
@@ -629,7 +685,7 @@ def migrationSource(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        error("Error during simulation on source config.")
+        throw new Exception("Error during simulation on source config.")
     }
     // ER Export
     executionRecordExport {
@@ -705,11 +761,11 @@ def migrationTarget(body) {
     } else if (config.codeModelPath != null) {
         r = profileCreateC(config)
     } else {
-        error("Please specify the model to be tested (target configuration).")
+        throw new Exception("Please specify the model to be tested (target configuration).")
     }
     if (r >= 300) {
         wrapUp(body)
-        error("Error during profile creation (target)")
+        throw new Exception("Error during profile creation (target)")
     }
     
     // ER Import
@@ -739,7 +795,7 @@ def migrationTarget(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        error("Error during regression test (source vs. target config).")
+        throw new Exception("Error during regression test (source vs. target config).")
     }
     
     // Wrap Up
@@ -1213,42 +1269,59 @@ def findNextAvailablePort(portString) {
         :FAIL
         SET /A count+=1
         PING localhost -n 2 >NUL
-        IF %count% GEQ 15 RMDIR /S /Q "$lockFile"
+        IF %count% GEQ 10 RMDIR /S /Q "$lockFile"
         GOTO CHECK
 
         :END
         """
     } catch (err) {
-        error("Could not get lock on btc-port-registry: " + err)
+        throw new Exception("Could not get lock on btc-port-registry: " + err)
     }
     
-    def portList = readYaml file: '.port-registry'
-    //Collections.sort(portList) // sort list to make sure port numbers are ascending
-    portList.sort()
+    // key: port, value: process id
+    portMap = readYaml file: '.port-registry'
+    if (!(portMap instanceof Map)) {
+        portMap = [:]
+    }
     def epJenkinsPortNumber = Integer.parseInt("" + portString)
-    for (port in portList) {
-        if (port == epJenkinsPortNumber) {
+    def listedProcess = portMap[epJenkinsPortNumber]
+    while (listedProcess != null) {
+        if (isProcessAlive(listedProcess)) {
             epJenkinsPortNumber++
-        } else if (port > epJenkinsPortNumber) {
-            // sorted list ensures that no other ports collide with this one
-            break
+            listedProcess = portMap[epJenkinsPortNumber]
+        } else {
+            listedProcess = null
         }
     }
-    portList += epJenkinsPortNumber
-    writeYaml file: '.port-registry', data: portList, overwrite: true
-    
+    return epJenkinsPortNumber
+}
+
+def reservePortAndReleaseRegistryLock(epJenkinsPortNumber) {
+    portMap[epJenkinsPortNumber] = PID  // put current process into the map
+    writeYaml file: '.port-registry', data: portMap, overwrite: true
+    updatePortRegistry()
+}
+
+def updatePortRegistry() {
+    def appDataDir = "%AppData%\\BTC\\JenkinsAutomation"
+    def lockFile = "${appDataDir}\\.lock"
     try {
         bat label: 'Update port registry', returnStdout: true, script:
         """
         @echo off
         COPY /Y .port-registry "%AppData%\\BTC\\JenkinsAutomation\\.port-registry"
         RMDIR /S /Q "$lockFile"
+        DEL ".port-registry"
         """
     } catch (err) {
-        error("Unable to update btc-port-registry: " + err)
+        throw new Exception("Unable to update btc-port-registry: " + err)
     }
+}
 
-    return epJenkinsPortNumber
+boolean isProcessAlive(pid) {
+    def out = bat script: """@echo off
+    tasklist /fi \"pid eq ${pid}\"""", returnStdout: true
+    return out.trim().length() > 200
 }
 
 def toJson(object) {
@@ -1283,7 +1356,7 @@ def releasePort(port) {
         GOTO END
         
         :FAIL
-        IF %count% GEQ 15 EXIT -1
+        IF %count% GEQ 10 EXIT -1
         SET /A count+=1
         PING localhost -n 2 >NUL
         GOTO CHECK
@@ -1291,21 +1364,14 @@ def releasePort(port) {
         :END
         """
     } catch (err) {
-        error("Could not get lock on btc-port-registry: " + err)
+        throw new Exception("Could not get lock on btc-port-registry: " + err)
     }    
-    def portList = readYaml file: '.port-registry'
-    def epJenkinsPortNumber = Integer.parseInt("" + port)
-    portList -= epJenkinsPortNumber
-    writeYaml file: '.port-registry', data: portList, overwrite: true    
-    try {
-        bat label: 'Update port registry', returnStdout: true, script:
-        """
-        @echo off
-        COPY /Y .port-registry "%AppData%\\BTC\\JenkinsAutomation\\.port-registry"
-        RMDIR /S /Q "$lockFile"
-        DEL ".port-registry"
-        """
-    } catch (err) {
-        error("Unable to update btc-port-registry: " + err)
+    def portMap = readYaml file: '.port-registry'
+    if (!(portMap instanceof Map)) {
+        return
     }
+    def epJenkinsPortNumber = Integer.parseInt("" + port)
+    portMap.remove(epJenkinsPortNumber)
+    writeYaml file: '.port-registry', data: portMap, overwrite: true    
+    updatePortRegistry()
 }
