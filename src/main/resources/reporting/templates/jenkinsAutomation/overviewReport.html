@@ -1,0 +1,60 @@
+<#include "base_report.ftl">
+<#macro page_head_addition>
+<style>
+h5.FAILED:after {
+ border: 0px;
+ position: absolute;
+ top: 50%;
+ transform: translateY(-50%);
+ background-color: transparent;
+}
+
+h5.PASSED:after {
+ border: 0px;
+ position: absolute;
+ top: 50%;
+ transform: translateY(-50%);
+ background-color: transparent;
+}
+
+.data_table td.colA{
+width: 30%;
+}
+
+.data_table td.colB{
+width: 70%;
+}
+
+</style>
+</#macro>
+
+<#macro page_body_header_important>
+  <h1>${page_title}</h1>
+  <ul class="metainfo">
+    <li><span>Creator: </span> ${creator}</li>
+    <li><span>Start: </span>: ${start_date}</li>
+    <li><span>End: </span>: ${end_date}</li>
+    <li><span>Duration: </span>: ${duration}</li>
+  </ul>
+</#macro>
+
+<#macro page_body_main>      
+      
+    <#list overviewReport.getAllSections() as section>
+        <#if section.isCollapsible()>
+            <h2 id="${section.getTemplateVariable()}" class=<#if section.isDefaultClosed()=true>"chapter has-toggle is-closed"<#else>"chapter has-toggle"</#if>>${section.getSectionName()}</h2>
+            <section class="shadow-4">
+        </#if>
+        <@"<#assign ${section.getTemplateVariable()}=section>"?interpret/>
+        <#include "${section.getTemplateFile()}">
+        <#if section.isCollapsible()>         
+                <a class="toplink" href="#top" title="to top"></a>
+            </section>
+        </#if>
+    </#list>
+    </main>
+           
+    </div>
+</#macro>
+
+<@display_page/>

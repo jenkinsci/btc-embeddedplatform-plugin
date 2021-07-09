@@ -1,0 +1,74 @@
+<table class="data_table">
+    <tr>
+        <th>   </th>
+        <th>Step</th>
+        <th>Info</th>
+        <th>Details</th>
+        <th>Time</th>
+        <th>Status</th>
+        <th>Result</th>
+    </tr>
+
+    <#list reportTestSteps.getSteps() as step>
+        <tr>
+            <!-- Icon -->
+            <td>
+                <#if step.isStatusOK()>
+                    <span class="icon-sdc" title="No problems.">   </span>
+                <#elseif step.isStatusWARNING()>
+                    <span class="icon-wdc" title="Warnings occurred."  >   </span>
+                <#elseif step.isSkipped()>
+                    <span class="icon-mc" title="Skipped.">   </span>
+                <#else>
+                    <span class="icon-edc" title="Error occurred.">   </span>
+                </#if>
+            </td>
+            <!-- Step -->
+            <td>
+                <a href="#${step.getIndex()}_args">${(step.getIndex() + 1)}. ${step.getName()}</a> 
+            </td>
+            <!-- Info -->
+            <td>
+                ${step.getInfo()}
+            </td>
+            <!-- Details -->
+            <td>
+                <#if step.getDetails()?size gt 1>
+                    <#list step.getDetails() as detail>
+                        <a href="${step.getDetailsLinks()[detail?index]}">${detail}</a>
+                        <#if detail?index lt (step.getDetails()?size - 1)>
+                            <br>
+                        </#if>
+                    </#list>
+                <#elseif step.getDetails()?size gt 0>
+                    <a href="${step.getDetailsLinks()[0]}">${step.getDetails()[0]}</a>
+                </#if>
+            </td>
+            <!-- Time -->
+            <td>
+                ${step.getTime()}
+            </td>
+            
+            <!-- Status -->
+            <#if step.isStatusOK()>
+                <td style="color:#489100"><b>Completed</b></td>
+            <#elseif step.isStatusWARNING()>
+                <td style="color:#ff9500"><b>Completed</b></td>
+            <#elseif step.isSkipped()>
+                <td style="color:#b4b4b4"><b>Skipped</b></td>
+            <#else>
+                <td style="color:#c80000"><b>Error</b></td>
+            </#if>
+            <!-- Result -->
+            <td>
+            <#if step.getResult()?has_content>
+                <#if step.isPassed()>
+                    <div class="result_container"><div class="PASSED" /><b>${step.getResult()}</b></div>
+                <#elseif step.isFailed()>
+                    <div class="result_container"><div class="FAILED" /><b>${step.getResult()}</b></div>
+                </#if> 
+            </#if>
+            </td>
+         </tr>
+    </#list>
+</table>

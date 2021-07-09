@@ -1,0 +1,34 @@
+<section class="card">
+    <table class="data_table">
+        <tr>
+            <td class="colA"><b>Overall Status</b></td>
+            <td class="colB">
+            <#if overviewSummary.isPassed()>
+                <div class="result_container"><div class="PASSED" /><b>${overviewSummary.getOverallStatus()}</b></div>
+            <#else>
+                <div class="result_container"><div class="FAILED" /><b>${overviewSummary.getOverallStatus()}</b></div>
+            </#if>
+            </td>
+        </tr>
+        <tr>
+            <td class="colA">No. Test Projects Total</td>
+            <td class="colB">${overviewSummary.getNoTotal()}</td>
+        </tr>
+        <tr>
+            <td class="colA">No. Test Projects Passed</td>
+            <td class="colB">${overviewSummary.getNoPassed()}</td>
+        </tr>
+        <tr>
+            <td class="colA">No. Test Projects Failed</td>
+            <td class="colB">${overviewSummary.getNoFailed()}</td>
+        </tr>
+        <tr>
+            <td class="colA">Average Duration</td>
+            <td class="colB">${overviewSummary.getAvgDuration()}</td>
+        </tr>
+        <tr>
+            <td class="colA">Total Duration</td>
+            <td class="colB">${overviewSummary.getTotalDuration()}</td>
+        </tr>
+    </table>
+</section>

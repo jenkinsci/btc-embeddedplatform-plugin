@@ -1,0 +1,19 @@
+<#list reportStepArguments.getSteps() as step>
+    <#if step.isStatusOK() ||step.isStatusWARNING() >
+        <h3 class="has-toggle PASSED is-closed" id="${step.getIndex()}_args">${step.getName()}</h3>
+    <#elseif step.isFailed()>
+        <h3 class="has-toggle FAILED is-closed" id="${step.getIndex()}_args">${step.getName()}</h3>
+    <#else>
+        <h3 class="has-toggle MISSING_EXECUTION is-closed" id="${step.getIndex()}_args">${step.getName()}</h3>
+    </#if>
+    <section>
+        <table class="data_table">
+            <#list step.getArgs()?keys as prop>
+            <tr>
+                <td>${prop}</td>
+                <td>${step.getArgs()[prop]}</td>
+            </tr>
+            </#list>
+        </table>
+    </section>
+</#list>

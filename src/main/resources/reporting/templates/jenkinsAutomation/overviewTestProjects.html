@@ -1,0 +1,63 @@
+<table class="data_table">
+    <tr>
+        <th>   </th>
+        <th>Test Project</th>
+        <th>Coverage</th>
+        <th>Details (*.epp)</th>
+        <th>Time</th>
+        <th>Result</th>
+    </tr>
+
+    <#list overviewTestProjects.getProjects() as project>
+        <tr>
+            <!-- Icon -->
+            <td>
+                <#if project.isStatusOK()>
+                    <span class="icon-sdc" title="No problems.">   </span>
+                <#elseif project.isStatusWARNING()>
+                    <span class="icon-wdc" title="Warnings occurred."  >   </span>
+                <#elseif project.isSkipped()>
+                    <span class="icon-mc" title="Skipped.">   </span>
+                <#else>
+                    <span class="icon-edc" title="Error occurred.">   </span>
+                </#if>
+            </td>
+            <!-- project -->
+            <td>
+                <a href="${project.getReportLink()}">${project.getProfileName()}</a> 
+            </td>
+            <!-- Info -->
+            <td>
+                ${project.getInfo()}
+            </td>
+            <!-- Details -->
+            <td>
+                <#if project.getDetails()?size gt 1>
+                    <#list project.getDetails() as detail>
+                        <a href="${project.getDetailsLinks()[detail?index]}">${detail}</a>
+                        <#if detail?index lt (project.getDetails()?size - 1)>
+                            <br>
+                        </#if>
+                    </#list>
+                <#elseif project.getDetails()?size gt 0>
+                    <a href="${project.getDetailsLinks()[0]}">${project.getDetails()[0]}</a>
+                </#if>
+            </td>
+            <!-- Time -->
+            <td>
+                ${project.getTime()}
+            </td>
+            
+            <!-- Result -->
+            <td>
+            <#if project.getResult()?has_content>
+                <#if project.isPassed()>
+                    <div class="result_container"><div class="PASSED" /><b>${project.getResult()}</b></div>
+                <#elseif project.isFailed()>
+                    <div class="result_container"><div class="FAILED" /><b>${project.getResult()}</b></div>
+                </#if> 
+            </#if>
+            </td>
+         </tr>
+    </#list>
+</table>

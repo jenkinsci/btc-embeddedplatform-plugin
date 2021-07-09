@@ -182,7 +182,7 @@ class BtcBackToBackExecution extends BtcStepExecution {
 
         if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
             response = 200;
-        } else if (VerdictStatusEnum.FAILED_ACCEPTED_.name().equalsIgnoreCase(verdictStatus)) {
+        } else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
             response = 201;
         } else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
             response = 300;

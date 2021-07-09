@@ -24,6 +24,7 @@ import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -492,13 +493,25 @@ class BtcProfileLoadStepExecution extends BtcStepExecution {
 
     @Override
     protected void performAction() throws Exception {
+        /*
+         * Preliminary checks
+         */
         discardLoadedProfileIfPresent();
-        checkArgument(new File(step.getProfilePath()).exists(),
+        Path profilePath = resolvePath(step.getProfilePath());
+        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
+        checkArgument(profilePath.toFile().exists(),
             "Error: Profile does not exist! " + step.getProfilePath());
+        Store.epp = profilePath.toFile();
+        /*
+         * Load the profile
+         */
         profilesApi.openProfile(step.getProfilePath());
         updateModelPaths();
         String msg = "Successfully loaded the profile";
         response = 200;
+        /*
+         * Update architecture if required
+         */
         if (step.isUpdateRequired()) {
             Job archUpdate = archApi.architectureUpdate();
             HttpRequester.waitForCompletion(archUpdate.getJobID());

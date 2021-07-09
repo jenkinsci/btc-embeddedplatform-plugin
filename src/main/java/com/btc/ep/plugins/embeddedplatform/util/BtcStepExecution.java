@@ -24,10 +24,10 @@ public abstract class BtcStepExecution extends StepExecution {
     /*
      * --------------- ORIGINAL: START ---------------
      */
-    public BtcStepExecution(Step step, StepContext context) {
-        super(context);
-        this.functionName = step.getDescriptor().getFunctionName();
-    }
+    //    public BtcStepExecution(Step step, StepContext context) {
+    //        super(context);
+    //        this.functionName = step.getDescriptor().getFunctionName();
+    //    }
     /*
      * -------------- ORIGINAL: END -----------------
      */
@@ -35,17 +35,17 @@ public abstract class BtcStepExecution extends StepExecution {
     /*
      * --------------- Testing: START -----------------
      */
-    //    public BtcStepExecution(Step step, StepContext context) {
-    //        this.context = context;
-    //        this.functionName = "DUMMY";
-    //    }
-    //
-    //    private StepContext context;
-    //
-    //    @Override
-    //    public StepContext getContext() {
-    //        return this.context;
-    //    }
+    public BtcStepExecution(Step step, StepContext context) {
+        this.context = context;
+        this.functionName = "DUMMY";
+    }
+
+    private StepContext context;
+
+    @Override
+    public StepContext getContext() {
+        return this.context;
+    }
     /*
      * --------------- Testing: END -----------------
      */

@@ -2,8 +2,11 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -17,9 +20,11 @@ import org.openapitools.client.api.ApplicationApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ProfilePath;
 
-import com.btc.ep.plugins.embeddedplatform.http.ApiClientThatDoesntSuck;
+import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
+import com.btc.ep.plugins.embeddedplatform.reporting.ReportService;
 import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
+import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -122,18 +127,49 @@ class BtcExampleStepExecution extends BtcStepExecution {
 
     @Override
     protected void performAction() throws Exception {
-        String profilePath = step.getProfilePath() == null ? Store.epp.getPath() : step.getProfilePath();
-        checkArgument(Configuration.getDefaultApiClient() instanceof ApiClientThatDoesntSuck,
+        checkArgument(Configuration.getDefaultApiClient() instanceof EPApiClient,
             "Unexpected Default Api Client");
-        checkArgument(profilePath instanceof String, "Profile path not available");
 
-        // save the epp to the designated location
-        profileApi.saveProfile(new ProfilePath().path(Store.epp.getPath()));
-        // exit the application
+        /*
+         * Generate the project report
+         */
+        assembleProjectReport();
+
+        /*
+         * Save the profile
+         */
+        String profilePath = step.getProfilePath() == null ? Store.epp.getPath() : step.getProfilePath();
+        if (profilePath instanceof String) {
+            // save the epp to the designated location
+            profileApi.saveProfile(new ProfilePath().path(Store.epp.getPath()));
+        }
+        /*
+         * Exit the application (first softly via API)
+         */
         applicationApi.exitApplication(true);
-
+        if (Store.epProcess != null && Store.epProcess.isAlive()) {
+            // ... und bist du nicht willig, so brauch ich Gewalt!
+            Store.epProcess.destroyForcibly();
+        }
         jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
         response = 200;
+    }
+
+    private void assembleProjectReport() throws IOException {
+        Store.reportData.addSection(Store.testStepSection);
+        Store.testStepArgumentSection.setSteps(Store.testStepSection.getSteps());
+        Store.reportData.addSection(Store.testStepArgumentSection);
+        Store.reportData.addSection(Store.pilInfoSection);
+        String endDate = Util.DATE_FORMAT.format(new Date());
+        Store.reportData.setEndDate(endDate);
+        String durationString = Util.getTimeDiffAsString(new Date(), Store.startDate);
+        Store.reportData.setDuration(durationString);
+        File report = ReportService.getInstance().generateProjectReport(Store.reportData);
+        try {
+            ReportService.getInstance().exportReport(report, Store.reportPath);
+        } catch (IOException e) {
+            throw new IOException("Failed to export project report to " + Store.reportPath + ": " + e.getMessage());
+        }
     }
 
 }

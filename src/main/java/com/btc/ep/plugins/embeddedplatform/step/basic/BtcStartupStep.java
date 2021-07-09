@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -20,10 +21,15 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiClient;
 import org.openapitools.client.Configuration;
 
-import com.btc.ep.plugins.embeddedplatform.http.ApiClientThatDoesntSuck;
+import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
+import com.btc.ep.plugins.embeddedplatform.reporting.project.JenkinsAutomationReport;
+import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
+import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
+import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
 import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
+import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -211,7 +217,7 @@ class BtcStartupStepExecution extends BtcStepExecution {
     protected void performAction() throws Exception {
         // Prepare http connection
         ApiClient apiClient =
-            new ApiClientThatDoesntSuck().setBasePath("http://localhost:" + step.getPort());
+            new EPApiClient().setBasePath("http://localhost:" + step.getPort());
         Configuration.setDefaultApiClient(apiClient);
         HttpRequester.port = step.getPort();
 
@@ -240,6 +246,7 @@ class BtcStartupStepExecution extends BtcStepExecution {
             ProcessBuilder pb = new ProcessBuilder(command);
             // start process and save it for future use (e.g. to destroy it)
             Store.epProcess = pb.start();
+            Store.startDate = new Date();
             jenkinsConsole.println(String.join(" ", command));
 
             // wait for ep rest service to respond
@@ -247,9 +254,17 @@ class BtcStartupStepExecution extends BtcStepExecution {
             if (connected) {
                 jenkinsConsole.println("Successfully connected to BTC EmbeddedPlatform " + epVersion
                     + " on port " + step.getPort());
+                Store.reportData = new JenkinsAutomationReport();
+                String startDateString = Util.DATE_FORMAT.format(Store.startDate);
+                Store.reportData.setStartDate(startDateString);
+                Store.testStepSection = new TestStepSection();
+                Store.pilInfoSection = new PilInfoSection();
+                Store.testStepArgumentSection = new StepArgSection();
                 response = 200;
             } else {
                 jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
+                // Kill EmbeddedPlatform process to prevent zombies!
+                Store.epProcess.destroyForcibly();
                 response = 400;
             }
         }
