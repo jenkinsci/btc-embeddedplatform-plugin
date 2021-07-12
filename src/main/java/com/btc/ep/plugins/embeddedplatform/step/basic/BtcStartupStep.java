@@ -27,7 +27,7 @@ import com.btc.ep.plugins.embeddedplatform.reporting.project.JenkinsAutomationRe
 import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
-import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -203,7 +203,7 @@ public class BtcStartupStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcStartupStepExecution extends BtcStepExecution {
+class BtcStartupStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
     private BtcStartupStep step;
@@ -215,12 +215,15 @@ class BtcStartupStepExecution extends BtcStepExecution {
 
     @Override
     protected void performAction() throws Exception {
+        // don't add this step to the report
+        noReporting();
+
         // Prepare http connection
         ApiClient apiClient =
             new EPApiClient().setBasePath("http://localhost:" + step.getPort());
         Configuration.setDefaultApiClient(apiClient);
         HttpRequester.port = step.getPort();
-
+        Store.startDate = new Date();
         boolean connected = HttpRequester.checkConnection("/test", 200);
         if (connected) {
             jenkinsConsole
@@ -246,7 +249,6 @@ class BtcStartupStepExecution extends BtcStepExecution {
             ProcessBuilder pb = new ProcessBuilder(command);
             // start process and save it for future use (e.g. to destroy it)
             Store.epProcess = pb.start();
-            Store.startDate = new Date();
             jenkinsConsole.println(String.join(" ", command));
 
             // wait for ep rest service to respond
@@ -254,12 +256,6 @@ class BtcStartupStepExecution extends BtcStepExecution {
             if (connected) {
                 jenkinsConsole.println("Successfully connected to BTC EmbeddedPlatform " + epVersion
                     + " on port " + step.getPort());
-                Store.reportData = new JenkinsAutomationReport();
-                String startDateString = Util.DATE_FORMAT.format(Store.startDate);
-                Store.reportData.setStartDate(startDateString);
-                Store.testStepSection = new TestStepSection();
-                Store.pilInfoSection = new PilInfoSection();
-                Store.testStepArgumentSection = new StepArgSection();
                 response = 200;
             } else {
                 jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
@@ -268,6 +264,19 @@ class BtcStartupStepExecution extends BtcStepExecution {
                 response = 400;
             }
         }
+        initializeReporting();
+    }
+
+    /**
+     * Initializes the reporting
+     */
+    private void initializeReporting() {
+        Store.reportData = new JenkinsAutomationReport();
+        String startDateString = Util.DATE_FORMAT.format(Store.startDate);
+        Store.reportData.setStartDate(startDateString);
+        Store.testStepSection = new TestStepSection();
+        Store.pilInfoSection = new PilInfoSection();
+        Store.testStepArgumentSection = new StepArgSection();
     }
 
     /**

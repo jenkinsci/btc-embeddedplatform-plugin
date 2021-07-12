@@ -6,9 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.text.DateFormat;
-import java.util.Date;
-import java.util.Locale;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -43,9 +40,6 @@ public class ReportService {
     // LOGGER
     private static Logger logger = LoggerFactory.getLogger(ReportService.class);
 
-    private static final String PROJECT_REPORT_NODE_NAME = "TestAutomationReport";
-    private static final String OVERVIEW_REPORT_NODE_NAME = "TestAutomationOverviewReport";
-
     public File generateProjectReport(JenkinsAutomationReport reportData) {
         File templates;
         try {
@@ -54,9 +48,6 @@ public class ReportService {
             Map<String, Object> reportModel = reportData.getReportModel();
             Path mainReportPath = Paths.get(templates.getAbsolutePath(), reportData.getTemplateFile());
 
-            DateFormat dateFormat =
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault());
-            String creationDate = dateFormat.format(new Date());
             reportModel.put("page_title", reportData.getSectionName());
             reportModel.put("creator", System.getProperty("user.name"));
 
@@ -65,8 +56,6 @@ public class ReportService {
                 .mainTemplate(mainReportPath)
                 .mainModel(reportModel)
                 .name(reportData.getName());
-
-            config.name(PROJECT_REPORT_NODE_NAME + "_" + creationDate);
 
             for (JenkinsAutomationReportSection section : reportData.getAllSections()) {
                 config.addTemplateForMainData(Paths.get(templates.getAbsolutePath(), section.getTemplateFile()));
@@ -90,9 +79,6 @@ public class ReportService {
             Map<String, Object> reportModel = reportData.getReportModel();
             Path mainReportPath = Paths.get(templates.getAbsolutePath(), reportData.getTemplateFile());
 
-            DateFormat dateFormat =
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault());
-            String creationDate = dateFormat.format(new Date());
             reportModel.put("page_title", reportData.getSectionName());
             reportModel.put("creator", System.getProperty("user.name"));
 
@@ -101,8 +87,6 @@ public class ReportService {
                 .mainTemplate(mainReportPath)
                 .mainModel(reportModel)
                 .name(reportData.getName());
-
-            config.name(OVERVIEW_REPORT_NODE_NAME + "_" + creationDate);
 
             for (OverviewReportSection section : reportData.getAllSections()) {
                 config.addTemplateForMainData(Paths.get(templates.getAbsolutePath(), section.getTemplateFile()));
@@ -122,7 +106,8 @@ public class ReportService {
     public void exportReport(File report, String destinationFolder) throws IOException {
         File dest = new File(destinationFolder);
         Files.createDirectories(dest.toPath()); // creates the folder if it doesn't exist
-        Files.move(report.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(report.toPath(), Paths.get(dest.getAbsolutePath() + "/" + report.getName()),
+            StandardCopyOption.REPLACE_EXISTING);
     }
 
 }

@@ -12,8 +12,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 
-import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
-
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.TaskListener;
@@ -131,7 +129,7 @@ public class BtcExampleStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExampleStepExecution extends BtcStepExecution {
+class BtcExampleStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
     private BtcExampleStep step;

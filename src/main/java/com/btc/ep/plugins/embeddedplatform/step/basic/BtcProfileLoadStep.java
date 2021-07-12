@@ -2,11 +2,9 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Set;
 
@@ -23,20 +21,11 @@ import org.openapitools.client.model.ProfilePath;
 import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
-
-/*
- * ################################################################################################
- * #                                                                                              #
- * #     THIS IS A TEMPLATE: COPY THIS FILE AS A STARTING POINT TO IMPLEMENT FURTHER STEPS.       #
- * #                                                                                              # 
- * ################################################################################################
- */
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -63,7 +52,7 @@ public class BtcProfileLoadStep extends Step implements Serializable {
     private String startupScriptPath;
     private String compilerShortName;
     private String pilConfig;
-    private int pilTimetout;
+    private int pilTimeout;
     private String matlabVersion;
     private String matlabInstancePolicy;
     private boolean saveProfileAfterEachStep;
@@ -358,8 +347,8 @@ public class BtcProfileLoadStep extends Step implements Serializable {
      * 
      * @return the pilTimetout
      */
-    public int getPilTimetout() {
-        return pilTimetout;
+    public int getPilTimeout() {
+        return pilTimeout;
     }
 
     /**
@@ -368,8 +357,8 @@ public class BtcProfileLoadStep extends Step implements Serializable {
      * @param pilTimetout the pilTimetout to set
      */
     @DataBoundSetter
-    public void setPilTimetout(int pilTimetout) {
-        this.pilTimetout = pilTimetout;
+    public void setPilTimeout(int pilTimetout) {
+        this.pilTimeout = pilTimetout;
     }
 
     /**
@@ -478,7 +467,7 @@ public class BtcProfileLoadStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcProfileLoadStepExecution extends BtcStepExecution {
+class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
     private BtcProfileLoadStep step;
@@ -502,12 +491,14 @@ class BtcProfileLoadStepExecution extends BtcStepExecution {
         checkArgument(profilePath.toFile().exists(),
             "Error: Profile does not exist! " + step.getProfilePath());
         Store.epp = profilePath.toFile();
+        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
         /*
          * Load the profile
          */
         profilesApi.openProfile(step.getProfilePath());
         updateModelPaths();
         String msg = "Successfully loaded the profile";
+        detailWithLink(Store.epp.getName(), profilePath.toAbsolutePath().toString());
         response = 200;
         /*
          * Update architecture if required
@@ -515,10 +506,11 @@ class BtcProfileLoadStepExecution extends BtcStepExecution {
         if (step.isUpdateRequired()) {
             Job archUpdate = archApi.architectureUpdate();
             HttpRequester.waitForCompletion(archUpdate.getJobID());
-            msg += " and updated the architecture";
+            msg += " (incl. arch-update)";
             response = 201;
         }
         jenkinsConsole.println(msg + ".");
+        info(msg + ".");
     }
 
     /**
@@ -546,35 +538,15 @@ class BtcProfileLoadStepExecution extends BtcStepExecution {
         if (p != null) {
             updateModelPath.setSlInitScript(p.toFile().getCanonicalPath());
         }
-        //TODO: continue
-
-        archApi.updateModelPaths("", updateModelPath);
-
-    }
-
-    /**
-     * Converts an absolute or relative path into a Path object.
-     *
-     * @param filePathString An absolute or relative path (relative to the pipelines pwd)
-     * @return the path object
-     */
-    private Path resolvePath(String filePathString) {
-        if (filePathString != null) {
-            try {
-                Path path = Paths.get(filePathString);
-                if (path.isAbsolute()) {
-                    return path;
-                } else {
-                    FilePath workspace = getContext().get(FilePath.class);
-                    String baseDir = Paths.get(workspace.toURI()).toString();
-                    return new File(baseDir, path.toString()).toPath();
-                }
-            } catch (Exception e) {
-                System.out.println("Cannot resolve path from " + filePathString);
-            }
+        p = resolvePath(step.getAddInfoModelPath());
+        if (p != null) {
+            updateModelPath.setAddModelInfo(p.toFile().getCanonicalPath());
         }
-        return null;
-
+        p = resolvePath(step.getCodeModelPath());
+        if (p != null) {
+            updateModelPath.setEnvironment(p.toFile().getCanonicalPath());
+        }
+        archApi.updateModelPaths("", updateModelPath);
     }
 
     private void discardLoadedProfileIfPresent() {
@@ -582,8 +554,7 @@ class BtcProfileLoadStepExecution extends BtcStepExecution {
             Path tmpFile = Files.createTempFile("deleteme", ".epp");
             profilesApi.saveProfile(new ProfilePath().path(tmpFile.toString()));
             Files.delete(tmpFile);
-        } catch (Exception e) {
-            //ignored
+        } catch (Exception ignored) {
         }
     }
 

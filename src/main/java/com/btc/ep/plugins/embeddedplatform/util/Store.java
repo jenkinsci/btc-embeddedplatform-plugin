@@ -13,7 +13,7 @@ public class Store {
     // General
     public static Process epProcess;
     public static File epp;
-    public static String reportPath = "reports";
+    public static String exportPath;
 
     // Reporting
     public static JenkinsAutomationReport reportData;

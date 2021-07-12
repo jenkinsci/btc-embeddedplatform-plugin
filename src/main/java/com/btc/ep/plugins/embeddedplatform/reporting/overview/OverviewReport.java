@@ -51,7 +51,7 @@ public class OverviewReport extends OverviewReportSection {
     }
 
     public String getName() {
-        return "TestAutomationReport";
+        return "TestAutomationOverviewReport";
 
     }
 

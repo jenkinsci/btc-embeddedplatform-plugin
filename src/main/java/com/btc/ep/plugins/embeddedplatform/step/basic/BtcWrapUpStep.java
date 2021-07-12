@@ -22,7 +22,7 @@ import org.openapitools.client.model.ProfilePath;
 
 import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
 import com.btc.ep.plugins.embeddedplatform.reporting.ReportService;
-import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -49,7 +49,7 @@ public class BtcWrapUpStep extends Step implements Serializable {
 
     @Override
     public StepExecution start(StepContext context) throws Exception {
-        return new BtcExampleStepExecution(this, context);
+        return new BtcWrapUpStepExecution(this, context);
     }
 
     @Extension
@@ -112,12 +112,12 @@ public class BtcWrapUpStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExampleStepExecution extends BtcStepExecution {
+class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
     private BtcWrapUpStep step;
 
-    public BtcExampleStepExecution(BtcWrapUpStep btcStartupStep, StepContext context) {
+    public BtcWrapUpStepExecution(BtcWrapUpStep btcStartupStep, StepContext context) {
         super(btcStartupStep, context);
         this.step = btcStartupStep;
     }
@@ -166,9 +166,9 @@ class BtcExampleStepExecution extends BtcStepExecution {
         Store.reportData.setDuration(durationString);
         File report = ReportService.getInstance().generateProjectReport(Store.reportData);
         try {
-            ReportService.getInstance().exportReport(report, Store.reportPath);
+            ReportService.getInstance().exportReport(report, Store.exportPath);
         } catch (IOException e) {
-            throw new IOException("Failed to export project report to " + Store.reportPath + ": " + e.getMessage());
+            throw new IOException("Failed to export project report to " + Store.exportPath + ": " + e.getMessage());
         }
     }
 

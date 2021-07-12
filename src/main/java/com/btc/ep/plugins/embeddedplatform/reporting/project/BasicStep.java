@@ -32,6 +32,15 @@ public class BasicStep {
     protected Map<String, String> args = new HashMap<>();
 
     /**
+     * Constructor
+     *
+     * @param name
+     */
+    public BasicStep(String name) {
+        this.name = name;
+    }
+
+    /**
      * Get name.
      * 
      * @return the name

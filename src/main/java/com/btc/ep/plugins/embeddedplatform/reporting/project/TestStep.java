@@ -7,6 +7,10 @@ package com.btc.ep.plugins.embeddedplatform.reporting.project;
  */
 public class TestStep extends BasicStep {
 
+    public TestStep(String name) {
+        super(name);
+    }
+
     public void addArgument(String key, Object value) {
         String stringValue = String.valueOf(value).equals("null") ? "n.a." : String.valueOf(value);
         this.args.put(key, stringValue);

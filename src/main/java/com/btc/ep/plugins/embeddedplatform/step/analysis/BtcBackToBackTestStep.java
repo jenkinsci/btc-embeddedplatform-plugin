@@ -15,17 +15,24 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.api.BackToBackTestReportsApi;
 import org.openapitools.client.api.BackToBackTestsApi;
 import org.openapitools.client.api.ProfilesApi;
+import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.BackToBackTest.VerdictStatusEnum;
 import org.openapitools.client.model.BackToBackTestExecutionData;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.model.Report;
+import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.GenericResponse;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.util.BtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.Status;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.google.gson.Gson;
 
 import hudson.Extension;
@@ -136,8 +143,10 @@ public class BtcBackToBackTestStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcBackToBackExecution extends BtcStepExecution {
+class BtcBackToBackExecution extends AbstractBtcStepExecution {
 
+    private static final String REPORT_LINK_NAME_B2B = "Back-to-Back Test Report";
+    private static final String REPORT_NAME_B2B = "BackToBackTestReport";
     private static final long serialVersionUID = 1L;
     private BtcBackToBackTestStep step;
 
@@ -147,8 +156,10 @@ class BtcBackToBackExecution extends BtcStepExecution {
     }
 
     private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
+    private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
     private ScopesApi scopesApi = new ScopesApi();
     private ProfilesApi profilesApi = new ProfilesApi();
+    private ReportsApi reportingApi = new ReportsApi();
 
     @Override
     protected void performAction() throws Exception {
@@ -180,17 +191,45 @@ class BtcBackToBackExecution extends BtcStepExecution {
         // End of workaround
         jenkinsConsole.println("Back-to-Back Test finished with result: " + verdictStatus);
 
+        // status, etc.
+        @SuppressWarnings ("unchecked")
+        List<Object> comparisons = (List<Object>)genericMap.get("comparison");
+        String info = comparisons.size() + " comparison(s)";
+        info(info);
+
         if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.OK).passed().result(verdictStatus);
             response = 200;
         } else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.OK).passed().result(verdictStatus);
             response = 201;
         } else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.OK).failed().result(verdictStatus);
             response = 300;
         } else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.ERROR).result(verdictStatus);
             response = 400;
         } else {
+            status(Status.ERROR).result(verdictStatus);
             response = 500;
         }
+
+        generateAndExportReport(b2bTestUid);
+
+    }
+
+    /**
+     *
+     *
+     * @param b2bTestUid
+     * @throws ApiException
+     */
+    private void generateAndExportReport(String b2bTestUid) throws ApiException {
+        Report report = b2bReportingApi.createBackToBackReport(b2bTestUid);
+        ReportExportInfo reportExportInfo = new ReportExportInfo();
+        reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_B2B);
+        reportingApi.exportReport(report.getUid(), reportExportInfo);
+        detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
     }
 
 }

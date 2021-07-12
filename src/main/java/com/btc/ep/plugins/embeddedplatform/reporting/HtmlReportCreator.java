@@ -191,7 +191,7 @@ public class HtmlReportCreator {
             File mainFile = config.getMainFileTemplate().toFile();
             Template main = cfg.getTemplate(mainFile.getName());
 
-            File f = new File(reportDir + "/" + HTML_REPORT);
+            File f = new File(reportDir + "/" + config.getName() + ".html");
             BufferedWriter out = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(f.getAbsolutePath()), StandardCharsets.UTF_8));
             main.process(config.getMainFileModel(), out);
