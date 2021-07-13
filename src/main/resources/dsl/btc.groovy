@@ -13,7 +13,7 @@ def mode     = null       // mode for migration suite (source, target)
 def connect(body = {}) {
     // important check, prevents trouble down the line
     if (env.USERPROFILE.toLowerCase().contains('system32')) {
-        throw new Exception('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
+        error('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
     }
 
     // evaluate the body block, and collect configuration into the object
@@ -40,7 +40,7 @@ def connect(body = {}) {
                 printToConsole("(200) Successfully connected to a running instance of BTC EmbeddedPlatform on port: ${epJenkinsPort}.")
                 responseCode = 200 // connected to an existing instance
             } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException err) {
-                throw new Exception("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
+                error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
             }
         }
     }
@@ -55,7 +55,7 @@ def connect(body = {}) {
 def startup(body = {}) {
     // important check, prevents trouble down the line
     if (env.USERPROFILE.toLowerCase().contains('system32')) {
-        throw new Exception('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
+        error('Unsupported "Local System" account detected. Jenkins Agent must be configured to run processes as a dedicated user.')
     }
 
     // evaluate the body block, and collect configuration into the object
@@ -95,7 +95,7 @@ def startup(body = {}) {
             def split = "${epRegPath}".trim().split("\n")
             epInstallDir = split[split.length - 1].trim()
         } catch (err) {
-            throw new Exception("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
+            error("The active version of BTC EmbeddedPlatform could not be queried from your registry. You can pass the installation path to the startup method (installPath = ...) to work around this issue. Please note that this version of BTC EmbeddedPlatform still needs to be installed and integrated correctly in order to work properly.")
         }
     }
     epVersion = null
@@ -103,7 +103,7 @@ def startup(body = {}) {
         def split = "${epInstallDir}".split("\\\\")
         epVersion = split[split.length - 1].substring(2)
     } catch (err) {
-        throw new Exception("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
+        error("Invalid path to BTC EmbeddedPlatform installation: ${epInstallDir}")
     }
     
     def responseCode = 500
@@ -157,7 +157,7 @@ def startup(body = {}) {
             printToConsole("(200) Successfully started and connected to BTC EmbeddedPlatform ${epVersion} on port: ${epJenkinsPort}.")
             responseCode = 200 // connected to a new instance
         } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException err) {
-            throw new Exception("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
+            error("(400) Connection attempt to BTC EmbeddedPlatform timed out after " + timeoutSeconds + " seconds.")
         }
     }
     return responseCode
@@ -240,7 +240,7 @@ def profileInit(body, method) {
     if (r.status >= 400) {
         def relativeReportPath = toRelPath(exportPath)
         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "${relativeReportPath}", reportFiles: 'ProfileMessages.html', reportName: 'Profile Messages'])
-        throw new Exception("Error during profile load / creation.")
+        error("Error during profile load / creation.")
     }
     return r.status
 }
@@ -639,19 +639,33 @@ def migrationSource(body) {
     
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    
+    def stashName = null
     // dispatch args
-    migrationTmpDir = toAbsPath("MigrationTmp")
+    if (config.uniqueName != null) {
+        migrationTmpDir = toAbsPath("Migration/${config.uniqueName}")
+        stashName = "migration-source-${config.uniqueName}"
+    } else {
+        migrationTmpDir = toAbsPath("MigrationTmp")
+        stashName = "migration-source"
+    }
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
     config.exportPath = migrationTmpDir + "/reports"
-    config.saveProfileAfterEachStep = true
+    //config.saveProfileAfterEachStep = true
     
     // Startup
-    startup(body)
+    if (config.uniqueName != null || config.isDocker) {
+        connect(body)
+    } else {
+        startup(body)
+    }
     // Profile Creation
     if (config.profilePath == null) {
         // create a new profile
-        config.profilePath = migrationTmpDir + "/profiles/profile.epp"
+        if (config.uniqueName != null) {
+            config.profilePath = migrationTmpDir + "/profiles/${config.uniqueName}.epp"
+        } else {
+            config.profilePath = migrationTmpDir + "/profiles/profile.epp"
+        }
         if (config.tlModelPath != null) {
             r = profileCreateTL(config)
         } else if (config.slModelPath != null) {
@@ -659,7 +673,7 @@ def migrationSource(body) {
         } else if (config.codeModelPath != null) {
             r = profileCreateC(config)
         } else {
-            throw new Exception("Please specify the model to be tested (target configuration).")
+            error("Please specify the model to be tested (source configuration).")
         }
     } else {
         // load existing profile
@@ -668,7 +682,7 @@ def migrationSource(body) {
     }
     if (r >= 300) {
         wrapUp(body)
-        throw new Exception("Error during profile creation (source)")
+        error("Error during profile creation (source)")
     }
     
     // Import vectors if requested
@@ -685,7 +699,7 @@ def migrationSource(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        throw new Exception("Error during simulation on source config.")
+        error("Error during simulation on source config.")
     }
     // ER Export
     executionRecordExport {
@@ -716,6 +730,9 @@ def migrationSource(body) {
     }
     try {
         def reqString = "MIGRATION_SOURCE"
+        if (config.uniqueName != null || config.isDocker) {
+            reqString += ";false"
+        }
         httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
         printToConsole('BTC EmbeddedPlatform successfully closed.')
@@ -724,9 +741,13 @@ def migrationSource(body) {
     }
     def relativeMigTmpDir = toRelPath(migrationTmpDir)
     def relativeExportPath = toRelPath(exportPath)
-    archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeMigTmpDir}/profiles/*.epp"
+    // only archive profiles if source profiles are expected
+    if (config.saveProfileAfterEachStep == true) {
+        archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeMigTmpDir}/profiles/*.epp"
+    }
+    // stash mdf files and reports
     printToConsole("stashing files: ${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*")
-    stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/**/*", name: "migration-source"
+    stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/**/*", name: stashName
 }
 
 /**
@@ -741,31 +762,54 @@ def migrationTarget(body) {
     def config = resolveConfig(body)
     
     // dispatch args
-    migrationTmpDir = toAbsPath("MigrationTmp")
+    def stashName = null
+    if (config.uniqueName != null) {
+        migrationTmpDir = toAbsPath("Migration/${config.uniqueName}")
+        stashName = "migration-source-${config.uniqueName}"
+    } else {
+        migrationTmpDir = toAbsPath("MigrationTmp")
+        stashName = "migration-source"
+    }
     config.migrationTmpDir = toAbsPath(migrationTmpDir)
     config.exportPath = migrationTmpDir + "/reports"
-    config.profilePath = migrationTmpDir + "/profiles/profile.epp"
-    config.saveProfileAfterEachStep = true
+    //config.saveProfileAfterEachStep = true
     config.loadReportData = true
     
     // unstash files from source slave
-    unstash "migration-source"
+    unstash stashName
     
     // Startup
-    startup(body)
-    // Profile Creation
-    if (config.tlModelPath != null) {
-        r = profileCreateTL(config)
-    } else if (config.slModelPath != null) {
-        r = profileCreateEC(config)
-    } else if (config.codeModelPath != null) {
-        r = profileCreateC(config)
+    if (config.uniqueName != null || config.isDocker) {
+        connect(body)
+        config.closeEp = false
     } else {
-        throw new Exception("Please specify the model to be tested (target configuration).")
+        startup(body)
+    }
+    // Profile Creation
+    if (config.profilePath == null) {
+        // create a new profile
+        if (config.uniqueName != null) {
+            config.profilePath = migrationTmpDir + "/profiles/${config.uniqueName}.epp"
+        } else {
+            config.profilePath = migrationTmpDir + "/profiles/profile.epp"
+        }
+        if (config.tlModelPath != null) {
+            r = profileCreateTL(config)
+        } else if (config.slModelPath != null) {
+            r = profileCreateEC(config)
+        } else if (config.codeModelPath != null) {
+            r = profileCreateC(config)
+        } else {
+            error("Please specify the model to be tested (target configuration).")
+        }
+    } else {
+        // load existing profile
+        config.updateRequired = true
+        r = profileLoad(config)
     }
     if (r >= 300) {
         wrapUp(body)
-        throw new Exception("Error during profile creation (target)")
+        error("Error during profile creation (target)")
     }
     
     // ER Import
@@ -795,11 +839,25 @@ def migrationTarget(body) {
     r = regressionTest(config)
     if (r >= 400) {
         wrapUp(body)
-        throw new Exception("Error during regression test (source vs. target config).")
+        error("Error during regression test (source vs. target config).")
     }
     
+    // contribute to overall report
+    if (config.uniqueName != null) {
+        collectProjectOverview{}
+    }
+
     // Wrap Up
-    wrapUp(body)
+    if (config.uniqueName != null) {
+        wrapUp {
+            closeEp = false
+            archiveProfiles = false
+            publishReports = false
+            publishResults = false
+        }
+    } else {
+        wrapUp(body)
+    }
 }
 
 // Request String Method
@@ -815,7 +873,11 @@ def migrationTarget(body) {
  *      + special handling for paths and some others
  */
 def createReqString(config, methodName) {
-    printToConsole("Running btc.$methodName: $config")
+    if (binding.hasVariable('mode')) { // migration suite scenario
+        printToConsole("Running btc.$methodName")
+    } else {
+        printToConsole("Running btc.$methodName: $config")
+    }
     def reqString = '{ '
     // Profile
     if (config.profilePath != null) {
@@ -1275,7 +1337,7 @@ def findNextAvailablePort(portString) {
         :END
         """
     } catch (err) {
-        throw new Exception("Could not get lock on btc-port-registry: " + err)
+        error("Could not get lock on btc-port-registry: " + err)
     }
     
     // key: port, value: process id
@@ -1314,7 +1376,7 @@ def updatePortRegistry() {
         DEL ".port-registry"
         """
     } catch (err) {
-        throw new Exception("Unable to update btc-port-registry: " + err)
+        error("Unable to update btc-port-registry: " + err)
     }
 }
 
@@ -1364,7 +1426,7 @@ def releasePort(port) {
         :END
         """
     } catch (err) {
-        throw new Exception("Could not get lock on btc-port-registry: " + err)
+        error("Could not get lock on btc-port-registry: " + err)
     }    
     def portMap = readYaml file: '.port-registry'
     if (!(portMap instanceof Map)) {
