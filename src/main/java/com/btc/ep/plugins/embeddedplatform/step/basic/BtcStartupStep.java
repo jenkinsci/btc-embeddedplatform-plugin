@@ -47,6 +47,7 @@ public class BtcStartupStep extends Step implements Serializable {
      */
     private String installPath;
     private String licensingPackage = "ET_COMPLETE";
+    private String licenseLocationString;
     private String additionalJvmArgs;
     private int timeout = 120;
     private int port = 29267;
@@ -91,106 +92,67 @@ public class BtcStartupStep extends Step implements Serializable {
      * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
      */
 
-    /**
-     * Get installPath.
-     * 
-     * @return the installPath
-     */
     public String getInstallPath() {
         return installPath;
     }
 
-    /**
-     * Set installPath.
-     * 
-     * @param installPath the installPath to set
-     */
     @DataBoundSetter
     public void setInstallPath(String installPath) {
         this.installPath = installPath;
     }
 
-    /**
-     * Get port.
-     * 
-     * @return the port
-     */
     public int getPort() {
         return port;
 
     }
 
-    /**
-     * Set port.
-     * 
-     * @param port the port to set
-     */
     @DataBoundSetter
     public void setPort(int port) {
         this.port = port;
 
     }
 
-    /**
-     * Get licensingPackage.
-     * 
-     * @return the licensingPackage
-     */
     public String getLicensingPackage() {
         return licensingPackage;
 
     }
 
-    /**
-     * Set licensingPackage.
-     * 
-     * @param licensingPackage the licensingPackage to set
-     */
     @DataBoundSetter
     public void setLicensingPackage(String licensingPackage) {
         this.licensingPackage = licensingPackage;
 
     }
 
-    /**
-     * Get additionalJvmArgs.
-     * 
-     * @return the additionalJvmArgs
-     */
     public String getAdditionalJvmArgs() {
         return additionalJvmArgs;
 
     }
 
-    /**
-     * Set additionalJvmArgs.
-     * 
-     * @param additionalJvmArgs the additionalJvmArgs to set
-     */
     @DataBoundSetter
     public void setAdditionalJvmArgs(String additionalJvmArgs) {
         this.additionalJvmArgs = additionalJvmArgs;
 
     }
 
-    /**
-     * Get timeout.
-     * 
-     * @return the timeout
-     */
     public int getTimeout() {
         return timeout;
 
     }
 
-    /**
-     * Set timeout.
-     * 
-     * @param timeout the timeout to set
-     */
     @DataBoundSetter
     public void setTimeout(int timeout) {
         this.timeout = timeout;
+
+    }
+
+    public String getLicenseLocationString() {
+        return licenseLocationString;
+
+    }
+
+    @DataBoundSetter
+    public void setLicenseLocationString(String licenseLocationString) {
+        this.licenseLocationString = licenseLocationString;
 
     }
 
@@ -208,9 +170,9 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
     private static final long serialVersionUID = 1L;
     private BtcStartupStep step;
 
-    public BtcStartupStepExecution(BtcStartupStep btcStartupStep, StepContext context) {
-        super(btcStartupStep, context);
-        this.step = btcStartupStep;
+    public BtcStartupStepExecution(BtcStartupStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
     }
 
     @Override

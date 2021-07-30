@@ -32,11 +32,9 @@ import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
 
-import com.btc.ep.plugins.embeddedplatform.http.GenericResponse;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.google.gson.Gson;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -119,367 +117,177 @@ public class BtcVectorGenerationStep extends Step implements Serializable {
      * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
      */
 
-    /**
-     * Get pll.
-     * 
-     * @return the pll
-     */
     public String getPll() {
         return pll;
     }
 
-    /**
-     * Set pll.
-     * 
-     * @param pll the pll to set
-     */
     @DataBoundSetter
     public void setPll(String pll) {
         this.pll = pll;
     }
 
-    /**
-     * Get engine.
-     * 
-     * @return the engine
-     */
     public String getEngine() {
         return engine;
     }
 
-    /**
-     * Set engine.
-     * 
-     * @param engine the engine to set
-     */
     @DataBoundSetter
     public void setEngine(String engine) {
         this.engine = engine;
     }
 
-    /**
-     * Get executionModeAtg.
-     * 
-     * @return the executionModeAtg
-     */
     public String getExecutionModeAtg() {
         return executionModeAtg;
 
     }
 
-    /**
-     * Set executionModeAtg.
-     * 
-     * @param executionModeAtg the executionModeAtg to set
-     */
     @DataBoundSetter
     public void setExecutionModeAtg(String executionModeAtg) {
         this.executionModeAtg = executionModeAtg;
 
     }
 
-    /**
-     * Get globalTimeout.
-     * 
-     * @return the globalTimeout
-     */
     public int getGlobalTimeout() {
         return globalTimeout;
     }
 
-    /**
-     * Set globalTimeout.
-     * 
-     * @param globalTimeout the globalTimeout to set
-     */
     @DataBoundSetter
     public void setGlobalTimeout(int globalTimeout) {
         this.globalTimeout = globalTimeout;
     }
 
-    /**
-     * Get scopeTimeout.
-     * 
-     * @return the scopeTimeout
-     */
     public int getScopeTimeout() {
         return scopeTimeout;
     }
 
-    /**
-     * Set scopeTimeout.
-     * 
-     * @param scopeTimeout the scopeTimeout to set
-     */
     @DataBoundSetter
     public void setScopeTimeout(int scopeTimeout) {
         this.scopeTimeout = scopeTimeout;
     }
 
-    /**
-     * Get propertyTimeout.
-     * 
-     * @return the propertyTimeout
-     */
     public int getPropertyTimeout() {
         return propertyTimeout;
     }
 
-    /**
-     * Set propertyTimeout.
-     * 
-     * @param propertyTimeout the propertyTimeout to set
-     */
     @DataBoundSetter
     public void setPropertyTimeout(int propertyTimeout) {
         this.propertyTimeout = propertyTimeout;
     }
 
-    /**
-     * Get considerSubscopes.
-     * 
-     * @return the considerSubscopes
-     */
     public boolean isConsiderSubscopes() {
         return considerSubscopes;
     }
 
-    /**
-     * Set considerSubscopes.
-     * 
-     * @param considerSubscopes the considerSubscopes to set
-     */
     @DataBoundSetter
     public void setConsiderSubscopes(boolean considerSubscopes) {
         this.considerSubscopes = considerSubscopes;
     }
 
-    /**
-     * Get analyzeSubscopesHierarchically.
-     * 
-     * @return the analyzeSubscopesHierarchically
-     */
     public boolean isAnalyzeSubscopesHierarchically() {
         return analyzeSubscopesHierarchically;
     }
 
-    /**
-     * Set analyzeSubscopesHierarchically.
-     * 
-     * @param analyzeSubscopesHierarchically the analyzeSubscopesHierarchically to set
-     */
     @DataBoundSetter
     public void setAnalyzeSubscopesHierarchically(boolean analyzeSubscopesHierarchically) {
         this.analyzeSubscopesHierarchically = analyzeSubscopesHierarchically;
     }
 
-    /**
-     * Get allowDenormalizedFloats.
-     * 
-     * @return the allowDenormalizedFloats
-     */
     public boolean isAllowDenormalizedFloats() {
         return allowDenormalizedFloats;
     }
 
-    /**
-     * Set allowDenormalizedFloats.
-     * 
-     * @param allowDenormalizedFloats the allowDenormalizedFloats to set
-     */
     @DataBoundSetter
     public void setAllowDenormalizedFloats(boolean allowDenormalizedFloats) {
         this.allowDenormalizedFloats = allowDenormalizedFloats;
     }
 
-    /**
-     * Get recheckUnreachable.
-     * 
-     * @return the recheckUnreachable
-     */
     public boolean isRecheckUnreachable() {
         return recheckUnreachable;
     }
 
-    /**
-     * Set recheckUnreachable.
-     * 
-     * @param recheckUnreachable the recheckUnreachable to set
-     */
     @DataBoundSetter
     public void setRecheckUnreachable(boolean recheckUnreachable) {
         this.recheckUnreachable = recheckUnreachable;
     }
 
-    /**
-     * Get depthCv.
-     * 
-     * @return the depthCv
-     */
     public int getDepthCv() {
         return depthCv;
     }
 
-    /**
-     * Set depthCv.
-     * 
-     * @param depthCv the depthCv to set
-     */
     @DataBoundSetter
     public void setDepthCv(int depthCv) {
         this.depthCv = depthCv;
     }
 
-    /**
-     * Get depthAtg.
-     * 
-     * @return the depthAtg
-     */
     public int getDepthAtg() {
         return depthAtg;
     }
 
-    /**
-     * Set depthAtg.
-     * 
-     * @param depthAtg the depthAtg to set
-     */
     @DataBoundSetter
     public void setDepthAtg(int depthAtg) {
         this.depthAtg = depthAtg;
     }
 
-    /**
-     * Get loopUnroll.
-     * 
-     * @return the loopUnroll
-     */
     public int getLoopUnroll() {
         return loopUnroll;
     }
 
-    /**
-     * Set loopUnroll.
-     * 
-     * @param loopUnroll the loopUnroll to set
-     */
     @DataBoundSetter
     public void setLoopUnroll(int loopUnroll) {
         this.loopUnroll = loopUnroll;
     }
 
-    /**
-     * Get handlingRateThreshold.
-     * 
-     * @return the handlingRateThreshold
-     */
     public int getHandlingRateThreshold() {
         return handlingRateThreshold;
 
     }
 
-    /**
-     * Set handlingRateThreshold.
-     * 
-     * @param handlingRateThreshold the handlingRateThreshold to set
-     */
     @DataBoundSetter
     public void setHandlingRateThreshold(int handlingRateThreshold) {
         this.handlingRateThreshold = handlingRateThreshold;
 
     }
 
-    /**
-     * Get numberOfThreads.
-     * 
-     * @return the numberOfThreads
-     */
     public int getNumberOfThreads() {
         return numberOfThreads;
     }
 
-    /**
-     * Set numberOfThreads.
-     * 
-     * @param numberOfThreads the numberOfThreads to set
-     */
     @DataBoundSetter
     public void setNumberOfThreads(int numberOfThreads) {
         this.numberOfThreads = numberOfThreads;
     }
 
-    /**
-     * Get parallelExecutionMode.
-     * 
-     * @return the parallelExecutionMode
-     */
     public String getParallelExecutionMode() {
         return parallelExecutionMode;
     }
 
-    /**
-     * Set parallelExecutionMode.
-     * 
-     * @param parallelExecutionMode the parallelExecutionMode to set
-     */
     @DataBoundSetter
     public void setParallelExecutionMode(String parallelExecutionMode) {
         this.parallelExecutionMode = parallelExecutionMode;
     }
 
-    /**
-     * Get robustnessTestFailure.
-     * 
-     * @return the robustnessTestFailure
-     */
     public boolean isRobustnessTestFailure() {
         return robustnessTestFailure;
     }
 
-    /**
-     * Set robustnessTestFailure.
-     * 
-     * @param robustnessTestFailure the robustnessTestFailure to set
-     */
     @DataBoundSetter
     public void setRobustnessTestFailure(boolean robustnessTestFailure) {
         this.robustnessTestFailure = robustnessTestFailure;
     }
 
-    /**
-     * Get createReport.
-     * 
-     * @return the createReport
-     */
     public boolean isCreateReport() {
         return createReport;
     }
 
-    /**
-     * Set createReport.
-     * 
-     * @param createReport the createReport to set
-     */
     @DataBoundSetter
     public void setCreateReport(boolean createReport) {
         this.createReport = createReport;
     }
 
-    /**
-     * Get showProgress.
-     * 
-     * @return the showProgress
-     */
     public boolean isShowProgress() {
         return showProgress;
 
     }
 
-    /**
-     * Set showProgress.
-     * 
-     * @param showProgress the showProgress to set
-     */
     @DataBoundSetter
     public void setShowProgress(boolean showProgress) {
         this.showProgress = showProgress;
@@ -500,9 +308,9 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     private static final long serialVersionUID = 1L;
     private BtcVectorGenerationStep step;
 
-    public BtcVectorGenerationExecution(BtcVectorGenerationStep btcStartupStep, StepContext context) {
-        super(btcStartupStep, context);
-        this.step = btcStartupStep;
+    public BtcVectorGenerationExecution(BtcVectorGenerationStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
     }
 
     private CoverageGenerationApi vectorGenerationApi = new CoverageGenerationApi();
@@ -512,11 +320,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 
     @Override
     protected void performAction() throws Exception {
-        // only vector generation with default settings is supported until EP-2401 is fixed
-        GenericResponse httpResponse = HttpRequester.get("/ep/coverage-generation");
-        httpResponse = HttpRequester.post("/ep/coverage-generation", httpResponse.getContent());
-        Job job = new Gson().fromJson(httpResponse.getContent(), Job.class);
-        HttpRequester.waitForCompletion(job.getJobID());
+        prepareAndExecuteVectorGeneration();
         String msg = "Successfully executed vectorGeneration";
         // Reporting
         if (step.isCreateReport()) {
@@ -536,7 +340,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         // no coverage info available atm.
         String info = stmD + "% Statement, " + mcdcD + "% MC/DC";
         jenkinsConsole.println(msg + ": " + info);
-
+        info(info);
         response = 200;
     }
 
@@ -555,8 +359,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     }
 
     private void addAtgEngine(BtcVectorGenerationStep step, EngineSettings settings) {
-        // EngineAtg atg = settings.getEngineAtg(); // fails due to EP-2401
-        EngineAtg atg = new EngineAtg().name("ATG").use(true); // workaround for EP-2401
+        EngineAtg atg = settings.getEngineAtg();
         atg.setSearchDepthSteps(step.getDepthAtg());
         atg.setTimeoutSecondsPerSubsystem(step.getScopeTimeout());
         ExecutionModeEnum executionModeAtg = ExecutionModeEnum.valueOf(step.getExecutionModeAtg());
@@ -565,8 +368,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     }
 
     private void addCvEngine(BtcVectorGenerationStep step, EngineSettings settings) {
-        //EngineCv cv = settings.getEngineCv(); // fails due to EP-2401
-        EngineCv cv = new EngineCv().name("CV").use(true); // workaround for EP-2401
+        EngineCv cv = settings.getEngineCv();
         cv.setSearchDepthSteps(step.getDepthCv());
         cv.timeoutSecondsPerSubsystem(step.getScopeTimeout());
         cv.setTimeoutSecondsPerProperty(step.getPropertyTimeout());
@@ -585,14 +387,12 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         settings.setEngineCv(cv);
     }
 
-    private void waitingForEP2401() throws ApiException {
-        //Config config = vectorGenerationApi.getConfiguration(); // fails due to EP-2401
-        Config config = new Config(); // workaround for EP-2401
+    private void prepareAndExecuteVectorGeneration() throws ApiException {
+        Config config = vectorGenerationApi.getConfiguration();
         config.setPllString(step.getPll());
         config.setCheckUnreachableProperties(step.isRecheckUnreachable());
         config.setIsSubscopesGoalsConsidered(step.isConsiderSubscopes());
-        //EngineSettings engineSettings = config.getEngineSettings(); // empty due to workaround for EP-2401
-        EngineSettings engineSettings = new EngineSettings(); // workaround for EP-2401
+        EngineSettings engineSettings = config.getEngineSettings();
         switch (step.getEngine().toUpperCase()) {
             case "ATG+CV":
                 addAtgEngine(step, engineSettings);
@@ -620,7 +420,6 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         if (isDummyRoot(scopeApi)) {
             // toplevel s a dummy scope
             List<Scope> scopes = scopeApi.getScopesByQuery1(null, false);
-            int i = 1;
             for (Scope scope : scopes) {
                 config.setScope(scope);
                 Job vectorGeneration = vectorGenerationApi.execute(config);

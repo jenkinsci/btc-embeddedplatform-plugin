@@ -4,9 +4,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -21,6 +19,7 @@ import org.openapitools.client.api.BackToBackTestsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
+import org.openapitools.client.model.BackToBackTest;
 import org.openapitools.client.model.BackToBackTest.VerdictStatusEnum;
 import org.openapitools.client.model.BackToBackTestExecutionData;
 import org.openapitools.client.model.Job;
@@ -28,12 +27,10 @@ import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
 
-import com.btc.ep.plugins.embeddedplatform.http.GenericResponse;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.google.gson.Gson;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -92,42 +89,22 @@ public class BtcBackToBackTestStep extends Step implements Serializable {
      * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
      */
 
-    /**
-     * Get reference.
-     * 
-     * @return the reference
-     */
     public String getReference() {
         return reference;
 
     }
 
-    /**
-     * Set reference.
-     * 
-     * @param reference the reference to set
-     */
     @DataBoundSetter
     public void setReference(String reference) {
         this.reference = reference;
 
     }
 
-    /**
-     * Get comparison.
-     * 
-     * @return the comparison
-     */
     public String getComparison() {
         return comparison;
 
     }
 
-    /**
-     * Set comparison.
-     * 
-     * @param comparison the comparison to set
-     */
     @DataBoundSetter
     public void setComparison(String comparison) {
         this.comparison = comparison;
@@ -150,9 +127,9 @@ class BtcBackToBackExecution extends AbstractBtcStepExecution {
     private static final long serialVersionUID = 1L;
     private BtcBackToBackTestStep step;
 
-    public BtcBackToBackExecution(BtcBackToBackTestStep btcStartupStep, StepContext context) {
-        super(btcStartupStep, context);
-        this.step = btcStartupStep;
+    public BtcBackToBackExecution(BtcBackToBackTestStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
     }
 
     private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
@@ -181,20 +158,13 @@ class BtcBackToBackExecution extends AbstractBtcStepExecution {
         // Execute B2B test and return result
         Job job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
         String b2bTestUid = HttpRequester.waitForCompletion(job.getJobID());
-        // Workaround for EP-2401 / EP-2355
-        // BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
-        GenericResponse httpResponse = HttpRequester.get("/ep/b2b/" + b2bTestUid);
-        String json = httpResponse.getContent().replace("PASSED", "Passed").replace("FAILED", "Failed");
-        @SuppressWarnings ("unchecked")
-        Map<String, Object> genericMap = new Gson().fromJson(json, HashMap.class);
-        String verdictStatus = (String)genericMap.get("verdictStatus");
-        // End of workaround
+        BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
+        String verdictStatus = b2bTest.getVerdictStatus().toString();
         jenkinsConsole.println("Back-to-Back Test finished with result: " + verdictStatus);
 
         // status, etc.
-        @SuppressWarnings ("unchecked")
-        List<Object> comparisons = (List<Object>)genericMap.get("comparison");
-        String info = comparisons.size() + " comparison(s)";
+        String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
+            + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
         info(info);
 
         if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
@@ -219,8 +189,6 @@ class BtcBackToBackExecution extends AbstractBtcStepExecution {
     }
 
     /**
-     *
-     *
      * @param b2bTestUid
      * @throws ApiException
      */

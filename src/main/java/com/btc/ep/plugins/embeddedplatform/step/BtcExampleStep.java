@@ -78,42 +78,22 @@ public class BtcExampleStep extends Step implements Serializable {
      * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
      */
 
-    /**
-     * Get strStepParam.
-     * 
-     * @return the strStepParam
-     */
     public String getStrStepParam() {
         return strStepParam;
 
     }
 
-    /**
-     * Set strStepParam.
-     * 
-     * @param strStepParam the strStepParam to set
-     */
     @DataBoundSetter
     public void setStrStepParam(String strStepParam) {
         this.strStepParam = strStepParam;
 
     }
 
-    /**
-     * Get intStepParam.
-     * 
-     * @return the intStepParam
-     */
     public int getIntStepParam() {
         return intStepParam;
 
     }
 
-    /**
-     * Set intStepParam.
-     * 
-     * @param intStepParam the intStepParam to set
-     */
     @DataBoundSetter
     public void setIntStepParam(int intStepParam) {
         this.intStepParam = intStepParam;
@@ -134,9 +114,9 @@ class BtcExampleStepExecution extends AbstractBtcStepExecution {
     private static final long serialVersionUID = 1L;
     private BtcExampleStep step;
 
-    public BtcExampleStepExecution(BtcExampleStep btcStartupStep, StepContext context) {
-        super(btcStartupStep, context);
-        this.step = btcStartupStep;
+    public BtcExampleStepExecution(BtcExampleStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
     }
 
     /*

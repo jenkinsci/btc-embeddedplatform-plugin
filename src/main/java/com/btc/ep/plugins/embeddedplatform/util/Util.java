@@ -1,12 +1,21 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
 import java.io.File;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.DateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import org.openapitools.client.ApiException;
+import org.openapitools.client.api.PreferencesApi;
+import org.openapitools.client.api.ProfilesApi;
+import org.openapitools.client.model.Preference;
+import org.openapitools.client.model.ProfilePath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,6 +105,118 @@ public class Util {
     public static File getResourceAsFile(Class<?> referenceClass, String resourcePath) {
         ClassLoader classLoader = referenceClass.getClassLoader();
         return new File(classLoader.getResource(resourcePath).getFile().replace("%20", " "));
+    }
+
+    public static void discardLoadedProfileIfPresent(ProfilesApi profilesApi) {
+        try {
+            Path tmpFile = Files.createTempFile("deleteme", ".epp");
+            profilesApi.saveProfile(new ProfilePath().path(tmpFile.toString()));
+            Files.delete(tmpFile);
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static String getCompilerPreferenceValue(String compilerShortName) {
+        String shortName = compilerShortName.toUpperCase();
+        if (shortName.equals("MINGW64")) {
+            return Constants.PREF_COMPILER_MINGW_VALUE;
+        } else if (shortName.equals("MSSDK71")) {
+            return Constants.PREF_COMPILER_MSSDK71_VALUE;
+        } else if (shortName.startsWith("MSVC")) {
+            return shortName + "(64bit)";
+        }
+        // fallback, this might cause an error when no compiler preference value exists by this name
+        return compilerShortName;
+    }
+
+    /**
+     * Tries to set an arbitrary compiler. Returns the compiler preference value (e.g. "MinGW64 (64bit)") if succesful
+     * or null if no compiler could be set.
+     *
+     * @return compiler preference value or null (if unsuccessful)
+     */
+    public static String setArbitraryCompiler() {
+        Preference preference = new Preference().preferenceName(Constants.PREF_COMPILER_KEY);
+        PreferencesApi prefApi = new PreferencesApi();
+        for (String compilerPrefValue : Constants.getKnownCompilerPreferenceValues()) {
+            try {
+                preference.setPreferenceValue(compilerPrefValue);
+                prefApi.setPreferences(Arrays.asList(preference));
+                return compilerPrefValue;
+            } catch (ApiException ignored) {
+                // all unavailable compilers will throw this exception
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Set a compiler based on a given shortName.
+     * 
+     * @throws ApiException if the selected compiler is not available
+     */
+    public static void setCompiler(String shortName) throws ApiException {
+        Preference preference = new Preference().preferenceName(Constants.PREF_COMPILER_KEY);
+        PreferencesApi prefApi = new PreferencesApi();
+        String compilerPreferenceValue = getCompilerPreferenceValue(shortName);
+        preference.setPreferenceValue(compilerPreferenceValue);
+        prefApi.setPreferences(Arrays.asList(preference));
+    }
+
+    /**
+     * Sets the specified compiler. Alternatively, tries to set an arbitrary fallback compiler.
+     * 
+     * @throws RuntimeException if no compiler can be set.
+     */
+    public static void setCompilerWithFallback(String compilerShortName, PrintStream jenkinsConsole)
+        throws RuntimeException {
+        String arbitraryCompiler = "n.a.";
+        if (compilerShortName != null) {
+            try {
+                Util.setCompiler(compilerShortName);
+            } catch (ApiException e) {
+                arbitraryCompiler = Util.setArbitraryCompiler();
+                if (arbitraryCompiler != null) {
+                    jenkinsConsole.println("The selected compiler '" + compilerShortName
+                        + "' could not be set. Falling back to arbitrary compiler '" + arbitraryCompiler + "'.");
+                }
+            }
+        } else {
+            arbitraryCompiler = Util.setArbitraryCompiler();
+        }
+        if (arbitraryCompiler == null) {
+            throw new RuntimeException(
+                "No compiler could not be set. Please verify if a supported compiler is installed (see BTC EmbeddedPlatform Install Guide)");
+        }
+    }
+
+    /**
+     * Configures the Matlab connection according to the specified version and instancePolicy.
+     * 
+     * @param version a version string, like "2020b"
+     * @param instancePolicy the instance policy string (AUTO / NEVER / ALWAYS)
+     * @throws ApiException if the selected compiler is not available
+     */
+    public static void configureMatlabConnection(String version, String instancePolicy) throws ApiException {
+        // version policy --> CUSTOM
+        Preference prefVersionPolicy = new Preference()
+            .preferenceName(Constants.PREF_MATLAB_VERSION_POLICY_KEY)
+            .preferenceValue(Constants.PREF_MATLAB_VERSION_POLICY_CUSTOM);
+
+        // custom version: MATLAB R20XXa/b (64-bit)
+        String extractedVersion = version.replaceAll(".*(20\\d\\d[a|b]).*", "$1");
+        String versionPrefValue = "MATLAB R" + extractedVersion + " (64-bit)";
+        Preference prefMatlabVersion = new Preference()
+            .preferenceName(Constants.PREF_MATLAB_VERSION_KEY)
+            .preferenceValue(versionPrefValue);
+
+        // instance policy (AUTO / NEVER / ALWAYS)
+        Preference prefInstancePolicy = new Preference()
+            .preferenceName(Constants.PREF_MATLAB_INSTANCE_POLICY_KEY)
+            .preferenceValue(instancePolicy.toUpperCase());
+
+        PreferencesApi prefApi = new PreferencesApi();
+        prefApi.setPreferences(Arrays.asList(prefVersionPolicy, prefMatlabVersion, prefInstancePolicy));
     }
 
 }

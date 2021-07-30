@@ -82,21 +82,11 @@ public class BtcWrapUpStep extends Step implements Serializable {
      * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
      */
 
-    /**
-     * Get profilePath.
-     * 
-     * @return the profilePath
-     */
     public String getProfilePath() {
         return profilePath;
 
     }
 
-    /**
-     * Set profilePath.
-     * 
-     * @param profilePath the profilePath to set
-     */
     @DataBoundSetter
     public void setProfilePath(String profilePath) {
         this.profilePath = profilePath;
@@ -117,9 +107,9 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
     private static final long serialVersionUID = 1L;
     private BtcWrapUpStep step;
 
-    public BtcWrapUpStepExecution(BtcWrapUpStep btcStartupStep, StepContext context) {
-        super(btcStartupStep, context);
-        this.step = btcStartupStep;
+    public BtcWrapUpStepExecution(BtcWrapUpStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
     }
 
     private ProfilesApi profileApi = new ProfilesApi();

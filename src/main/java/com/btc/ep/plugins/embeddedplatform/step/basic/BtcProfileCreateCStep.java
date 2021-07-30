@@ -15,8 +15,8 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
+import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -30,7 +30,7 @@ import hudson.model.TaskListener;
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
-public class BtcProfileLoadStep extends Step implements Serializable {
+public class BtcProfileCreateCStep extends Step implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -39,33 +39,25 @@ public class BtcProfileLoadStep extends Step implements Serializable {
      */
     private String profilePath;
     private String exportPath;
-    private boolean updateRequired;
 
-    private String tlModelPath;
-    private String tlScriptPath;
-    private String environmentXmlPath;
-    private String slModelPath;
-    private String slScriptPath;
-    private String addInfoModelPath;
     private String codeModelPath;
     private String startupScriptPath;
     private String compilerShortName;
-    private String pilConfig;
-    private int pilTimeout;
     private String matlabVersion;
     private String matlabInstancePolicy;
     private boolean saveProfileAfterEachStep;
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileLoadStep(String profilePath) {
+    public BtcProfileCreateCStep(String profilePath, String codeModelPath) {
         super();
         this.profilePath = profilePath;
+        this.codeModelPath = codeModelPath;
     }
 
     @Override
     public StepExecution start(StepContext context) throws Exception {
-        return new BtcProfileLoadStepExecution(this, context);
+        return new BtcProfileCreateCStepExecution(this, context);
     }
 
     @Extension
@@ -82,7 +74,7 @@ public class BtcProfileLoadStep extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcProfileLoad";
+            return "btcProfileCreateC";
         }
 
         /*
@@ -90,7 +82,7 @@ public class BtcProfileLoadStep extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Profile Load Step";
+            return "BTC Profile Create (C-Code)";
         }
     }
 
@@ -101,16 +93,6 @@ public class BtcProfileLoadStep extends Step implements Serializable {
     public String getProfilePath() {
         return profilePath;
 
-    }
-
-    public boolean isUpdateRequired() {
-        return updateRequired;
-
-    }
-
-    @DataBoundSetter
-    public void setUpdateRequired(boolean updateRequired) {
-        this.updateRequired = updateRequired;
     }
 
     public String getExportPath() {
@@ -124,67 +106,8 @@ public class BtcProfileLoadStep extends Step implements Serializable {
 
     }
 
-    public String getTlModelPath() {
-        return tlModelPath;
-    }
-
-    @DataBoundSetter
-    public void setTlModelPath(String tlModelPath) {
-        this.tlModelPath = tlModelPath;
-    }
-
-    public String getTlScriptPath() {
-        return tlScriptPath;
-    }
-
-    @DataBoundSetter
-    public void setTlScriptPath(String tlScriptPath) {
-        this.tlScriptPath = tlScriptPath;
-    }
-
-    public String getEnvironmentXmlPath() {
-        return environmentXmlPath;
-    }
-
-    @DataBoundSetter
-    public void setEnvironmentXmlPath(String environmentXmlPath) {
-        this.environmentXmlPath = environmentXmlPath;
-    }
-
-    public String getSlModelPath() {
-        return slModelPath;
-    }
-
-    @DataBoundSetter
-    public void setSlModelPath(String slModelPath) {
-        this.slModelPath = slModelPath;
-    }
-
-    public String getSlScriptPath() {
-        return slScriptPath;
-    }
-
-    @DataBoundSetter
-    public void setSlScriptPath(String slScriptPath) {
-        this.slScriptPath = slScriptPath;
-    }
-
-    public String getAddInfoModelPath() {
-        return addInfoModelPath;
-    }
-
-    @DataBoundSetter
-    public void setAddInfoModelPath(String addInfoModelPath) {
-        this.addInfoModelPath = addInfoModelPath;
-    }
-
     public String getCodeModelPath() {
         return codeModelPath;
-    }
-
-    @DataBoundSetter
-    public void setCodeModelPath(String codeModelPath) {
-        this.codeModelPath = codeModelPath;
     }
 
     public String getStartupScriptPath() {
@@ -203,24 +126,6 @@ public class BtcProfileLoadStep extends Step implements Serializable {
     @DataBoundSetter
     public void setCompilerShortName(String compilerShortName) {
         this.compilerShortName = compilerShortName;
-    }
-
-    public String getPilConfig() {
-        return pilConfig;
-    }
-
-    @DataBoundSetter
-    public void setPilConfig(String pilConfig) {
-        this.pilConfig = pilConfig;
-    }
-
-    public int getPilTimeout() {
-        return pilTimeout;
-    }
-
-    @DataBoundSetter
-    public void setPilTimeout(int pilTimetout) {
-        this.pilTimeout = pilTimetout;
     }
 
     public String getMatlabVersion() {
@@ -268,12 +173,12 @@ public class BtcProfileLoadStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
+class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
-    private BtcProfileLoadStep step;
+    private BtcProfileCreateCStep step;
 
-    public BtcProfileLoadStepExecution(BtcProfileLoadStep step, StepContext context) {
+    public BtcProfileCreateCStepExecution(BtcProfileCreateCStep step, StepContext context) {
         super(step, context);
         this.step = step;
     }
@@ -284,70 +189,48 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
     @Override
     protected void performAction() throws Exception {
         /*
-         * Preliminary checks
+         * Preparation
          */
-        Util.discardLoadedProfileIfPresent(profilesApi);
         Path profilePath = resolvePath(step.getProfilePath());
-        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
-        checkArgument(profilePath.toFile().exists(),
-            "Error: Profile does not exist! " + step.getProfilePath());
+        Path codeModelPath = resolvePath(step.getCodeModelPath());
+        preliminaryChecks(profilePath, codeModelPath);
         Store.epp = profilePath.toFile();
         Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+
         /*
-         * Load the profile
+         * Create the profile based on the code model
          */
-        profilesApi.openProfile(step.getProfilePath());
-        updateModelPaths();
-        String msg = "Successfully loaded the profile";
+        profilesApi.createProfile();
+        Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
+        CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
+        Job job = archApi.importArchitecture(info);
+        HttpRequester.waitForCompletion(job.getJobID());
+
+        /*
+         * Wrapping up, reporting, etc.
+         */
+        String msg = "Successfully created the profile.";
         detailWithLink(Store.epp.getName(), profilePath.toAbsolutePath().toString());
         response = 200;
-        /*
-         * Update architecture if required
-         */
-        if (step.isUpdateRequired()) {
-            Job archUpdate = archApi.architectureUpdate();
-            HttpRequester.waitForCompletion(archUpdate.getJobID());
-            msg += " (incl. arch-update)";
-            response = 201;
-        }
-        jenkinsConsole.println(msg + ".");
-        info(msg + ".");
+        jenkinsConsole.println(msg);
+        info(msg);
     }
 
     /**
-     * Checks if the user passed any model paths. If that's the case this method updates them in the profile.
-     * 
-     * @throws Exception
+     * Checks if the profilePath and codeModelPath are valid (!= null), discards any loaded
+     * profile and warns in case the obsolete option "licenseLocationString" is used.
+     *
+     * @param profilePath the profile path
+     * @param codeModelPath the code model path
      */
-    private void updateModelPaths() throws Exception {
-        UpdateModelPath updateModelPath = new UpdateModelPath();
-        // resolve paths from pipeline
-        Path p;
-        p = resolvePath(step.getTlModelPath());
-        if (p != null) {
-            updateModelPath.setTlModelFile(p.toFile().getCanonicalPath());
+    private void preliminaryChecks(Path profilePath, Path codeModelPath) {
+        Util.discardLoadedProfileIfPresent(profilesApi);
+        if (step.getLicenseLocationString() != null) {
+            jenkinsConsole.println(
+                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
-        p = resolvePath(step.getTlScriptPath());
-        if (p != null) {
-            updateModelPath.setTlInitScript(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getSlModelPath());
-        if (p != null) {
-            updateModelPath.setSlModelFile(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getSlScriptPath());
-        if (p != null) {
-            updateModelPath.setSlInitScript(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getAddInfoModelPath());
-        if (p != null) {
-            updateModelPath.setAddModelInfo(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getCodeModelPath());
-        if (p != null) {
-            updateModelPath.setEnvironment(p.toFile().getCanonicalPath());
-        }
-        archApi.updateModelPaths("", updateModelPath);
+        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
+        checkArgument(codeModelPath != null, "No valid code model path was provided: " + step.getCodeModelPath());
     }
 
 }

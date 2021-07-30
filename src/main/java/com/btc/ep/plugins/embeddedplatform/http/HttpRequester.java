@@ -105,8 +105,7 @@ public class HttpRequester {
                     responseObject.putAll(map);
                     return responseObject;
                 default:
-                    System.err
-                        .println(r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase());
+                    System.err.println(r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase());
                     break;
             }
         } catch (IOException e) {
