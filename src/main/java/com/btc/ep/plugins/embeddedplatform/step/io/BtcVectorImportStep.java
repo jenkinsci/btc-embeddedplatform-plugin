@@ -3,7 +3,6 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,7 +15,6 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.Job;
@@ -40,9 +38,10 @@ public class BtcVectorImportStep extends Step implements Serializable {
     /*
      * Each parameter of the step needs to be listed here as a field
      */
+
     private String importDir;
-    private String vectorFormat = "TC"; //UPDATE THIS ON THE DOCUMENTATION
     private String vectorKind = "TC";
+    private String vectorFormat = "TC";
 
     @DataBoundConstructor
     public BtcVectorImportStep(String importDir) {
@@ -69,7 +68,7 @@ public class BtcVectorImportStep extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcVectorImport";
+            return "btcExample";
         }
 
         /*
@@ -77,60 +76,33 @@ public class BtcVectorImportStep extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Vector Import Step";
+            return "BTC Example Step";
         }
-    }
-
-    /**
-     * Get importDir.
-     * 
-     * @return the importDir
-     */
-    public String getImportDir() {
-        return importDir;
-    }
-
-    /**
-     * Get vectorFormat.
-     * 
-     * @return the vectorFormat
-     */
-    public String getVectorFormat() {
-        return vectorFormat;
-    }
-
-    /**
-     * Set vectorFormat.
-     * 
-     * @param vectorFormat the vectorFormat to set
-     */
-    @DataBoundSetter
-    public void setVectorFormat(String vectorFormat) {
-        this.vectorFormat = vectorFormat;
-    }
-
-    /**
-     * Get vectorKind.
-     * 
-     * @return the vectorKind
-     */
-    public String getVectorKind() {
-        return vectorKind;
-    }
-
-    /**
-     * Set vectorKind.
-     * 
-     * @param vectorKind the vectorKind to set
-     */
-    @DataBoundSetter
-    public void setVectorKind(String vectorKind) {
-        this.vectorKind = vectorKind;
     }
 
     /*
      * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
      */
+
+    public String getImportDir() {
+        return importDir;
+    }
+
+    public String getVectorKind() {
+        return vectorKind;
+    }
+
+    public void setVectorKind(String vectorKind) {
+        this.vectorKind = vectorKind;
+    }
+
+    public String getVectorFormat() {
+        return vectorFormat;
+    }
+
+    public void setVectorFormat(String vectorFormat) {
+        this.vectorFormat = vectorFormat;
+    }
 
     /*
      * End of getter/setter section
@@ -144,92 +116,68 @@ public class BtcVectorImportStep extends Step implements Serializable {
 class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
-
     private BtcVectorImportStep step;
 
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
+    private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
     private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
-    private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
 
-    /**
-     * Constructor
-     *
-     * @param step
-     * @param context
-     */
     public BtcVectorImportStepExecution(BtcVectorImportStep step, StepContext context) {
         super(step, context);
         this.step = step;
     }
 
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
     @Override
     protected void performAction() throws Exception {
-
-        // Get all vectors
+        String fileSuffix = deriveSuffix(step.getVectorFormat());
         Path importDir = resolvePath(step.getImportDir());
-        checkArgument(importDir.toFile().exists(), "Error: Import directory does not exist " + importDir);
+        checkArgument(importDir != null && importDir.toFile().exists(), "Import directory not available: " + importDir);
 
-        File[] vectors = importDir.toFile().listFiles(new FileFilter() {
-
-            @Override
-            public boolean accept(File pathname) {
-                return pathname.getName().endsWith(findFileExtension(step.getVectorFormat())); // Analyze vector format, use variable
-            }
-        });
-        List<String> paths = new ArrayList<>();
-        for (File f : vectors) {
-            paths.add(f.getAbsolutePath());
+        File[] vectorFiles = importDir.toFile().listFiles((f) -> f.getName().endsWith(fileSuffix));
+        List<String> vectorFilePaths = new ArrayList<>();
+        for (File vectorFile : vectorFiles) {
+            vectorFilePaths.add(vectorFile.getAbsolutePath());
         }
-
-        // Stimuli Vector  -- Default info.setVectorKind("TC");
         Job job;
-        if (step.getVectorKind().equals("SV")) {
-            // Stimuli Vector
-            StimuliVectorImportInfo info = new StimuliVectorImportInfo();
-            info.setFormat(step.getVectorFormat().toLowerCase());
-            info.setPaths(paths);
-            job = stimuliVectorsApi.importStimuliVectors(info);
-            info("Imported Stimuli Vectors.");
-        } else {
-            // Error, format not recognized
+        if (step.getVectorKind().toUpperCase().equals("TC")) {
+            // import test cases
             RBTestCaseImportInfo info = new RBTestCaseImportInfo();
-            info.setPaths(paths);
-            // Need import test cases format
-            job = testCasesApi.importRBTestCase(info);
-            info("Imported Test Cases.");
+            info.setOverwritePolicy("OVERWRITE");
+            info.setPaths(vectorFilePaths);
+            // no format??? check REST API
+            // http://jira.osc.local:8080/browse/EP-2534
+            job = rbTestCasesApi.importRBTestCase(info);
+        } else {
+            // import stimuli vectors
+            StimuliVectorImportInfo info = new StimuliVectorImportInfo();
+            info.setOverwritePolicy("OVERWRITE");
+            info.setPaths(vectorFilePaths);
+            info.setFormat(step.getVectorFormat().toLowerCase()); //needs to be lower case according to docs
+            job = stimuliVectorsApi.importStimuliVectors(info);
         }
-        HttpRequester.waitForCompletion(job.getJobID());
-
-        // Questions
-        // 1. How should I handle the job from the stimuliVectorsApi.importStimuliVectors(info)?
-        // 2. For the Stimuli Vector, do I just need to switch the setVectorKind, or do I need to use another Api?
-        // I couldn't find an api for Test Cases
-
+        Object status = HttpRequester.waitForCompletion(job.getJobID(), "importStatus");
+        System.out.println(status);
+        //TODO: parse importStatus and adapt response accordingly
     }
 
-    private String findFileExtension(String format) {
-        String fileExtension;
-        if (format.equals("TC")) {
-            fileExtension = ".tc";
-        } else if (format.equals("CSV")) {
-            fileExtension = ".csv";
-        } else if (format.equals("EXCEL")) {
-            fileExtension = ".xlsx";
-        } else {
-            // Error, format not recognized
-            fileExtension = ".tc";
+    /**
+     *
+     *
+     * @param vectorFormat
+     * @return
+     * @throws Exception
+     */
+    private String deriveSuffix(String vectorFormat) throws IllegalArgumentException {
+        switch (vectorFormat.toUpperCase()) {
+            case "TC":
+                return ".tc";
+            case "EXCEL":
+                return ".xlsx";
+            case "CSV":
+                return ".csv";
+            default:
+                throw new IllegalArgumentException("Unsupported vector format: " + vectorFormat);
         }
-        return fileExtension;
+
     }
 
 }

@@ -5,17 +5,30 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.PreferencesApi;
 import org.openapitools.client.api.ProfilesApi;
+import org.openapitools.client.api.RequirementBasedTestCasesApi;
+import org.openapitools.client.api.RequirementsApi;
+import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Preference;
 import org.openapitools.client.model.ProfilePath;
+import org.openapitools.client.model.Requirement;
+import org.openapitools.client.model.RequirementBasedTestCase;
+import org.openapitools.client.model.RequirementSource;
+import org.openapitools.client.model.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,6 +230,150 @@ public class Util {
 
         PreferencesApi prefApi = new PreferencesApi();
         prefApi.setPreferences(Arrays.asList(prefVersionPolicy, prefMatlabVersion, prefInstancePolicy));
+    }
+
+    /**
+     * Returns all requirements from all req sources.
+     *
+     * @return A list of requirements (can be empty).
+     */
+    public static List<Requirement> getAllRequirements() {
+        List<Requirement> requirements = new ArrayList<>();
+        try {
+            RequirementsApi reqApi = new RequirementsApi();
+            List<RequirementSource> allRequirementSources = reqApi.getAllRequirementSources();
+            for (RequirementSource requirementSource : allRequirementSources) {
+                requirements.addAll(reqApi.getAllRequirementsOfRequirementSource(requirementSource.getUid()));
+            }
+        } catch (ApiException ignored) {
+            // can be 404 if there's no requirements
+        }
+        return requirements;
+    }
+
+    /**
+     * Utility function to get the values from a String with a comma separated list
+     * of values. Will not return null, but can return an empty list.
+     */
+    public static List<String> getValuesFromCsv(String csvString) {
+        List<String> values = new ArrayList<>();
+        try {
+            String[] rawValues = csvString.split(",");
+            for (String rawValue : rawValues) {
+                if (!rawValue.trim().isEmpty()) {
+                    values.add(rawValue.trim());
+                }
+            }
+        } catch (Exception e) {
+            // NPE, etc. due to null input
+        }
+        return values;
+    }
+
+    /**
+     * Filters the given testCases by applying the whitelist & blacklist and the relevant requirements
+     * 
+     * @param rbTestCasesByScope unfiltered testcases
+     * @param filteredRequirements the requirements
+     * @return the test cases that match the filter.
+     */
+    public static List<RequirementBasedTestCase> filterTestCases(List<RequirementBasedTestCase> testCases,
+        List<Requirement> filteredRequirements, List<String> blacklistedTestCases, List<String> whitelistedTestCases) {
+        Set<String> validTcNames = new HashSet<>();
+        List<RequirementBasedTestCase> filteredTestCases = new ArrayList<>();
+        if (filteredRequirements != null) {
+            for (Requirement req : filteredRequirements) {
+                List<RequirementBasedTestCase> testCasesLinkedToCurrentReq;
+                try {
+                    testCasesLinkedToCurrentReq =
+                        new RequirementBasedTestCasesApi().getTestCasesByRequirementId(req.getUid(), false);
+                    Set<String> tcNames =
+                        testCasesLinkedToCurrentReq.stream().map(tc -> tc.getName()).collect(Collectors.toSet());
+                    validTcNames.addAll(tcNames);
+                } catch (ApiException ignored) {
+                }
+
+            }
+        }
+        for (RequirementBasedTestCase tc : testCases) {
+            if (blacklistedTestCases.contains(tc.getName())) {
+                System.out.println("Removing test case " + tc.getName() + " because it's blacklisted.");
+                continue;
+            }
+            if (!whitelistedTestCases.isEmpty() && !whitelistedTestCases.contains(tc.getName())) {
+                System.out.println("Removing test case " + tc.getName() + " because it's not whitelisted.");
+                continue;
+            }
+            if (filteredRequirements != null && !validTcNames.contains(tc.getName())) {
+                System.out.println("Removing test case " + tc.getName()
+                    + " because it's not linked to any of the relevant requirements.");
+                continue;
+            }
+            filteredTestCases.add(tc);
+        }
+        return filteredTestCases;
+    }
+
+    /**
+     * Filters the given requirements by applying the whitelist & blacklist.
+     *
+     * @param requirements unfiltered requirements
+     * @return the requirements that match the filter.
+     */
+    public static List<Requirement> filterRequirements(List<Requirement> requirements,
+        List<String> blacklistedRequirements,
+        List<String> whitelistedRequirements) {
+        List<Requirement> filteredRequirements = new ArrayList<>();
+        for (Requirement req : requirements) {
+            if (blacklistedRequirements.contains(req.getName())) {
+                continue;
+            }
+            if (whitelistedRequirements.isEmpty() || whitelistedRequirements.contains(req.getName())) {
+                filteredRequirements.add(req);
+            }
+        }
+        return filteredRequirements;
+    }
+
+    /**
+     * Returns true, if the scopeName matches the filter.
+     *
+     * @param scopeName the scope name
+     * @return true, if the scopeName matches the filter
+     */
+    public static boolean matchesScopeFilter(String scopeName, List<String> blacklistedScopes,
+        List<String> whitelistedScopes) {
+        if (blacklistedScopes.contains(scopeName)) {
+            return false;
+        }
+        return whitelistedScopes.isEmpty() || whitelistedScopes.contains(scopeName);
+    }
+
+    /**
+     * Returns the toplevel scope.
+     *
+     * @return the toplevel scope
+     * @throws ApiException if the scope cannot be determined
+     */
+    public static Scope getToplevelScope() throws ApiException {
+        try {
+            return new ScopesApi().getScopesByQuery1(null, true).get(0);
+        } catch (Exception e) {
+            throw new ApiException("Could not determine the toplevel scope");
+        }
+    }
+
+    /**
+     * Returns a list of Requirements Sources (may be empty).
+     *
+     * @return a list of Requirements Sources (may be empty)
+     */
+    public static List<RequirementSource> getRequirementSources() {
+        try {
+            return new RequirementsApi().getAllRequirementSources();
+        } catch (ApiException e) {
+            return Collections.emptyList();
+        }
     }
 
 }

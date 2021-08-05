@@ -39,7 +39,7 @@ import hudson.model.TaskListener;
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
-public class BtcBackToBackTestStep extends Step implements Serializable {
+public class BtcB2BStep extends Step implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -50,13 +50,13 @@ public class BtcBackToBackTestStep extends Step implements Serializable {
     private String comparison;
 
     @DataBoundConstructor
-    public BtcBackToBackTestStep() {
+    public BtcB2BStep() {
         super();
     }
 
     @Override
     public StepExecution start(StepContext context) throws Exception {
-        return new BtcBackToBackExecution(this, context);
+        return new BtcB2BStepExecution(this, context);
     }
 
     @Extension
@@ -120,14 +120,14 @@ public class BtcBackToBackTestStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcBackToBackExecution extends AbstractBtcStepExecution {
+class BtcB2BStepExecution extends AbstractBtcStepExecution {
 
-    private static final String REPORT_LINK_NAME_B2B = "Back-to-Back Test Report";
+    private static final String REPORT_LINK_NAME_B2B = "Test Execution Report";
     private static final String REPORT_NAME_B2B = "BackToBackTestReport";
     private static final long serialVersionUID = 1L;
-    private BtcBackToBackTestStep step;
+    private BtcB2BStep step;
 
-    public BtcBackToBackExecution(BtcBackToBackTestStep step, StepContext context) {
+    public BtcB2BStepExecution(BtcB2BStep step, StepContext context) {
         super(step, context);
         this.step = step;
     }
@@ -157,7 +157,7 @@ class BtcBackToBackExecution extends AbstractBtcStepExecution {
 
         // Execute B2B test and return result
         Job job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
-        String b2bTestUid = HttpRequester.waitForCompletion(job.getJobID());
+        String b2bTestUid = (String)HttpRequester.waitForCompletion(job.getJobID());
         BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
         String verdictStatus = b2bTest.getVerdictStatus().toString();
         jenkinsConsole.println("Back-to-Back Test finished with result: " + verdictStatus);

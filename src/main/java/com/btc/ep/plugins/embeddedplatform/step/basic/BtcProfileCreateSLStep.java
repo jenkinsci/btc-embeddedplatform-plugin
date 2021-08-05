@@ -194,6 +194,7 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
          */
         Path profilePath = resolvePath(step.getProfilePath());
         Path slModelPath = resolvePath(step.getSlModelPath());
+        Path slScriptPath = resolvePath(step.getSlScriptPath());
         Path addInfoModelPath = resolvePath(step.getAddInfoModelPath());
         preliminaryChecks();
         Store.epp = profilePath.toFile();
@@ -209,7 +210,9 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
          */
         profilesApi.createProfile();
         SLImportInfo info = new SLImportInfo()
-            .slModelFile(slModelPath.toString());
+            .slModelFile(slModelPath.toString())
+            .slInitScriptFile(slScriptPath.toString())
+            .addModelInfoFile(addInfoModelPath.toString());
         Job job = archApi.importSimulinkArchitecture(info);
         HttpRequester.waitForCompletion(job.getJobID());
 

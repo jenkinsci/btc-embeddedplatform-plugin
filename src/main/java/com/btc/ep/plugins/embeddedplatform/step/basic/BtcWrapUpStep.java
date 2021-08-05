@@ -41,6 +41,7 @@ public class BtcWrapUpStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String profilePath;
+    private boolean closeEp = true;
 
     @DataBoundConstructor
     public BtcWrapUpStep() {
@@ -93,6 +94,17 @@ public class BtcWrapUpStep extends Step implements Serializable {
 
     }
 
+    public boolean isCloseEp() {
+        return closeEp;
+
+    }
+
+    @DataBoundSetter
+    public void setCloseEp(boolean closeEp) {
+        this.closeEp = closeEp;
+
+    }
+
     /*
      * End of getter/setter section
      */
@@ -133,15 +145,18 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
             // save the epp to the designated location
             profileApi.saveProfile(new ProfilePath().path(Store.epp.getPath()));
         }
+
         /*
          * Exit the application (first softly via API)
          */
-        applicationApi.exitApplication(true);
-        if (Store.epProcess != null && Store.epProcess.isAlive()) {
-            // ... und bist du nicht willig, so brauch ich Gewalt!
-            Store.epProcess.destroyForcibly();
+        if (step.isCloseEp()) {
+            applicationApi.exitApplication(true);
+            if (Store.epProcess != null && Store.epProcess.isAlive()) {
+                // ... und bist du nicht willig, so brauch ich Gewalt!
+                Store.epProcess.destroyForcibly();
+            }
+            jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
         }
-        jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
         response = 200;
     }
 

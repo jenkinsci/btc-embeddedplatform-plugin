@@ -24,15 +24,15 @@ public class HttpRequester {
     public static String host = "http://localhost";
     public static int port = 29267;
 
-    public static GenericResponse get(String route) throws IOException {
+    public static GenericResponse get(String route) {
         return get(route, null);
     }
 
-    public static GenericResponse get(String route, Object payload) throws IOException {
+    public static GenericResponse get(String route, Object payload) {
         //FIXME: payload is ignored atm
         CloseableHttpClient httpClient = HttpClients.createDefault();
         HttpGet get = new HttpGet(getBasePath() + route);
-        get.setHeader("Content-Type", "application/json");
+        //        get.setHeader("Content-Type", "application/json");
         get.setHeader("Accept", "application/json");
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             HttpEntity entity = response.getEntity();
@@ -45,7 +45,10 @@ public class HttpRequester {
             }
         } catch (IOException e) {
         } finally {
-            httpClient.close();
+            try {
+                httpClient.close();
+            } catch (IOException e) {
+            }
         }
         return null;
     }
@@ -90,26 +93,22 @@ public class HttpRequester {
     public static Map<String, Object> getProgress(String jobId) {
         Map<String, Object> responseObject = new HashMap<>();
         GenericResponse r;
-        try {
-            r = HttpRequester.get("/ep/progress/" + jobId);
-            String responseString = r.getContent();
-            int statusCode = r.getStatus().getStatusCode();
-            responseObject.put("statusCode", statusCode);
-            switch (statusCode) {
-                case 200:
-                    break;
-                case 201: // 201 -> 'uid' -> string (operation complete + object id)
-                case 202: // 202 -> 'message' -> string, 'progressDone' -> int 
-                    @SuppressWarnings ("unchecked")
-                    Map<String, Object> map = new Gson().fromJson(responseString, Map.class);
-                    responseObject.putAll(map);
-                    return responseObject;
-                default:
-                    System.err.println(r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase());
-                    break;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        r = HttpRequester.get("/ep/progress/" + jobId);
+        String responseString = r.getContent();
+        int statusCode = r.getStatus().getStatusCode();
+        responseObject.put("statusCode", statusCode);
+        switch (statusCode) {
+            case 200:
+                break;
+            case 201: // 201 -> 'uid' -> string (operation complete + object id)
+            case 202: // 202 -> 'message' -> string, 'progressDone' -> int 
+                @SuppressWarnings ("unchecked")
+                Map<String, Object> map = new Gson().fromJson(responseString, Map.class);
+                responseObject.putAll(map);
+                return responseObject;
+            default:
+                System.err.println(r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase());
+                break;
         }
         return null;
     }
@@ -135,8 +134,19 @@ public class HttpRequester {
      * @param jobId the job to wait for
      * @return the created object (if available) or null
      */
-    public static String waitForCompletion(String jobId) {
-        return waitForCompletion(jobId, System.out);
+    public static Object waitForCompletion(String jobId, String expectedObjectName) {
+        return waitForCompletion(jobId, expectedObjectName, System.out);
+    }
+
+    /**
+     * Waits for the job to complete and returns the created object (if available) or null.
+     * Outputs are printed to System.out.
+     *
+     * @param jobId the job to wait for
+     * @return the created object (if available) or null
+     */
+    public static Object waitForCompletion(String jobId) {
+        return waitForCompletion(jobId, "uid", System.out);
     }
 
     /**
@@ -147,15 +157,15 @@ public class HttpRequester {
      * @param out the print stream to use to report information
      * @return the created object (if available) or null
      */
-    public static String waitForCompletion(String jobId, PrintStream out) {
-        String createdObjectId = null;
+    public static Object waitForCompletion(String jobId, String expectedObjectName, PrintStream out) {
+        Object createdObject = null;
         double oldProgressDone = 0d;
         while (true) {
             Map<String, Object> progress = getProgress(jobId);
             if (progress != null) {
                 int statusCode = (int)progress.get("statusCode");
                 if (statusCode == CREATED) {
-                    createdObjectId = (String)progress.get("uid");
+                    createdObject = progress.get(expectedObjectName);
                 }
                 if (statusCode != IN_PROGRESS) { // 202 -> in progress
                     break;
@@ -175,7 +185,7 @@ public class HttpRequester {
             }
             sleep(2000);
         }
-        return createdObjectId;
+        return createdObject;
     }
 
     private static void sleep(long millis) {

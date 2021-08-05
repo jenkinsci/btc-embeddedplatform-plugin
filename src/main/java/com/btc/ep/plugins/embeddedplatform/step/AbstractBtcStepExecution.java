@@ -33,7 +33,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /**
      * Response returned to Jenkins (may be overwritten by implementation)
      */
-    protected Object response;
+    protected Object response = 200;
     private String functionName;
     private BasicStep reportingStep;
 
@@ -209,6 +209,14 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      */
     public AbstractBtcStepExecution passed() {
         this.reportingStep.setPassed(true);
+        return this;
+    }
+
+    /**
+     * Sets the result to SKIPPED
+     */
+    public AbstractBtcStepExecution skipped() {
+        this.reportingStep.setSkipped(true);
         return this;
     }
 
