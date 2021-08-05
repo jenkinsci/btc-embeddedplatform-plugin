@@ -2,13 +2,9 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.File;
-import java.io.FileFilter;
 import java.io.Serializable;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -20,8 +16,8 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.RBTestCaseImportInfo;
-import org.openapitools.client.model.StimuliVectorImportInfo;
+import org.openapitools.client.model.RestRBTestCaseExportInfo;
+import org.openapitools.client.model.RestStimuliVectorExportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -29,30 +25,37 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import hudson.Extension;
 import hudson.model.TaskListener;
 
+/*
+ * ################################################################################################
+ * #                                                                                              #
+ * #     THIS IS A TEMPLATE: COPY THIS FILE AS A STARTING POINT TO IMPLEMENT FURTHER STEPS.       #
+ * #                                                                                              # 
+ * ################################################################################################
+ */
+
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
-public class BtcVectorImportStep extends Step implements Serializable {
+public class BtcVectorExportStep extends Step implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     /*
      * Each parameter of the step needs to be listed here as a field
      */
-    private String importDir;
+    private String dir;
     private String vectorFormat = "TC"; //UPDATE THIS ON THE DOCUMENTATION
     private String vectorKind = "TC";
 
     @DataBoundConstructor
-    public BtcVectorImportStep(String importDir) {
+    public BtcVectorExportStep() {
         super();
-        this.importDir = importDir;
     }
 
     @Override
     public StepExecution start(StepContext context) throws Exception {
-        return new BtcVectorImportStepExecution(this, context);
+        return new BtcVectorExportStepExecution(this, context);
     }
 
     @Extension
@@ -69,7 +72,7 @@ public class BtcVectorImportStep extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcVectorImport";
+            return "btcVectorExport";
         }
 
         /*
@@ -77,17 +80,27 @@ public class BtcVectorImportStep extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Vector Import Step";
+            return "BTC Vector Export Step";
         }
     }
 
     /**
-     * Get importDir.
+     * Get exportDir.
      * 
-     * @return the importDir
+     * @return the exportDir
      */
-    public String getImportDir() {
-        return importDir;
+    public String getExportDir() {
+        return dir;
+    }
+
+    /**
+     * Set exportDir.
+     * 
+     * @param exportDir the exportDir to set
+     */
+    @DataBoundSetter
+    public void setExportDir(String exportDir) {
+        this.dir = exportDir;
     }
 
     /**
@@ -141,17 +154,17 @@ public class BtcVectorImportStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
+class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
 
-    private BtcVectorImportStep step;
+    private BtcVectorExportStep step;
 
     /*
      * This field can be used to indicate what's happening during the execution
      */
     private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
-    private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
+    private RequirementBasedTestCasesApi rbTestCaseApi = new RequirementBasedTestCasesApi();
 
     /**
      * Constructor
@@ -159,7 +172,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
      * @param step
      * @param context
      */
-    public BtcVectorImportStepExecution(BtcVectorImportStep step, StepContext context) {
+    public BtcVectorExportStepExecution(BtcVectorExportStep step, StepContext context) {
         super(step, context);
         this.step = step;
     }
@@ -175,37 +188,27 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
     @Override
     protected void performAction() throws Exception {
 
-        // Get all vectors
-        Path importDir = resolvePath(step.getImportDir());
-        checkArgument(importDir.toFile().exists(), "Error: Import directory does not exist " + importDir);
-
-        File[] vectors = importDir.toFile().listFiles(new FileFilter() {
-
-            @Override
-            public boolean accept(File pathname) {
-                return pathname.getName().endsWith(findFileExtension(step.getVectorFormat())); // Analyze vector format, use variable
-            }
-        });
-        List<String> paths = new ArrayList<>();
-        for (File f : vectors) {
-            paths.add(f.getAbsolutePath());
-        }
+        //Get all vectors
+        Path exportDir = resolvePath(step.getExportDir());
+        checkArgument(exportDir.toFile().exists(), "Error: Export directory does not exist " + exportDir);
 
         // Stimuli Vector  -- Default info.setVectorKind("TC");
         Job job;
         if (step.getVectorKind().equals("SV")) {
             // Stimuli Vector
-            StimuliVectorImportInfo info = new StimuliVectorImportInfo();
-            info.setFormat(step.getVectorFormat().toLowerCase());
-            info.setPaths(paths);
-            job = stimuliVectorsApi.importStimuliVectors(info);
-            info("Imported Stimuli Vectors.");
+            RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
+            info.setExportFormat(step.getVectorFormat().toLowerCase());
+            info.setExportDirectory(exportDir.toString());
+            //info.setUiDs(); //TODO NEED TO GET ALL UIDS FOR EXPORT
+            job = stimuliVectorsApi.exportStimuliVectors(info);
+            info("Exported Stimuli Vectors.");
         } else {
-            // Error, format not recognized
-            RBTestCaseImportInfo info = new RBTestCaseImportInfo();
-            info.setPaths(paths);
-            // Need import test cases format
-            job = testCasesApi.importRBTestCase(info);
+            // Test Case
+            RestRBTestCaseExportInfo info = new RestRBTestCaseExportInfo();
+            info.setExportFormat(step.getVectorFormat().toLowerCase());
+            info.setExportDirectory(exportDir.toString());
+            //info.setUiDs(); //TODO NEED TO GET ALL UIDS FOR EXPORT
+            job = rbTestCaseApi.exportRBTestCases(info);
             info("Imported Test Cases.");
         }
         HttpRequester.waitForCompletion(job.getJobID());
