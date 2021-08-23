@@ -205,31 +205,31 @@ public class Util {
 
     /**
      * Configures the Matlab connection according to the specified version and instancePolicy.
+     * Does nothing if the specified Matlab version is null
      * 
      * @param version a version string, like "2020b"
      * @param instancePolicy the instance policy string (AUTO / NEVER / ALWAYS)
      * @throws ApiException if the selected compiler is not available
      */
     public static void configureMatlabConnection(String version, String instancePolicy) throws ApiException {
-        // version policy --> CUSTOM
-        Preference prefVersionPolicy = new Preference()
-            .preferenceName(Constants.PREF_MATLAB_VERSION_POLICY_KEY)
-            .preferenceValue(Constants.PREF_MATLAB_VERSION_POLICY_CUSTOM);
-
-        // custom version: MATLAB R20XXa/b (64-bit)
-        String extractedVersion = version.replaceAll(".*(20\\d\\d[a|b]).*", "$1");
-        String versionPrefValue = "MATLAB R" + extractedVersion + " (64-bit)";
-        Preference prefMatlabVersion = new Preference()
-            .preferenceName(Constants.PREF_MATLAB_VERSION_KEY)
-            .preferenceValue(versionPrefValue);
-
-        // instance policy (AUTO / NEVER / ALWAYS)
-        Preference prefInstancePolicy = new Preference()
-            .preferenceName(Constants.PREF_MATLAB_INSTANCE_POLICY_KEY)
-            .preferenceValue(instancePolicy.toUpperCase());
-
-        PreferencesApi prefApi = new PreferencesApi();
-        prefApi.setPreferences(Arrays.asList(prefVersionPolicy, prefMatlabVersion, prefInstancePolicy));
+        if (version != null) {
+            // version policy --> CUSTOM
+            Preference prefVersionPolicy = new Preference()
+                .preferenceName(Constants.PREF_MATLAB_VERSION_POLICY_KEY)
+                .preferenceValue(Constants.PREF_MATLAB_VERSION_POLICY_CUSTOM);
+            // custom version: MATLAB R20XXa/b (64-bit)
+            String extractedVersion = version.replaceAll(".*(20\\d\\d[a|b]).*", "$1");
+            String versionPrefValue = "MATLAB R" + extractedVersion + " (64-bit)";
+            Preference prefMatlabVersion = new Preference()
+                .preferenceName(Constants.PREF_MATLAB_VERSION_KEY)
+                .preferenceValue(versionPrefValue);
+            // instance policy (AUTO / NEVER / ALWAYS)
+            Preference prefInstancePolicy = new Preference()
+                .preferenceName(Constants.PREF_MATLAB_INSTANCE_POLICY_KEY)
+                .preferenceValue(instancePolicy.toUpperCase());
+            PreferencesApi prefApi = new PreferencesApi();
+            prefApi.setPreferences(Arrays.asList(prefVersionPolicy, prefMatlabVersion, prefInstancePolicy));
+        }
     }
 
     /**

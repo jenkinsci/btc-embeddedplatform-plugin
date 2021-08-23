@@ -82,7 +82,7 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Profile Create (C-Code)";
+            return "BTC Profile Creation (C-Code)";
         }
     }
 
@@ -197,6 +197,8 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         Store.epp = profilePath.toFile();
         Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
 
+        //TODO: Configure ML connection and execute ML Startup Script if needed (requires EP-2535)
+
         /*
          * Create the profile based on the code model
          */
@@ -210,7 +212,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
          * Wrapping up, reporting, etc.
          */
         String msg = "Successfully created the profile.";
-        detailWithLink(Store.epp.getName(), profilePath.toAbsolutePath().toString());
+        detailWithLink(Store.epp.getName(), profilePath.toString());
         response = 200;
         jenkinsConsole.println(msg);
         info(msg);

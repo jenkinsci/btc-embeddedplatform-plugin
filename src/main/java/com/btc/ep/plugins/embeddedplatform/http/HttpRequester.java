@@ -3,6 +3,7 @@ package com.btc.ep.plugins.embeddedplatform.http;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.http.HttpEntity;
@@ -25,14 +26,8 @@ public class HttpRequester {
     public static int port = 29267;
 
     public static GenericResponse get(String route) {
-        return get(route, null);
-    }
-
-    public static GenericResponse get(String route, Object payload) {
-        //FIXME: payload is ignored atm
         CloseableHttpClient httpClient = HttpClients.createDefault();
         HttpGet get = new HttpGet(getBasePath() + route);
-        //        get.setHeader("Content-Type", "application/json");
         get.setHeader("Accept", "application/json");
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             HttpEntity entity = response.getEntity();
@@ -90,6 +85,7 @@ public class HttpRequester {
      * @param jobId the jobId to retrieve the progress for
      * @return
      */
+    @SuppressWarnings ("unchecked")
     public static Map<String, Object> getProgress(String jobId) {
         Map<String, Object> responseObject = new HashMap<>();
         GenericResponse r;
@@ -102,10 +98,15 @@ public class HttpRequester {
                 break;
             case 201: // 201 -> 'uid' -> string (operation complete + object id)
             case 202: // 202 -> 'message' -> string, 'progressDone' -> int 
-                @SuppressWarnings ("unchecked")
-                Map<String, Object> map = new Gson().fromJson(responseString, Map.class);
-                responseObject.putAll(map);
-                return responseObject;
+                if (responseString.startsWith("[")) {
+                    List<Object> list = new Gson().fromJson(responseString, List.class);
+                    responseObject.put("list", list);
+                    return responseObject;
+                } else {
+                    Map<String, Object> map = new Gson().fromJson(responseString, Map.class);
+                    responseObject.putAll(map);
+                    return responseObject;
+                }
             default:
                 System.err.println(r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase());
                 break;

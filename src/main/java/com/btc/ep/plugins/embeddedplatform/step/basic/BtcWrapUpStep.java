@@ -161,6 +161,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
     }
 
     private void assembleProjectReport() throws IOException {
+        //TODO: generate and export profile messages report and add it to the main report EP-2539
         Store.reportData.addSection(Store.testStepSection);
         Store.testStepArgumentSection.setSteps(Store.testStepSection.getSteps());
         Store.reportData.addSection(Store.testStepArgumentSection);

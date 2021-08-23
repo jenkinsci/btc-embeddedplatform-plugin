@@ -246,13 +246,13 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         }
 
         // Prepare data
-        List<String> tcUids = getRelevantTestCaseUIDs();
+        List<String> tcUids = getRelevantTestCaseUIDs(); // <-- waiting for EP-2537
         RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
         RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
         List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
         data.setForceExecute(false);
         data.setExecConfigNames(executionConfigNames);
-        //TODO: the fallback should be: execution config list empty? -> execute on all configs
+        //TODO: the fallback should be: execution config list empty? -> execute on all configs (requires EP-2536)
         info.setUiDs(tcUids);
         info.setData(data);
 
@@ -264,8 +264,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         }.getType();
         JsonElement jsonElement = gson.toJsonTree(testResults);
         // map: result data by execution config
-        Map<String, RBTestCaseExecutionResultSetData> testResultData =
-            gson.fromJson(jsonElement, type);
+        Map<String, RBTestCaseExecutionResultSetData> testResultData = gson.fromJson(jsonElement, type);
 
         analyzeResults(testResultData, tcUids.isEmpty());
 
@@ -406,6 +405,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
                 /*
                  * Start of workaround for EP-2537
                  */
+                //TODO: replace workaround for EP-2537
                 GenericResponse genericResponse = HttpRequester.get("/ep/scopes/" + scope.getUid() + "/test-cases-rbt");
                 if (genericResponse.getStatus().getStatusCode() == 200) {
                     List<Object> contentAsList = genericResponse.getContentAsList();

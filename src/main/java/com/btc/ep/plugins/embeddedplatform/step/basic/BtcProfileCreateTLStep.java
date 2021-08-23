@@ -14,7 +14,9 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.SLImportInfo;
+import org.openapitools.client.model.TLImportInfo;
+import org.openapitools.client.model.TLImportInfo.CalibrationHandlingEnum;
+import org.openapitools.client.model.TLImportInfo.TestModeEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -28,7 +30,7 @@ import hudson.model.TaskListener;
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
-public class BtcProfileCreateSLStep extends Step implements Serializable {
+public class BtcProfileCreateTLStep extends Step implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -38,9 +40,17 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
     private String profilePath;
     private String exportPath;
 
-    private String slModelPath;
-    private String slScriptPath;
-    private String addInfoModelPath;
+    private String tlModelPath;
+    private String tlScriptPath;
+    private String tlSubsystem;
+    private String environmentXmlPath;
+    private String pilConfig;
+    private String calibrationHandling = "EXPLICIT PARAM";
+    private String testMode = "GREY BOX";
+    private boolean reuseExistingCode;
+    private String tlSubsystemFilter;
+    private String tlCodeFileFilter;
+    private String tlCalibrationFilter;
     private String startupScriptPath;
     private String matlabVersion;
     private String matlabInstancePolicy = "AUTO";
@@ -48,18 +58,17 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateSLStep(String profilePath, String slModelPath, String addInfoModelPath,
+    public BtcProfileCreateTLStep(String profilePath, String tlModelPath,
         String matlabVersion) {
         super();
         this.profilePath = profilePath;
-        this.slModelPath = slModelPath;
-        this.addInfoModelPath = addInfoModelPath;
+        this.tlModelPath = tlModelPath;
         this.matlabVersion = matlabVersion;
     }
 
     @Override
     public StepExecution start(StepContext context) throws Exception {
-        return new BtcProfileCreateSLStepExecution(this, context);
+        return new BtcProfileCreateTLStepExecution(this, context);
     }
 
     @Extension
@@ -76,7 +85,7 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcProfileCreateSL";
+            return "btcProfileCreateTL";
         }
 
         /*
@@ -84,7 +93,7 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Profile Creation (Simulink)";
+            return "BTC Profile Creation (Targetlink)";
         }
     }
 
@@ -96,16 +105,12 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
         return exportPath;
     }
 
-    public String getSlModelPath() {
-        return slModelPath;
+    public String getTlModelPath() {
+        return tlModelPath;
     }
 
-    public String getSlScriptPath() {
-        return slScriptPath;
-    }
-
-    public String getAddInfoModelPath() {
-        return addInfoModelPath;
+    public String getTlScriptPath() {
+        return tlScriptPath;
     }
 
     public String getStartupScriptPath() {
@@ -128,14 +133,95 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
         return licenseLocationString;
     }
 
+    public String getTlSubsystem() {
+        return tlSubsystem;
+    }
+
+    public String getEnvironmentXmlPath() {
+        return environmentXmlPath;
+    }
+
+    public String getPilConfig() {
+        return pilConfig;
+    }
+
+    public String getCalibrationHandling() {
+        return calibrationHandling;
+    }
+
+    public String getTestMode() {
+        return testMode;
+    }
+
+    public boolean isReuseExistingCode() {
+        return reuseExistingCode;
+    }
+
+    public String getTlSubsystemFilter() {
+        return tlSubsystemFilter;
+    }
+
+    public String getTlCodeFileFilter() {
+        return tlCodeFileFilter;
+    }
+
+    public String getTlCalibrationFilter() {
+        return tlCalibrationFilter;
+    }
+
+    @DataBoundSetter
+    public void setTlSubsystem(String tlSubsystem) {
+        this.tlSubsystem = tlSubsystem;
+    }
+
+    @DataBoundSetter
+    public void setEnvironmentXmlPath(String environmentXmlPath) {
+        this.environmentXmlPath = environmentXmlPath;
+    }
+
+    @DataBoundSetter
+    public void setPilConfig(String pilConfig) {
+        this.pilConfig = pilConfig;
+    }
+
+    @DataBoundSetter
+    public void setCalibrationHandling(String calibrationHandling) {
+        this.calibrationHandling = calibrationHandling;
+    }
+
+    @DataBoundSetter
+    public void setTestMode(String testMode) {
+        this.testMode = testMode;
+    }
+
+    @DataBoundSetter
+    public void setReuseExistingCode(boolean reuseExistingCode) {
+        this.reuseExistingCode = reuseExistingCode;
+    }
+
+    @DataBoundSetter
+    public void setTlSubsystemFilter(String tlSubsystemFilter) {
+        this.tlSubsystemFilter = tlSubsystemFilter;
+    }
+
+    @DataBoundSetter
+    public void setTlCodeFileFilter(String tlCodeFileFilter) {
+        this.tlCodeFileFilter = tlCodeFileFilter;
+    }
+
+    @DataBoundSetter
+    public void setTlCalibrationFilter(String tlCalibrationFilter) {
+        this.tlCalibrationFilter = tlCalibrationFilter;
+    }
+
     @DataBoundSetter
     public void setExportPath(String exportPath) {
         this.exportPath = exportPath;
     }
 
     @DataBoundSetter
-    public void setSlScriptPath(String slScriptPath) {
-        this.slScriptPath = slScriptPath;
+    public void setTlScriptPath(String tlScriptPath) {
+        this.tlScriptPath = tlScriptPath;
     }
 
     @DataBoundSetter
@@ -167,14 +253,14 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
+class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
-    private BtcProfileCreateSLStep step;
+    private BtcProfileCreateTLStep step;
     private ProfilesApi profilesApi = new ProfilesApi();
     private ArchitecturesApi archApi = new ArchitecturesApi();
 
-    public BtcProfileCreateSLStepExecution(BtcProfileCreateSLStep step, StepContext context) {
+    public BtcProfileCreateTLStepExecution(BtcProfileCreateTLStep step, StepContext context) {
         super(step, context);
         this.step = step;
     }
@@ -193,9 +279,7 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
          * Preparation
          */
         Path profilePath = resolvePath(step.getProfilePath());
-        Path slModelPath = resolvePath(step.getSlModelPath());
-        Path slScriptPath = resolvePath(step.getSlScriptPath());
-        Path addInfoModelPath = resolvePath(step.getAddInfoModelPath());
+        Path tlModelPath = resolvePath(step.getTlModelPath());
         preliminaryChecks();
         Store.epp = profilePath.toFile();
         Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
@@ -211,11 +295,37 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
          * Create the profile based on the code model
          */
         profilesApi.createProfile();
-        SLImportInfo info = new SLImportInfo()
-            .slModelFile(slModelPath.toString())
-            .slInitScriptFile(slScriptPath.toString())
-            .addModelInfoFile(addInfoModelPath.toString());
-        Job job = archApi.importSimulinkArchitecture(info);
+        TLImportInfo info = new TLImportInfo()
+            .tlModelFile(tlModelPath.toString())
+            .fixedStepSolver(true);
+        if (step.getTlScriptPath() != null) {
+            info.setTlInitScript(resolvePath(step.getTlScriptPath()).toString());
+        }
+        // Calibration Handling
+        CalibrationHandlingEnum calibrationHandling = CalibrationHandlingEnum.EXPLICIT_PARAMETER;
+        if (step.getCalibrationHandling().equalsIgnoreCase("LIMITED BLOCKSET")) {
+            calibrationHandling = CalibrationHandlingEnum.LIMITED_BLOCKSET;
+        } else if (step.getCalibrationHandling().equalsIgnoreCase("OFF")) {
+            calibrationHandling = CalibrationHandlingEnum.OFF;
+        }
+        info.setCalibrationHandling(calibrationHandling);
+        // Test Mode (Displays)
+        TestModeEnum testMode = TestModeEnum.GREY_BOX;
+        if (step.getTestMode().equalsIgnoreCase("BLACK BOX")) {
+            testMode = TestModeEnum.BLACK_BOX;
+        }
+        info.setTestMode(testMode);
+        // Legacy Code XML (Environment)
+        if (step.getEnvironmentXmlPath() != null) {
+            info.setEnvironment(resolvePath(step.getEnvironmentXmlPath()).toString());
+        }
+        info.setUseExistingCode(step.isReuseExistingCode());
+        // TL Subsystem
+        if (step.getTlSubsystem() != null) {
+            info.setTlSubsystem(step.getTlSubsystem());
+        }
+        //TODO: support two-step import process that allows us to filter subsystems/calibrations/codefiles
+        Job job = archApi.importTargetLinkArchitecture(info);
         HttpRequester.waitForCompletion(job.getJobID());
 
         /*

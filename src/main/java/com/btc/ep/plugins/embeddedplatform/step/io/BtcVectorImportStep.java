@@ -117,6 +117,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
     private BtcVectorImportStep step;
+    private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
 
     private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
     private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
@@ -141,15 +142,14 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
         if (step.getVectorKind().toUpperCase().equals("TC")) {
             // import test cases
             RBTestCaseImportInfo info = new RBTestCaseImportInfo();
-            info.setOverwritePolicy("OVERWRITE");
+            info.setOverwritePolicy(OVERWRITE);
             info.setPaths(vectorFilePaths);
-            // no format??? check REST API
-            // http://jira.osc.local:8080/browse/EP-2534
+            // no format? http://jira.osc.local:8080/browse/EP-2534 --> format is auto-detected based on file extension
             job = rbTestCasesApi.importRBTestCase(info);
         } else {
             // import stimuli vectors
             StimuliVectorImportInfo info = new StimuliVectorImportInfo();
-            info.setOverwritePolicy("OVERWRITE");
+            info.setOverwritePolicy(OVERWRITE);
             info.setPaths(vectorFilePaths);
             info.setFormat(step.getVectorFormat().toLowerCase()); //needs to be lower case according to docs
             job = stimuliVectorsApi.importStimuliVectors(info);

@@ -11,10 +11,13 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
+import org.openapitools.client.model.ECImportInfo;
+import org.openapitools.client.model.ECImportInfo.ParameterHandlingEnum;
+import org.openapitools.client.model.ECImportInfo.TestModeEnum;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.SLImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -28,7 +31,7 @@ import hudson.model.TaskListener;
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
-public class BtcProfileCreateSLStep extends Step implements Serializable {
+public class BtcProfileCreateECStep extends Step implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -40,7 +43,8 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
 
     private String slModelPath;
     private String slScriptPath;
-    private String addInfoModelPath;
+    private String parameterHandling = ParameterHandlingEnum.EXPLICIT_PARAMETER.toString();
+    private String testMode = TestModeEnum.GREY_BOX.toString();
     private String startupScriptPath;
     private String matlabVersion;
     private String matlabInstancePolicy = "AUTO";
@@ -48,18 +52,16 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateSLStep(String profilePath, String slModelPath, String addInfoModelPath,
-        String matlabVersion) {
+    public BtcProfileCreateECStep(String profilePath, String slModelPath, String matlabVersion) {
         super();
         this.profilePath = profilePath;
         this.slModelPath = slModelPath;
-        this.addInfoModelPath = addInfoModelPath;
         this.matlabVersion = matlabVersion;
     }
 
     @Override
     public StepExecution start(StepContext context) throws Exception {
-        return new BtcProfileCreateSLStepExecution(this, context);
+        return new BtcProfileCreateECStepExecution(this, context);
     }
 
     @Extension
@@ -76,7 +78,7 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcProfileCreateSL";
+            return "btcProfileCreateEC";
         }
 
         /*
@@ -84,7 +86,7 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Profile Creation (Simulink)";
+            return "BTC Profile Creation (EmbeddedCoder)";
         }
     }
 
@@ -102,10 +104,6 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
 
     public String getSlScriptPath() {
         return slScriptPath;
-    }
-
-    public String getAddInfoModelPath() {
-        return addInfoModelPath;
     }
 
     public String getStartupScriptPath() {
@@ -126,6 +124,28 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
 
     public String getLicenseLocationString() {
         return licenseLocationString;
+    }
+
+    public String getParameterHandling() {
+        return parameterHandling;
+
+    }
+
+    public String getTestMode() {
+        return testMode;
+
+    }
+
+    @DataBoundSetter
+    public void setTestMode(String testMode) {
+        this.testMode = testMode;
+
+    }
+
+    @DataBoundSetter
+    public void setParameterHandling(String parameterHandling) {
+        this.parameterHandling = parameterHandling;
+
     }
 
     @DataBoundSetter
@@ -167,14 +187,14 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
+class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
-    private BtcProfileCreateSLStep step;
+    private BtcProfileCreateECStep step;
     private ProfilesApi profilesApi = new ProfilesApi();
     private ArchitecturesApi archApi = new ArchitecturesApi();
 
-    public BtcProfileCreateSLStepExecution(BtcProfileCreateSLStep step, StepContext context) {
+    public BtcProfileCreateECStepExecution(BtcProfileCreateECStep step, StepContext context) {
         super(step, context);
         this.step = step;
     }
@@ -195,7 +215,6 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         Path profilePath = resolvePath(step.getProfilePath());
         Path slModelPath = resolvePath(step.getSlModelPath());
         Path slScriptPath = resolvePath(step.getSlScriptPath());
-        Path addInfoModelPath = resolvePath(step.getAddInfoModelPath());
         preliminaryChecks();
         Store.epp = profilePath.toFile();
         Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
@@ -207,15 +226,19 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
 
         //TODO: Execute Startup Script (requires EP-2535)
 
+        //TODO: Create Wrapper Model (requires EP-2538)
+
         /*
          * Create the profile based on the code model
          */
         profilesApi.createProfile();
-        SLImportInfo info = new SLImportInfo()
-            .slModelFile(slModelPath.toString())
-            .slInitScriptFile(slScriptPath.toString())
-            .addModelInfoFile(addInfoModelPath.toString());
-        Job job = archApi.importSimulinkArchitecture(info);
+        ECImportInfo info = new ECImportInfo()
+            .ecModelFile(slModelPath.toString())
+            .ecInitScript(slScriptPath.toString())
+            .fixedStepSolver(true);
+        configureParameterHandling(info, step.getParameterHandling());
+        configureTestMode(info, step.getTestMode());
+        Job job = archApi.importEmbeddedCoderArchitecture(info);
         HttpRequester.waitForCompletion(job.getJobID());
 
         /*
@@ -226,6 +249,40 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         response = 200;
         jenkinsConsole.println(msg);
         info(msg);
+    }
+
+    /**
+     * Derives the enumValue from the given string and sets it on the ECImportInfo object.
+     *
+     * @param info the ECImportInfo object
+     * @param parameterHandling the string from the user to pick the right enum
+     * @throws ApiException in case of invalid enum string
+     */
+    private void configureParameterHandling(ECImportInfo info, String parameterHandling) throws ApiException {
+        try {
+            ParameterHandlingEnum valueAsEnum = ParameterHandlingEnum.fromValue(parameterHandling.toUpperCase());
+            info.setParameterHandling(valueAsEnum);
+        } catch (Exception e) {
+            throw new ApiException("The specifide parameterHandling enum is not valid. Possible values are: "
+                + ParameterHandlingEnum.values());
+        }
+    }
+
+    /**
+     * Derives the enumValue from the given string and sets it on the ECImportInfo object.
+     *
+     * @param info the ECImportInfo object
+     * @param testMode the string from the user to pick the right enum
+     * @throws ApiException in case of invalid enum string
+     */
+    private void configureTestMode(ECImportInfo info, String testMode) throws ApiException {
+        try {
+            TestModeEnum valueAsEnum = TestModeEnum.fromValue(testMode.toUpperCase());
+            info.setTestMode(valueAsEnum);
+        } catch (Exception e) {
+            throw new ApiException("The specifide testMode enum is not valid. Possible values are: "
+                + TestModeEnum.values());
+        }
     }
 
     /**

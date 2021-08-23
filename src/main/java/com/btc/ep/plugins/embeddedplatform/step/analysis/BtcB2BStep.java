@@ -122,7 +122,7 @@ public class BtcB2BStep extends Step implements Serializable {
  */
 class BtcB2BStepExecution extends AbstractBtcStepExecution {
 
-    private static final String REPORT_LINK_NAME_B2B = "Test Execution Report";
+    private static final String REPORT_LINK_NAME_B2B = "Back-to-Back Test Report";
     private static final String REPORT_NAME_B2B = "BackToBackTestReport";
     private static final long serialVersionUID = 1L;
     private BtcB2BStep step;

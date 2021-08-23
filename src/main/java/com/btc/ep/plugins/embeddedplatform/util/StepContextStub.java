@@ -36,13 +36,10 @@ public class StepContextStub extends StepContext {
 
     @Override
     public void setResult(Result r) {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public ListenableFuture<Void> saveState() {
-        // TODO Auto-generated method stub
         return null;
 
     }
@@ -54,7 +51,6 @@ public class StepContextStub extends StepContext {
 
     @Override
     public BodyInvoker newBodyInvoker() throws IllegalStateException {
-        // TODO Auto-generated method stub
         return null;
 
     }
@@ -83,14 +79,12 @@ public class StepContextStub extends StepContext {
 
     @Override
     public boolean equals(Object o) {
-        // TODO Auto-generated method stub
         return false;
 
     }
 
     @Override
     public boolean isReady() {
-        // TODO Auto-generated method stub
         return false;
 
     }

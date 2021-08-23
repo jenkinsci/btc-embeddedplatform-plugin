@@ -301,6 +301,10 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         String msg = "Successfully loaded the profile";
         detailWithLink(Store.epp.getName(), profilePath.toAbsolutePath().toString());
         response = 200;
+
+        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+        //TODO: Execute Startup Script (requires EP-2535)
+
         /*
          * Update architecture if required
          */
@@ -311,7 +315,9 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
             response = 201;
         }
         jenkinsConsole.println(msg + ".");
+        detailWithLink(Store.epp.getName(), profilePath.toString());
         info(msg + ".");
+        response = 200;
     }
 
     /**
