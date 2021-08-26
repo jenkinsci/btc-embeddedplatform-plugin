@@ -118,6 +118,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
 --------|---------------|------------|-----------------|--------------------
+2.10.1 | - Adapted to EP 2.10<br>- Made UDCG dependency optional (this prevented the plugin from being loaded if BTC EmbeddedPlatform was installed without the UDCG AddOn) | 2.10 | X |  
 2.9.2 | - Improved port handling for btc.startup | 2.9 | | X 
 2.9.1 | - Added protection against unsupported execution on agents using "Local System" user<br>- Added support for EC wrapper model creation<br>- Added check for model version change to automatically invoke an architecture update if required (can be forced with "updateRequired = true" or prevented with "disableUpdate = true")<br>- Added defaultTolerances step to add tolerances for RBT or B2B | 2.9 | X | X 
 2.9.0 | - Adapted to EP 2.9<br>- Added domain checks step<br>- Added options for parallel execution (vectorGeneration)<br>- Test steps no longer automatically set the Pipeline to unstable | 2.9 | X | X 
