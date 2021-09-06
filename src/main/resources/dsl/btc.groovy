@@ -1054,6 +1054,8 @@ def createReqString(config, methodName) {
     // UDCG
     if (config.valueRegions != null)
         reqString += '"valueRegions": "' + "${config.valueRegions}" + '", '
+    if (config.scopeRegex != null)
+        reqString += '"scopeRegex": "' + "${config.scopeRegex}" + '", '
 
     // Vector Import
     if (config.importDir != null)
