@@ -873,6 +873,9 @@ def migrationTarget(body) {
  *      + special handling for paths and some others
  */
 def createReqString(config, methodName) {
+    if (config instanceof Closure) {
+        warning('The step parameters could not be resolved and will therefore be ignored. This can be caused by null pointers during evaluation (parameter = "${myNullVariable.myField}").')
+    }
     if (binding.hasVariable('mode')) { // migration suite scenario
         printToConsole("Running btc.$methodName")
     } else {
