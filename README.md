@@ -249,7 +249,7 @@ pipeline {
                         additionalJvmArgs = '-Xmx2g'
                     }
                     
-                    // create profile
+                    // load and update test project
                     btc.profileLoad {
                         profilePath = "my_module.epp"
                         tlModelPath = "my_module.slx"

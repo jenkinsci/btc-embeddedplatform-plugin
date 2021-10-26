@@ -33,7 +33,7 @@ def connect(body = {}) {
     } else {
         timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
             try {
-                waitUntil {
+                waitUntil(quiet: true, initialRecurrencePeriod: 3000) {
                     // exit waitUntil closure
                     return isEpAvailable()
                 }
@@ -144,12 +144,14 @@ def startup(body = {}) {
             }
             if (config.additionalJvmArgs != null) {
                 startCmd += ", '${config.additionalJvmArgs}'"
+            } else {
+                startCmd += ", '-Xmx2g'"
             }
             startCmd += '; echo $p.id'
             def startCmdOutput = powershell label: 'Starting BTC EmbeddedPlatform', returnStdout: true, script: startCmd
             PID = startCmdOutput.trim()
             reservePortAndReleaseRegistryLock(epJenkinsPort)
-            waitUntil {
+            waitUntil(quiet: true, initialRecurrencePeriod: 3000) {
                 r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
                 // exit waitUntil closure
                 return (r.status == 200)
@@ -166,13 +168,13 @@ def startup(body = {}) {
 def killEp(body = {}) {
     // if we don't have a PID (e.g., because the process was started earlier and we connected to it)
     // we use the port to find the PID
-    if (!binding.hasVariable('PID') || PID == null) {
+    if ((!binding.hasVariable('PID') || PID == null) && (binding.hasVariable('epJenkinsPort') && epJenkinsPort != null)) {
         def nsOut = powershell returnStdout: true, script: "netstat -ona -p tcp | Select-String 0.0.0.0:${epJenkinsPort} | Select-String LISTENING"
         PID = nsOut.trim().split(/\s/).last()
     }
     def status = bat returnStatus: true, script: "@echo off & taskkill /f /pid $PID 1>nul 2>nul"
     if (status == 0) {
-        printToConsole("Successfully closed BTC EmbeddedPlatform instance.")
+        printToConsole("Successfully closed the BTC EmbeddedPlatform instance.")
     }
 }
 
@@ -364,7 +366,7 @@ def addInputCombinationGoals(body) {
 }
 
 def domainCoverageGoals(body) {
-    if (compareVersions(epVersion, '2.9p0') >= 0) {
+    if (!binding.hasVariable('epVersion') || compareVersions(epVersion, '2.9p0') >= 0) {
         // this method only exist in older versions
         printToConsole(" -> Skipped DCG step (has been replaced by btc.addDomainCheckGoals)")
         return 400
@@ -380,7 +382,7 @@ def domainCoverageGoals(body) {
 }
 
 def addDomainCheckGoals(body) {
-    if (compareVersions(epVersion, '2.9p0') >= 0) {
+    if (binding.hasVariable('epVersion') && compareVersions(epVersion, '2.9p0') >= 0) {
         // evaluate the body block, and collect configuration into the object
         def config = resolveConfig(body)
         def reqString = createReqString(config, 'addDomainCheckGoals')
@@ -874,7 +876,7 @@ def migrationTarget(body) {
  */
 def createReqString(config, methodName) {
     if (config instanceof Closure) {
-        warning('The step parameters could not be resolved and will therefore be ignored. This can be caused by null pointers during evaluation (parameter = "${myNullVariable.myField}").')
+        printToConsole('The step parameters could not be resolved and will therefore be ignored. This can be caused by null pointers during evaluation (parameter = "${myNullVariable.myField}").')
     }
     if (binding.hasVariable('mode')) { // migration suite scenario
         printToConsole("Running btc.$methodName")
