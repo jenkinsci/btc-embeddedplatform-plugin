@@ -229,36 +229,69 @@ automation workflow.
 **Pipeline Example**
 
 ``` groovy
-node {
-    // checkout changes from SCM
-    checkout scm
- 
-    // start EmbeddedPlatform and connect to it
-    btc.startup {}
- 
-    // load / create / update a profile
-    btc.profileCreateTL {
-        profilePath = "profile.epp"
-        tlModelPath = "powerwindow_tl_v01.slx"
-        tlScriptPath = "start.m"
-        matlabVersion = "2017b"
+pipeline {
+    agent none // agent can be defined per stage
+    stages {
+        stage ('BTC Unit Test') {
+            // Stage must run on an agent with the required software, e.g.:
+            // - Matlab Simulink + Code Generator
+            // - Compiler (Visual Studio / MinGW)
+            // - BTC EmbeddedPlatform incl. JenkinsAutomation plugin
+            agent { label 'my_btc_agent' }
+
+            steps {
+                // checkout files from repository referenced in this pipeline item
+                checkout scm
+                // Tests with BTC EmbeddedPlatform
+                script {
+                    // start BTC EmbeddedPlatform on Agent
+                    btc.startup {
+                        additionalJvmArgs = '-Xmx2g'
+                    }
+                    
+                    // create profile
+                    btc.profileLoad {
+                        profilePath = "my_module.epp"
+                        tlModelPath = "my_module.slx"
+                        tlScriptPath = "start.m"
+                        matlabVersion = "2020b"
+                        updateRequired = true
+                    }
+
+                    // Execute requirements-based tests
+                    btc.rbtExecution {
+                        createReport = true
+                    }
+
+                    // Generate vectors for statement & mcdc coverage
+                    btc.vectorGeneration {
+                        pll = "STM; MCDC"
+                    }
+                    
+                    // Generate coverage reports
+                    btc.codeAnalysisReport { useCase = "RBT" }
+                    btc.codeAnalysisReport { useCase = "B2B" }
+                    
+                    // B2B test model vs. code
+                    btc.backToBack {
+                        reference = "TL MIL"
+                        comparison = "SIL"
+                    }
+                
+                    // BTC: close EmbeddedPlatform and store reports
+                    btc.wrapUp {}
+                }
+            }
+            post {
+                always {
+                    // make sure that EP is closed, also in case of errors or if the build is aborted
+                    script { btc.killEp {} }
+                }
+            }
+        }
     }
- 
-    // generate stimuli vectors
-    btc.vectorGeneration {
-        pll = "STM;D;MCDC"
-        createReport = true
-    }
- 
-    // execute back-to-back test MIL vs. SIL
-    btc.backToBack {
-        reference = "TL MIL"
-        comparison = "SIL"
-    }
- 
-    // close EmbeddedPlatform and store reports
-    btc.wrapUp {}
-}
+}   
+
 ```
 
 ## Workflow Steps
