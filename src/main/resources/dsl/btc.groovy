@@ -118,7 +118,7 @@ def startup(body = {}) {
     }
     epJenkinsPort = findNextAvailablePort(epJenkinsPort)
 
-    printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds)")
+    printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds).\n(The log file on the agent can be found here: ${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs/current.log)")
     timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
         try {
             epJreDir = getJreDir(epInstallDir)
