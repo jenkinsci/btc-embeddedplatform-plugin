@@ -475,6 +475,7 @@ BTC EmbeddedPlatform. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+closeEp | Boolean flag controlling whether the BTC EmbeddedPlatform will be closed.<br>(default: true) | true, false
 archiveProfiles | Boolean flag controlling whether BTC EmbeddedPlatform profiles are archived by Jenkins to be available on the Job Page. You can disable this and control the "archiveArtifacts" option yourself.<br>(default: true) | true, false
 publishReports | Boolean flag controlling whether the BTC EmbeddedPlatform reports are published in Jenkins to be available on the Job Page. You can disable this and control the "publishHTML" option yourself.<br>(default: true) | true, false
 publishResults | Boolean flag controlling whether BTC EmbeddedPlatform test results (JUnit XML) are published in Jenkins to be available on the Job Page and for further aggregations. You can disable this and control the "junit" option yourself.<br>(default: true) | true, false
