@@ -131,12 +131,18 @@ def startup(body = {}) {
                 '-application com.btc.ep.application.headless', \
                 '-nosplash',${epJreString} \
                 '-vmargs', \
-                '-Dep.runtime.batch=com.btc.ep', \
-            \"-Dosgi.configuration.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration`\"\", \
-            \"-Dosgi.instance.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace`\"\", \
-            '-Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs', \
-            '-Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort}', \
-            '-Dep.licensing.package=${licensingPackage}',"""
+                \"-Dosgi.configuration.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration`\"\", \
+                \"-Dosgi.instance.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace`\"\", \
+                '-Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs', \
+                '-Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort}', \
+                '-Dep.licensing.package=${licensingPackage}',"""
+            // before/after package refactoring
+            if (compareVersions(epVersion, '2.11p0') >= 0) {
+                startCmd += "'-Dep.runtime.batch=ep',"
+            } else { // version < 2.11
+                startCmd += "'-Dep.runtime.batch=com.btc.ep',"
+            }
+            // use rest port / jenkins port
             if (compareVersions(epVersion, '2.8p0') >= 0) {
                 startCmd += " '-Dep.jenkins.port=${epJenkinsPort}', '-Djna.nosys=true', '-Dprism.order=sw', '-XX:+UseParallelGC'"
             } else { // version < 2.8
