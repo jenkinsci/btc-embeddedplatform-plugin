@@ -128,8 +128,14 @@ def startup(body = {}) {
             }
             def startCmd = """\$p = Start-Process '${epInstallDir}/rcp/ep.exe' -PassThru -ArgumentList \
                 '-clearPersistedState', \
-                '-application com.btc.ep.application.headless', \
-                '-nosplash',${epJreString} \
+                '-application', """
+                 // before/after package refactoring
+            if (compareVersions(epVersion, '2.11p0') >= 0) {
+                startCmd += "'ep.application.headless', "
+            } else { // version < 2.11
+                startCmd += "'com.btc.ep.application.headless', "
+            }
+            startCmd += """'-nosplash',${epJreString} \
                 '-vmargs', \
                 \"-Dosgi.configuration.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/configuration`\"\", \
                 \"-Dosgi.instance.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace`\"\", \
