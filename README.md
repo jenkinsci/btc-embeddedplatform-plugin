@@ -116,7 +116,7 @@ Migration Suite below).
 
 ## Release Notes
 
-Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
+Version | Release Notes | EP Version | Update on Agent | Update on Controller
 --------|---------------|------------|-----------------|--------------------
 2.11.0 | - Adapted to EP 2.11 | 2.11 | X | X
 2.10.1 | - Adapted to EP 2.10<br>- Made UDCG dependency optional (this prevented the plugin from being loaded if BTC EmbeddedPlatform was installed without the UDCG AddOn) | 2.10 | X | 
