@@ -218,7 +218,8 @@ public class HttpRequester {
             Thread.sleep(delayInSeconds);
             if ((System.currentTimeMillis() - startingTime) > (timeoutInSeconds * 1000)) {
                 System.out
-                    .println("Connection to " + getBasePath() + route + " timed out after " + timeoutInSeconds + "s");
+                    .println("Connection attempt to " + getBasePath() + route + " timed out after " + timeoutInSeconds
+                        + "s");
                 return false;
             }
         }

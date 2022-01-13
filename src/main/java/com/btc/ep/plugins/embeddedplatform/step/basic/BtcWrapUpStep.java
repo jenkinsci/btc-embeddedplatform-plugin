@@ -30,6 +30,77 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
+ * This class defines what happens when the above step is executed
+ */
+class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcWrapUpStep step;
+
+    public BtcWrapUpStepExecution(BtcWrapUpStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    private ProfilesApi profileApi = new ProfilesApi();
+    private ApplicationApi applicationApi = new ApplicationApi();
+
+    @Override
+    protected void performAction() throws Exception {
+        checkArgument(Configuration.getDefaultApiClient() instanceof EPApiClient,
+            "Unexpected Default Api Client");
+
+        /*
+         * Generate the project report
+         */
+        assembleProjectReport();
+
+        /*
+         * Save the profile
+         */
+        String profilePath =
+            step.getProfilePath() == null ? Store.epp.getPath() : resolvePath(step.getProfilePath()).toString();
+        if (profilePath instanceof String) {
+            // save the epp to the designated location
+        	System.out.println("Saving to " + profilePath);
+            profileApi.saveProfile(new ProfilePath().path(profilePath));
+        }
+
+        /*
+         * Exit the application (first softly via API)
+         */
+        if (step.isCloseEp()) {
+            applicationApi.exitApplication(true);
+            if (Store.epProcess != null && Store.epProcess.isAlive()) {
+                // ... und bist du nicht willig, so brauch ich Gewalt!
+                Store.epProcess.destroyForcibly();
+            }
+            jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
+        }
+        response = 200;
+    }
+
+    private void assembleProjectReport() throws IOException {
+        //TODO: generate and export profile messages report and add it to the main report EP-2539
+        Store.reportData.addSection(Store.testStepSection);
+        Store.testStepArgumentSection.setSteps(Store.testStepSection.getSteps());
+        Store.reportData.addSection(Store.testStepArgumentSection);
+        Store.reportData.addSection(Store.pilInfoSection);
+        String endDate = Util.DATE_FORMAT.format(new Date());
+        Store.reportData.setEndDate(endDate);
+        String durationString = Util.getTimeDiffAsString(new Date(), Store.startDate);
+        Store.reportData.setDuration(durationString);
+        File report = ReportService.getInstance().generateProjectReport(Store.reportData);
+        try {
+            ReportService.getInstance().exportReport(report, Store.exportPath);
+        } catch (IOException e) {
+            throw new IOException("Failed to export project report to " + Store.exportPath + ": " + e.getMessage());
+        }
+    }
+
+}
+
+/**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
@@ -110,72 +181,3 @@ public class BtcWrapUpStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcWrapUpStep step;
-
-    public BtcWrapUpStepExecution(BtcWrapUpStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    private ProfilesApi profileApi = new ProfilesApi();
-    private ApplicationApi applicationApi = new ApplicationApi();
-
-    @Override
-    protected void performAction() throws Exception {
-        checkArgument(Configuration.getDefaultApiClient() instanceof EPApiClient,
-            "Unexpected Default Api Client");
-
-        /*
-         * Generate the project report
-         */
-        assembleProjectReport();
-
-        /*
-         * Save the profile
-         */
-        String profilePath = step.getProfilePath() == null ? Store.epp.getPath() : step.getProfilePath();
-        if (profilePath instanceof String) {
-            // save the epp to the designated location
-            profileApi.saveProfile(new ProfilePath().path(Store.epp.getPath()));
-        }
-
-        /*
-         * Exit the application (first softly via API)
-         */
-        if (step.isCloseEp()) {
-            applicationApi.exitApplication(true);
-            if (Store.epProcess != null && Store.epProcess.isAlive()) {
-                // ... und bist du nicht willig, so brauch ich Gewalt!
-                Store.epProcess.destroyForcibly();
-            }
-            jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
-        }
-        response = 200;
-    }
-
-    private void assembleProjectReport() throws IOException {
-        //TODO: generate and export profile messages report and add it to the main report EP-2539
-        Store.reportData.addSection(Store.testStepSection);
-        Store.testStepArgumentSection.setSteps(Store.testStepSection.getSteps());
-        Store.reportData.addSection(Store.testStepArgumentSection);
-        Store.reportData.addSection(Store.pilInfoSection);
-        String endDate = Util.DATE_FORMAT.format(new Date());
-        Store.reportData.setEndDate(endDate);
-        String durationString = Util.getTimeDiffAsString(new Date(), Store.startDate);
-        Store.reportData.setDuration(durationString);
-        File report = ReportService.getInstance().generateProjectReport(Store.reportData);
-        try {
-            ReportService.getInstance().exportReport(report, Store.exportPath);
-        } catch (IOException e) {
-            throw new IOException("Failed to export project report to " + Store.exportPath + ": " + e.getMessage());
-        }
-    }
-
-}

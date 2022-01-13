@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -34,6 +35,92 @@ import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcB2BStepExecution extends AbstractBtcStepExecution {
+
+    private static final String REPORT_LINK_NAME_B2B = "Back-to-Back Test Report";
+    private static final String REPORT_NAME_B2B = "BackToBackTestReport";
+    private static final long serialVersionUID = 1L;
+    private BtcB2BStep step;
+
+    public BtcB2BStepExecution(BtcB2BStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
+    private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
+    private ScopesApi scopesApi = new ScopesApi();
+    private ProfilesApi profilesApi = new ProfilesApi();
+    private ReportsApi reportingApi = new ReportsApi();
+
+    @Override
+    protected void performAction() throws Exception {
+        // Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to perform a Back-to-Back Test");
+        }
+        List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
+        checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
+        Scope toplevelScope = scopes.get(0);
+
+        // Prepare data for B2B test
+        BackToBackTestExecutionData data = new BackToBackTestExecutionData();
+        data.setRefMode(step.getReference());
+        data.setCompMode(step.getComparison());
+
+        // Execute B2B test and return result
+        Job job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
+        Map<?,?> resultMap = (Map<?,?>)HttpRequester.waitForCompletion(job.getJobID(), "result");
+        String b2bTestUid = (String)resultMap.get("uid");
+        BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
+        String verdictStatus = b2bTest.getVerdictStatus().toString();
+        jenkinsConsole.println("Back-to-Back Test finished with result: " + verdictStatus);
+
+        // status, etc.
+        String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
+            + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
+        info(info);
+
+        if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.OK).passed().result(verdictStatus);
+            response = 200;
+        } else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.OK).passed().result(verdictStatus);
+            response = 201;
+        } else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.OK).failed().result(verdictStatus);
+            response = 300;
+        } else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
+            status(Status.ERROR).result(verdictStatus);
+            response = 400;
+        } else {
+            status(Status.ERROR).result(verdictStatus);
+            response = 500;
+        }
+
+        generateAndExportReport(b2bTestUid);
+
+    }
+
+    /**
+     * @param b2bTestUid
+     * @throws ApiException
+     */
+    private void generateAndExportReport(String b2bTestUid) throws ApiException {
+        Report report = b2bReportingApi.createBackToBackReport(b2bTestUid);
+        ReportExportInfo reportExportInfo = new ReportExportInfo();
+        reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_B2B);
+        reportingApi.exportReport(report.getUid(), reportExportInfo);
+        detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -116,88 +203,3 @@ public class BtcB2BStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcB2BStepExecution extends AbstractBtcStepExecution {
-
-    private static final String REPORT_LINK_NAME_B2B = "Back-to-Back Test Report";
-    private static final String REPORT_NAME_B2B = "BackToBackTestReport";
-    private static final long serialVersionUID = 1L;
-    private BtcB2BStep step;
-
-    public BtcB2BStepExecution(BtcB2BStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
-    private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
-    private ScopesApi scopesApi = new ScopesApi();
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private ReportsApi reportingApi = new ReportsApi();
-
-    @Override
-    protected void performAction() throws Exception {
-        // Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to perform a Back-to-Back Test");
-        }
-        List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
-        checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-
-        // Prepare data for B2B test
-        Scope toplevelScope = scopes.get(0);
-        BackToBackTestExecutionData data = new BackToBackTestExecutionData();
-        data.setRefMode(step.getReference());
-        data.setCompMode(step.getComparison());
-
-        // Execute B2B test and return result
-        Job job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
-        String b2bTestUid = (String)HttpRequester.waitForCompletion(job.getJobID());
-        BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
-        String verdictStatus = b2bTest.getVerdictStatus().toString();
-        jenkinsConsole.println("Back-to-Back Test finished with result: " + verdictStatus);
-
-        // status, etc.
-        String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
-            + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
-        info(info);
-
-        if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.OK).passed().result(verdictStatus);
-            response = 200;
-        } else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.OK).passed().result(verdictStatus);
-            response = 201;
-        } else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.OK).failed().result(verdictStatus);
-            response = 300;
-        } else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.ERROR).result(verdictStatus);
-            response = 400;
-        } else {
-            status(Status.ERROR).result(verdictStatus);
-            response = 500;
-        }
-
-        generateAndExportReport(b2bTestUid);
-
-    }
-
-    /**
-     * @param b2bTestUid
-     * @throws ApiException
-     */
-    private void generateAndExportReport(String b2bTestUid) throws ApiException {
-        Report report = b2bReportingApi.createBackToBackReport(b2bTestUid);
-        ReportExportInfo reportExportInfo = new ReportExportInfo();
-        reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_B2B);
-        reportingApi.exportReport(report.getUid(), reportExportInfo);
-        detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
-    }
-
-}

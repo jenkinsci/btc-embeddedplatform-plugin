@@ -24,6 +24,7 @@ import org.openapitools.client.Configuration;
 import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.JenkinsAutomationReport;
+import com.btc.ep.plugins.embeddedplatform.reporting.project.MetaInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
@@ -33,6 +34,145 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcStartupStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcStartupStep step;
+
+    public BtcStartupStepExecution(BtcStartupStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    @Override
+    protected void performAction() throws Exception {
+        // don't add this step to the report
+        noReporting();
+
+        // Prepare http connection
+        ApiClient apiClient =
+            new EPApiClient().setBasePath("http://localhost:" + step.getPort());
+        Configuration.setDefaultApiClient(apiClient);
+        HttpRequester.port = step.getPort();
+        Store.startDate = new Date();
+        boolean connected = HttpRequester.checkConnection("/test", 200);
+        if (connected) {
+            jenkinsConsole
+                .println("Successfully connected to a running instance of BTC EmbeddedPlatform on port "
+                    + step.getPort());
+            response = 201;
+        } else {
+            // Check preconditions
+            checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
+                "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
+            File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
+            checkArgument(epExecutable.exists(),
+                "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
+
+            // prepare data for process call
+            String epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
+            String jreDirectory = getJreDir();
+            String licensingPackage = step.getLicensingPackage();
+
+            // prepare ep start command
+            List<String> command =
+                createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
+            ProcessBuilder pb = new ProcessBuilder(command);
+            // start process and save it for future use (e.g. to destroy it)
+            Store.epProcess = pb.start();
+            jenkinsConsole.println(String.join(" ", command));
+
+            // wait for ep rest service to respond
+            connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
+            if (connected) {
+                jenkinsConsole.println("Successfully connected to BTC EmbeddedPlatform " + epVersion
+                    + " on port " + step.getPort());
+                response = 200;
+            } else {
+                jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
+                // Kill EmbeddedPlatform process to prevent zombies!
+                Store.epProcess.destroyForcibly();
+                response = 400;
+                return;
+            }
+        }
+        initializeReporting();
+    }
+
+    /**
+     * Initializes the reporting
+     */
+    private void initializeReporting() {
+        Store.reportData = new JenkinsAutomationReport();
+        String startDateString = Util.DATE_FORMAT.format(Store.startDate);
+        Store.reportData.setStartDate(startDateString);
+        Store.testStepSection = new TestStepSection();
+        Store.pilInfoSection = new PilInfoSection();
+        Store.metaInfoSection = new MetaInfoSection();
+        Store.testStepArgumentSection = new StepArgSection();
+    }
+
+    /**
+     * Creates the ep start command
+     *
+     * @param epExecutable ep.exe (File)
+     * @param epVersion ep version string
+     * @param jreDirectory jreDirectory
+     * @param licensingPackage license package
+     * @param port the port to use
+     * @return the ep start command
+     * @throws IOException path issues...
+     */
+    private List<String> createStartCommand(File epExecutable, String epVersion, String jreDirectory,
+        String licensingPackage, int port) throws IOException {
+        List<String> command = new ArrayList<>();
+        command.add("\"" + epExecutable.getCanonicalPath() + "\"");
+        command.add("-clearPersistedState");
+        command.add("-application");
+        command.add("ep.application.headless");
+        command.add("-nosplash");
+        command.add("-vm");
+        command.add("\"" + jreDirectory + "\"");
+        command.add("-vmargs");
+        command.add("-Dep.runtime.batch=ep");
+        command.add("-Dosgi.configuration.area.default=@user.home/AppData/Roaming/BTC/ep/" +
+            epVersion + "/" + port + "/configuration");
+        command.add("-Dosgi.instance.area.default=@user.home/AppData/Roaming/BTC/ep/" + epVersion + "/"
+            + port + "/workspace");
+        command.add("-Dep.configuration.logpath=AppData/Roaming/BTC/ep/" + epVersion + "/"
+            + port + "/logs");
+        command.add("-Dep.runtime.workdir=BTC/ep/" + epVersion + "/" + port);
+        command.add("-Dep.licensing.package=" + licensingPackage);
+        command.add("-Dep.rest.port=" + port);
+        command.add("-Djna.nosys=true");
+        command.add("-Dprism.order=sw");
+        command.add("-XX:+UseParallelGC");
+        if (step.getAdditionalJvmArgs() != null) {
+            command.add(step.getAdditionalJvmArgs());
+        }
+        return command;
+    }
+
+    private String getJreDir() {
+        File jreParentDir = new File(step.getInstallPath() + "/jres");
+        File[] javaDirs = jreParentDir.listFiles(new FilenameFilter() {
+
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.startsWith("jdk");
+
+            }
+        });
+        checkArgument(javaDirs.length > 0, "Failed to find the Java runtime in " + jreParentDir.getPath());
+        String jreBinPath = javaDirs[0].getPath() + "/bin";
+        return jreBinPath;
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -161,140 +301,3 @@ public class BtcStartupStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcStartupStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcStartupStep step;
-
-    public BtcStartupStepExecution(BtcStartupStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    @Override
-    protected void performAction() throws Exception {
-        // don't add this step to the report
-        noReporting();
-
-        // Prepare http connection
-        ApiClient apiClient =
-            new EPApiClient().setBasePath("http://localhost:" + step.getPort());
-        Configuration.setDefaultApiClient(apiClient);
-        HttpRequester.port = step.getPort();
-        Store.startDate = new Date();
-        boolean connected = HttpRequester.checkConnection("/test", 200);
-        if (connected) {
-            jenkinsConsole
-                .println("Successfully connected to a running instance of BTC EmbeddedPlatform on port "
-                    + step.getPort());
-            response = 201;
-        } else {
-            // Check preconditions
-            checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
-                "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
-            File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
-            checkArgument(epExecutable.exists(),
-                "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
-
-            // prepare data for process call
-            String epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
-            String jreDirectory = getJreDir();
-            String licensingPackage = step.getLicensingPackage();
-
-            // prepare ep start command
-            List<String> command =
-                createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
-            ProcessBuilder pb = new ProcessBuilder(command);
-            // start process and save it for future use (e.g. to destroy it)
-            Store.epProcess = pb.start();
-            jenkinsConsole.println(String.join(" ", command));
-
-            // wait for ep rest service to respond
-            connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
-            if (connected) {
-                jenkinsConsole.println("Successfully connected to BTC EmbeddedPlatform " + epVersion
-                    + " on port " + step.getPort());
-                response = 200;
-            } else {
-                jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
-                // Kill EmbeddedPlatform process to prevent zombies!
-                Store.epProcess.destroyForcibly();
-                response = 400;
-            }
-        }
-        initializeReporting();
-    }
-
-    /**
-     * Initializes the reporting
-     */
-    private void initializeReporting() {
-        Store.reportData = new JenkinsAutomationReport();
-        String startDateString = Util.DATE_FORMAT.format(Store.startDate);
-        Store.reportData.setStartDate(startDateString);
-        Store.testStepSection = new TestStepSection();
-        Store.pilInfoSection = new PilInfoSection();
-        Store.testStepArgumentSection = new StepArgSection();
-    }
-
-    /**
-     * Creates the ep start command
-     *
-     * @param epExecutable ep.exe (File)
-     * @param epVersion ep version string
-     * @param jreDirectory jreDirectory
-     * @param licensingPackage license package
-     * @param port the port to use
-     * @return the ep start command
-     * @throws IOException path issues...
-     */
-    private List<String> createStartCommand(File epExecutable, String epVersion, String jreDirectory,
-        String licensingPackage, int port) throws IOException {
-        List<String> command = new ArrayList<>();
-        command.add("\"" + epExecutable.getCanonicalPath() + "\"");
-        command.add("-clearPersistedState");
-        command.add("-application");
-        command.add("com.btc.ep.application.headless");
-        command.add("-nosplash");
-        command.add("-vm");
-        command.add("\"" + jreDirectory + "\"");
-        command.add("-vmargs");
-        command.add("-Dep.runtime.batch=com.btc.ep");
-        command.add("-Dosgi.configuration.area.default=@user.home/AppData/Roaming/BTC/ep/" +
-            epVersion + "/" + port + "/configuration");
-        command.add("-Dosgi.instance.area.default=@user.home/AppData/Roaming/BTC/ep/" + epVersion + "/"
-            + port + "/workspace");
-        command.add("-Dep.configuration.logpath=AppData/Roaming/BTC/ep/" + epVersion + "/"
-            + port + "/logs");
-        command.add("-Dep.runtime.workdir=BTC/ep/" + epVersion + "/" + port);
-        command.add("-Dep.licensing.package=" + licensingPackage);
-        command.add("-Dep.rest.port=" + port);
-        command.add("-Djna.nosys=true");
-        command.add("-Dprism.order=sw");
-        command.add("-XX:+UseParallelGC");
-        if (step.getAdditionalJvmArgs() != null) {
-            command.add(step.getAdditionalJvmArgs());
-        }
-        return command;
-    }
-
-    private String getJreDir() {
-        File jreParentDir = new File(step.getInstallPath() + "/jres");
-        File[] javaDirs = jreParentDir.listFiles(new FilenameFilter() {
-
-            @Override
-            public boolean accept(File dir, String name) {
-                return name.startsWith("jdk");
-
-            }
-        });
-        checkArgument(javaDirs.length > 0, "Failed to find the Java runtime in " + jreParentDir.getPath());
-        String jreBinPath = javaDirs[0].getPath() + "/bin";
-        return jreBinPath;
-    }
-
-}

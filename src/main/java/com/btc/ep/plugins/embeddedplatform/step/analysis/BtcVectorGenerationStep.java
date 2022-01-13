@@ -95,10 +95,6 @@ public class BtcVectorGenerationStep extends Step implements Serializable {
             return Collections.singleton(TaskListener.class);
         }
 
-        /*
-         * This specifies the step name that the the user can use in his Jenkins Pipeline
-         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
-         */
         @Override
         public String getFunctionName() {
             return "btcVectorGeneration";
@@ -334,10 +330,9 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
             reportApi.exportReport(report.getUid(), info);
             msg += " and exported the coverage report";
         }
-        // faking...
+        //FIXME: faking... EP-2581: no coverage info available atm.
         double stmD = 100d;
-        double mcdcD = 100d;
-        // no coverage info available atm.
+        double mcdcD = 100d; // 
         String info = stmD + "% Statement, " + mcdcD + "% MC/DC";
         jenkinsConsole.println(msg + ": " + info);
         info(info);
@@ -389,6 +384,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 
     private void prepareAndExecuteVectorGeneration() throws ApiException {
         Config config = vectorGenerationApi.getConfiguration();
+        config.setTargetDefinitions(Collections.emptyList());
         config.setPllString(step.getPll());
         config.setCheckUnreachableProperties(step.isRecheckUnreachable());
         config.setIsSubscopesGoalsConsidered(step.isConsiderSubscopes());

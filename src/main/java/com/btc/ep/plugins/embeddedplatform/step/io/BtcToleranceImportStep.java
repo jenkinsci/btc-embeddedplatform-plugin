@@ -21,6 +21,68 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
+ * This class defines what happens when the above step is executed
+ */
+class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+
+    private BtcToleranceImportStep step;
+
+    /*
+     * This field can be used to indicate what's happening during the execution
+     */
+    private TolerancesApi tolerancesApi = new TolerancesApi();
+
+    /**
+     * Constructor
+     *
+     * @param step
+     * @param context
+     */
+    public BtcToleranceImportStepExecution(BtcToleranceImportStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set response code (field: response)
+     */
+    @Override
+    protected void performAction() throws Exception {
+
+        // Get the path
+        Path path = resolvePath(step.getPath());
+        checkArgument(path.toFile().exists(), "Error: Import xml does not exist " + path);
+
+        TolerancesImportConfig info = new TolerancesImportConfig();
+        info.setPath(path.toString());
+        if (step.getUseCase().equals("RBT")) {
+            // Requirements-based Test
+            info.setToleranceUseCase("RBT");
+        } else {
+            // Back-to-Back Test
+            info.setToleranceUseCase("B2B");
+        }
+        tolerancesApi.setGlobalTolerances(info);
+        info("Imported Tolerances.");
+
+        //HttpRequester.waitForCompletion(job.getJobID());
+
+        // Questions
+        // 1. Will most of these steps have jobs that need to be completed?
+        // 2. How do I know that I'm using the right APIs and Classes?
+
+    }
+
+}
+
+/**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
@@ -120,65 +182,3 @@ public class BtcToleranceImportStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-
-    private BtcToleranceImportStep step;
-
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private TolerancesApi tolerancesApi = new TolerancesApi();
-
-    /**
-     * Constructor
-     *
-     * @param step
-     * @param context
-     */
-    public BtcToleranceImportStepExecution(BtcToleranceImportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-
-        // Get the path
-        Path path = resolvePath(step.getPath());
-        checkArgument(path.toFile().exists(), "Error: Import xml does not exist " + path);
-
-        TolerancesImportConfig info = new TolerancesImportConfig();
-        info.setPath(path.toString());
-        if (step.getUseCase().equals("RBT")) {
-            // Requirements-based Test
-            info.setToleranceUseCase("RBT");
-        } else {
-            // Back-to-Back Test
-            info.setToleranceUseCase("B2B");
-        }
-        tolerancesApi.setGlobalTolerances(info);
-        info("Imported Tolerances.");
-
-        //HttpRequester.waitForCompletion(job.getJobID());
-
-        // Questions
-        // 1. Will most of these steps have jobs that need to be completed?
-        // 2. How do I know that I'm using the right APIs and Classes?
-
-    }
-
-}

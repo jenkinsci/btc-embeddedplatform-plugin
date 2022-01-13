@@ -27,6 +27,113 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
+ * This class defines what happens when the above step is executed
+ */
+class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcProfileLoadStep step;
+
+    public BtcProfileLoadStepExecution(BtcProfileLoadStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    private ProfilesApi profilesApi = new ProfilesApi();
+    private ArchitecturesApi archApi = new ArchitecturesApi();
+
+    @Override
+    protected void performAction() throws Exception {
+        /*
+         * Preliminary checks
+         */
+        Util.discardLoadedProfileIfPresent(profilesApi);
+        Path profilePath = resolvePath(step.getProfilePath());
+        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
+        checkArgument(profilePath.toFile().exists(),
+            "Error: Profile does not exist! " + step.getProfilePath());
+        Store.epp = profilePath.toFile();
+        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+        /*
+         * Load the profile
+         */
+        profilesApi.openProfile(step.getProfilePath());
+        updateModelPaths();
+        String msg = "Successfully loaded the profile";
+        detailWithLink(Store.epp.getName(), profilePath.toAbsolutePath().toString());
+        response = 200;
+
+        boolean hasModelBasedArchitecture = archApi.getArchitectures(null)
+            .stream()
+            .filter(arch -> "Simulink".equals(arch.getArchitectureKind())
+                || "TargetLink".equals(arch.getArchitectureKind()))
+            .findAny()
+            .isPresent();
+        if (hasModelBasedArchitecture || step.getStartupScriptPath() != null) {
+            Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+            //TODO: Execute Startup Script (requires EP-2535)
+        }
+
+        // Compiler Settings
+        String compilerShortName = step.getCompilerShortName();
+        if (compilerShortName != null) {
+            Util.setCompiler(compilerShortName);
+        }
+        /*
+         * Update architecture if required
+         */
+        if (step.isUpdateRequired()) {
+            Util.discardLoadedProfileIfPresent(profilesApi);
+            Job archUpdate = archApi.architectureUpdate();
+            HttpRequester.waitForCompletion(archUpdate.getJobID());
+            msg += " (incl. arch-update)";
+            response = 201;
+        }
+        jenkinsConsole.println(msg + ".");
+        detailWithLink(Store.epp.getName(), profilePath.toString());
+        info(msg + ".");
+        response = 200;
+    }
+
+    /**
+     * Checks if the user passed any model paths. If that's the case this method updates them in the profile.
+     * 
+     * @throws Exception
+     */
+    private void updateModelPaths() throws Exception {
+        UpdateModelPath updateModelPath = new UpdateModelPath();
+        // resolve paths from pipeline
+        Path p;
+        p = resolvePath(step.getTlModelPath());
+        if (p != null) {
+            updateModelPath.setTlModelFile(p.toFile().getCanonicalPath());
+        }
+        p = resolvePath(step.getTlScriptPath());
+        if (p != null) {
+            updateModelPath.setTlInitScript(p.toFile().getCanonicalPath());
+        }
+        p = resolvePath(step.getSlModelPath());
+        if (p != null) {
+            updateModelPath.setSlModelFile(p.toFile().getCanonicalPath());
+        }
+        p = resolvePath(step.getSlScriptPath());
+        if (p != null) {
+            updateModelPath.setSlInitScript(p.toFile().getCanonicalPath());
+        }
+        p = resolvePath(step.getAddInfoModelPath());
+        if (p != null) {
+            updateModelPath.setAddModelInfo(p.toFile().getCanonicalPath());
+        }
+        p = resolvePath(step.getCodeModelPath());
+        if (p != null) {
+            updateModelPath.setEnvironment(p.toFile().getCanonicalPath());
+        }
+        archApi.updateModelPaths("", updateModelPath);
+    }
+
+}
+
+/**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
@@ -53,7 +160,7 @@ public class BtcProfileLoadStep extends Step implements Serializable {
     private String pilConfig;
     private int pilTimeout;
     private String matlabVersion;
-    private String matlabInstancePolicy;
+    private String matlabInstancePolicy = "AUTO";
     private boolean saveProfileAfterEachStep;
     private String licenseLocationString; // mark as deprecated?
 
@@ -264,96 +371,3 @@ public class BtcProfileLoadStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcProfileLoadStep step;
-
-    public BtcProfileLoadStepExecution(BtcProfileLoadStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private ArchitecturesApi archApi = new ArchitecturesApi();
-
-    @Override
-    protected void performAction() throws Exception {
-        /*
-         * Preliminary checks
-         */
-        Util.discardLoadedProfileIfPresent(profilesApi);
-        Path profilePath = resolvePath(step.getProfilePath());
-        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
-        checkArgument(profilePath.toFile().exists(),
-            "Error: Profile does not exist! " + step.getProfilePath());
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
-        /*
-         * Load the profile
-         */
-        profilesApi.openProfile(step.getProfilePath());
-        updateModelPaths();
-        String msg = "Successfully loaded the profile";
-        detailWithLink(Store.epp.getName(), profilePath.toAbsolutePath().toString());
-        response = 200;
-
-        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-        //TODO: Execute Startup Script (requires EP-2535)
-
-        /*
-         * Update architecture if required
-         */
-        if (step.isUpdateRequired()) {
-            Job archUpdate = archApi.architectureUpdate();
-            HttpRequester.waitForCompletion(archUpdate.getJobID());
-            msg += " (incl. arch-update)";
-            response = 201;
-        }
-        jenkinsConsole.println(msg + ".");
-        detailWithLink(Store.epp.getName(), profilePath.toString());
-        info(msg + ".");
-        response = 200;
-    }
-
-    /**
-     * Checks if the user passed any model paths. If that's the case this method updates them in the profile.
-     * 
-     * @throws Exception
-     */
-    private void updateModelPaths() throws Exception {
-        UpdateModelPath updateModelPath = new UpdateModelPath();
-        // resolve paths from pipeline
-        Path p;
-        p = resolvePath(step.getTlModelPath());
-        if (p != null) {
-            updateModelPath.setTlModelFile(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getTlScriptPath());
-        if (p != null) {
-            updateModelPath.setTlInitScript(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getSlModelPath());
-        if (p != null) {
-            updateModelPath.setSlModelFile(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getSlScriptPath());
-        if (p != null) {
-            updateModelPath.setSlInitScript(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getAddInfoModelPath());
-        if (p != null) {
-            updateModelPath.setAddModelInfo(p.toFile().getCanonicalPath());
-        }
-        p = resolvePath(step.getCodeModelPath());
-        if (p != null) {
-            updateModelPath.setEnvironment(p.toFile().getCanonicalPath());
-        }
-        archApi.updateModelPaths("", updateModelPath);
-    }
-
-}

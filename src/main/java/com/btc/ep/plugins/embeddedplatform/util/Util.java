@@ -1,7 +1,17 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DateFormat;
@@ -14,9 +24,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.workflow.steps.Step;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.PreferencesApi;
 import org.openapitools.client.api.ProfilesApi;
@@ -54,6 +67,15 @@ public class Util {
             map.put(objects[i], objects[i + 1]);
         }
         return map;
+    }
+
+    public static boolean notNull(Object... objects) {
+        for (Object object : objects) {
+            if (object == null) {
+                return false;
+            }
+        }
+        return false;
     }
 
     /**
@@ -120,6 +142,7 @@ public class Util {
         return new File(classLoader.getResource(resourcePath).getFile().replace("%20", " "));
     }
 
+    //set to @Deprecated once EP22.1 arrives 
     public static void discardLoadedProfileIfPresent(ProfilesApi profilesApi) {
         try {
             Path tmpFile = Files.createTempFile("deleteme", ".epp");
@@ -373,6 +396,123 @@ public class Util {
             return new RequirementsApi().getAllRequirementSources();
         } catch (ApiException e) {
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Applies the non-null-values of matching fields from the sourceStep to the targetStep.<br>
+     * Example:<br>
+     * - Source Step (name: foo, age: 30, street: null), TargetStep (name, phoneNumber, street);<br>
+     * - applies value of 'name' from source to target<br><br>
+     * 
+     * Fields are matched based on name and type.<br><br>
+     * 
+     * Returns the targetStep.<br><br>
+     * 
+     * <b>IMPORTANT</b>: Source step should not use primitive types to prevent unless it defines a meaningful default
+     * value.
+     *
+     * @param sourceStep
+     * @param targetStep
+     */
+    public static Step applyMatchingFields(Step sourceStep, Step targetStep) {
+        for (Field sourceField : sourceStep.getClass().getDeclaredFields()) {
+            for (Field targetField : targetStep.getClass().getDeclaredFields()) {
+                // if name and type of the fields match:
+                if (sourceField.getName().equals(targetField.getName())
+                    && typesMatch(sourceField.getType(), targetField.getType())) {
+                    try {
+                        String capitalizedFieldName = StringUtils.capitalize(targetField.getName());
+                        String setterName = "set" + capitalizedFieldName;
+                        String getterPart =
+                            (targetField.getType().getName().equalsIgnoreCase("boolean") ? "is" : "get");
+                        String getterName = capitalizedFieldName.startsWith("Is") ? targetField.getName()
+                            : getterPart + capitalizedFieldName;
+                        Method setter = targetStep.getClass().getMethod(setterName, targetField.getType());
+                        Method getter = sourceStep.getClass().getMethod(getterName);
+                        Object value = getter.invoke(sourceStep);
+                        if (value != null) {
+                            setter.invoke(targetStep, value);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        }
+        return targetStep;
+    }
+
+    /**
+     * Checks if two types match. This method does not strictly compare object-equality but also considers<br>
+     * <ul>
+     * <li>java.lang.Boolean to match boolean</li>
+     * <li>java.lang.Integer to match int</li>
+     * <li>java.lang.Float to match float</li>
+     * <li>java.lang.Double to match double</li>
+     * </ul>
+     * 
+     * @return true if they match, false otherwise
+     */
+    private static boolean typesMatch(Class<?> type1, Class<?> type2) {
+        if (type1.equals(type2)) {
+            return true;
+        }
+        Map<String, String> matchingTypes = new HashMap<>();
+        matchingTypes.put("java.lang.Boolean", "boolean");
+        matchingTypes.put("java.lang.Integer", "int");
+        matchingTypes.put("java.lang.Float", "float");
+        matchingTypes.put("java.lang.Double", "double");
+        for (Entry<String, String> entry : matchingTypes.entrySet()) {
+            if ((type1.getName().equals(entry.getKey()) && type2.getName().equals(entry.getValue())) ||
+                (type2.getName().equals(entry.getKey()) && type1.getName().equals(entry.getValue()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns the content of the file as a String.
+     *
+     * @param path
+     *            path to the file
+     * @return the content of the file as a String or an empty String if the file is
+     *         not available.
+     */
+    public static String readStringFromFile(String path) {
+        StringBuilder sb = new StringBuilder();
+        // Read file line by line using uft-8 encoding
+        try (InputStreamReader isr = new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8);
+            BufferedReader reader = new BufferedReader(isr);) {
+            while (reader.ready()) {
+                sb.append(reader.readLine()).append("\n");
+            }
+            isr.close();
+            reader.close();
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Writes the given String to the specified file. Existing files will be
+     * overwritten.
+     *
+     * @param path
+     *            the path to the file
+     * @param content
+     *            the content to write
+     */
+    public static void writeStringToFile(String path, String content) {
+        // write file using utf-8 encoding
+        try (OutputStreamWriter osr = new OutputStreamWriter(new FileOutputStream(path), StandardCharsets.UTF_8);
+            BufferedWriter writer = new BufferedWriter(osr)) {
+            writer.write(content);
+            writer.close();
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+            e.printStackTrace();
         }
     }
 

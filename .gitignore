@@ -27,3 +27,5 @@ work
 .settings/org.eclipse.core.resources.prefs
 .project
 .classpath
+/.apt_generated/
+/.apt_generated_tests/

@@ -25,6 +25,87 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
+ * This class defines what happens when the above step is executed
+ */
+class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcProfileCreateSLStep step;
+    private ProfilesApi profilesApi = new ProfilesApi();
+    private ArchitecturesApi archApi = new ArchitecturesApi();
+
+    public BtcProfileCreateSLStepExecution(BtcProfileCreateSLStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set resonse code (field: response)
+     */
+    @Override
+    protected void performAction() throws Exception {
+        /*
+         * Preparation
+         */
+        Path profilePath = resolvePath(step.getProfilePath());
+        Path slModelPath = resolvePath(step.getSlModelPath());
+        Path slScriptPath = resolvePath(step.getSlScriptPath());
+        Path addInfoModelPath = resolvePath(step.getAddInfoModelPath());
+        preliminaryChecks();
+        Store.epp = profilePath.toFile();
+        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+
+        /*
+         * Prepare Matlab
+         */
+        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+
+        //TODO: Execute Startup Script (requires EP-2535)
+
+        /*
+         * Create the profile based on the code model
+         */
+        profilesApi.createProfile();
+        SLImportInfo info = new SLImportInfo()
+            .slModelFile(slModelPath.toString())
+            .slInitScriptFile(slScriptPath.toString())
+            .addModelInfoFile(addInfoModelPath.toString());
+        Job job = archApi.importSimulinkArchitecture(info);
+        HttpRequester.waitForCompletion(job.getJobID());
+
+        /*
+         * Wrapping up, reporting, etc.
+         */
+        String msg = "Successfully created the profile.";
+        detailWithLink(Store.epp.getName(), profilePath.toString());
+        response = 200;
+        jenkinsConsole.println(msg);
+        info(msg);
+    }
+
+    /**
+     * Discards any loaded profile and warns in case the obsolete option "licenseLocationString" is used.
+     *
+     * @param profilePath the profile path
+     * @param slModelPath the slModelPath
+     * @param addInfoModelPath
+     */
+    private void preliminaryChecks() {
+        Util.discardLoadedProfileIfPresent(profilesApi);
+        if (step.getLicenseLocationString() != null) {
+            jenkinsConsole.println(
+                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
+        }
+    }
+
+}
+
+/**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
@@ -48,13 +129,11 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateSLStep(String profilePath, String slModelPath, String addInfoModelPath,
-        String matlabVersion) {
+    public BtcProfileCreateSLStep(String profilePath, String slModelPath, String addInfoModelPath) {
         super();
         this.profilePath = profilePath;
         this.slModelPath = slModelPath;
         this.addInfoModelPath = addInfoModelPath;
-        this.matlabVersion = matlabVersion;
     }
 
     @Override
@@ -149,6 +228,11 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
     }
 
     @DataBoundSetter
+    public void setMatlabVersion(String matlabVersion) {
+        this.matlabVersion = matlabVersion;
+    }
+
+    @DataBoundSetter
     public void setSaveProfileAfterEachStep(boolean saveProfileAfterEachStep) {
         this.saveProfileAfterEachStep = saveProfileAfterEachStep;
     }
@@ -163,84 +247,3 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcProfileCreateSLStep step;
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private ArchitecturesApi archApi = new ArchitecturesApi();
-
-    public BtcProfileCreateSLStepExecution(BtcProfileCreateSLStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set resonse code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-        /*
-         * Preparation
-         */
-        Path profilePath = resolvePath(step.getProfilePath());
-        Path slModelPath = resolvePath(step.getSlModelPath());
-        Path slScriptPath = resolvePath(step.getSlScriptPath());
-        Path addInfoModelPath = resolvePath(step.getAddInfoModelPath());
-        preliminaryChecks();
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
-
-        /*
-         * Prepare Matlab
-         */
-        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-
-        //TODO: Execute Startup Script (requires EP-2535)
-
-        /*
-         * Create the profile based on the code model
-         */
-        profilesApi.createProfile();
-        SLImportInfo info = new SLImportInfo()
-            .slModelFile(slModelPath.toString())
-            .slInitScriptFile(slScriptPath.toString())
-            .addModelInfoFile(addInfoModelPath.toString());
-        Job job = archApi.importSimulinkArchitecture(info);
-        HttpRequester.waitForCompletion(job.getJobID());
-
-        /*
-         * Wrapping up, reporting, etc.
-         */
-        String msg = "Successfully created the profile.";
-        detailWithLink(Store.epp.getName(), profilePath.toString());
-        response = 200;
-        jenkinsConsole.println(msg);
-        info(msg);
-    }
-
-    /**
-     * Discards any loaded profile and warns in case the obsolete option "licenseLocationString" is used.
-     *
-     * @param profilePath the profile path
-     * @param slModelPath the slModelPath
-     * @param addInfoModelPath
-     */
-    private void preliminaryChecks() {
-        Util.discardLoadedProfileIfPresent(profilesApi);
-        if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
-                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
-        }
-    }
-
-}

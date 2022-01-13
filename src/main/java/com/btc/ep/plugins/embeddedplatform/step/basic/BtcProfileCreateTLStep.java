@@ -27,6 +27,110 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
+ * This class defines what happens when the above step is executed
+ */
+class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcProfileCreateTLStep step;
+    private ProfilesApi profilesApi = new ProfilesApi();
+    private ArchitecturesApi archApi = new ArchitecturesApi();
+
+    public BtcProfileCreateTLStepExecution(BtcProfileCreateTLStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set resonse code (field: response)
+     */
+    @Override
+    protected void performAction() throws Exception {
+        /*
+         * Preparation
+         */
+        Path profilePath = resolvePath(step.getProfilePath());
+        preliminaryChecks();
+        Store.epp = profilePath.toFile();
+        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+
+        /*
+         * Prepare Matlab
+         */
+        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+
+        //TODO: Execute Startup Script (requires EP-2535)
+
+        /*
+         * Create the profile based on the code model
+         */
+        Path tlModelPath = resolvePath(step.getTlModelPath());
+        Path tlScriptPath = resolvePath(step.getTlScriptPath());
+        profilesApi.createProfile();
+        TLImportInfo info = new TLImportInfo()
+            .tlModelFile(tlModelPath.toString())
+            .tlInitScript(tlScriptPath.toString())
+            .fixedStepSolver(true);
+        // Calibration Handling
+        CalibrationHandlingEnum calibrationHandling = CalibrationHandlingEnum.EXPLICIT_PARAMETER;
+        if (step.getCalibrationHandling().equalsIgnoreCase("LIMITED BLOCKSET")) {
+            calibrationHandling = CalibrationHandlingEnum.LIMITED_BLOCKSET;
+        } else if (step.getCalibrationHandling().equalsIgnoreCase("OFF")) {
+            calibrationHandling = CalibrationHandlingEnum.OFF;
+        }
+        info.setCalibrationHandling(calibrationHandling);
+        // Test Mode (Displays)
+        TestModeEnum testMode = TestModeEnum.GREY_BOX;
+        if (step.getTestMode().equalsIgnoreCase("BLACK BOX")) {
+            testMode = TestModeEnum.BLACK_BOX;
+        }
+        info.setTestMode(testMode);
+        // Legacy Code XML (Environment)
+        if (step.getEnvironmentXmlPath() != null) {
+            info.setEnvironment(resolvePath(step.getEnvironmentXmlPath()).toString());
+        }
+        info.setUseExistingCode(step.isReuseExistingCode());
+        // TL Subsystem
+        if (step.getTlSubsystem() != null) {
+            info.setTlSubsystem(step.getTlSubsystem());
+        }
+        //TODO: support two-step import process that allows us to filter subsystems/calibrations/codefiles (requires EP-2569)
+        Job job = archApi.importTargetLinkArchitecture1(info);
+        HttpRequester.waitForCompletion(job.getJobID());
+
+        /*
+         * Wrapping up, reporting, etc.
+         */
+        String msg = "Successfully created the profile.";
+        detailWithLink(Store.epp.getName(), profilePath.toString());
+        response = 200;
+        jenkinsConsole.println(msg);
+        info(msg);
+    }
+
+    /**
+     * Discards any loaded profile and warns in case the obsolete option "licenseLocationString" is used.
+     *
+     * @param profilePath the profile path
+     * @param slModelPath the slModelPath
+     * @param addInfoModelPath
+     */
+    private void preliminaryChecks() {
+        Util.discardLoadedProfileIfPresent(profilesApi);
+        if (step.getLicenseLocationString() != null) {
+            jenkinsConsole.println(
+                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
+        }
+    }
+
+}
+
+/**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
@@ -58,12 +162,10 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateTLStep(String profilePath, String tlModelPath,
-        String matlabVersion) {
+    public BtcProfileCreateTLStep(String profilePath, String tlModelPath) {
         super();
         this.profilePath = profilePath;
         this.tlModelPath = tlModelPath;
-        this.matlabVersion = matlabVersion;
     }
 
     @Override
@@ -244,113 +346,13 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
         this.licenseLocationString = licenseLocationString;
     }
 
+    @DataBoundSetter
+    public void setMatlabVersion(String matlabVersion) {
+        this.matlabVersion = matlabVersion;
+    }
+
     /*
      * End of getter/setter section
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcProfileCreateTLStep step;
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private ArchitecturesApi archApi = new ArchitecturesApi();
-
-    public BtcProfileCreateTLStepExecution(BtcProfileCreateTLStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set resonse code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-        /*
-         * Preparation
-         */
-        Path profilePath = resolvePath(step.getProfilePath());
-        Path tlModelPath = resolvePath(step.getTlModelPath());
-        preliminaryChecks();
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
-
-        /*
-         * Prepare Matlab
-         */
-        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-
-        //TODO: Execute Startup Script (requires EP-2535)
-
-        /*
-         * Create the profile based on the code model
-         */
-        profilesApi.createProfile();
-        TLImportInfo info = new TLImportInfo()
-            .tlModelFile(tlModelPath.toString())
-            .fixedStepSolver(true);
-        if (step.getTlScriptPath() != null) {
-            info.setTlInitScript(resolvePath(step.getTlScriptPath()).toString());
-        }
-        // Calibration Handling
-        CalibrationHandlingEnum calibrationHandling = CalibrationHandlingEnum.EXPLICIT_PARAMETER;
-        if (step.getCalibrationHandling().equalsIgnoreCase("LIMITED BLOCKSET")) {
-            calibrationHandling = CalibrationHandlingEnum.LIMITED_BLOCKSET;
-        } else if (step.getCalibrationHandling().equalsIgnoreCase("OFF")) {
-            calibrationHandling = CalibrationHandlingEnum.OFF;
-        }
-        info.setCalibrationHandling(calibrationHandling);
-        // Test Mode (Displays)
-        TestModeEnum testMode = TestModeEnum.GREY_BOX;
-        if (step.getTestMode().equalsIgnoreCase("BLACK BOX")) {
-            testMode = TestModeEnum.BLACK_BOX;
-        }
-        info.setTestMode(testMode);
-        // Legacy Code XML (Environment)
-        if (step.getEnvironmentXmlPath() != null) {
-            info.setEnvironment(resolvePath(step.getEnvironmentXmlPath()).toString());
-        }
-        info.setUseExistingCode(step.isReuseExistingCode());
-        // TL Subsystem
-        if (step.getTlSubsystem() != null) {
-            info.setTlSubsystem(step.getTlSubsystem());
-        }
-        //TODO: support two-step import process that allows us to filter subsystems/calibrations/codefiles
-        Job job = archApi.importTargetLinkArchitecture(info);
-        HttpRequester.waitForCompletion(job.getJobID());
-
-        /*
-         * Wrapping up, reporting, etc.
-         */
-        String msg = "Successfully created the profile.";
-        detailWithLink(Store.epp.getName(), profilePath.toString());
-        response = 200;
-        jenkinsConsole.println(msg);
-        info(msg);
-    }
-
-    /**
-     * Discards any loaded profile and warns in case the obsolete option "licenseLocationString" is used.
-     *
-     * @param profilePath the profile path
-     * @param slModelPath the slModelPath
-     * @param addInfoModelPath
-     */
-    private void preliminaryChecks() {
-        Util.discardLoadedProfileIfPresent(profilesApi);
-        if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
-                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
-        }
-    }
-
-}

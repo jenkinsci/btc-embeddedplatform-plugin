@@ -19,10 +19,43 @@ import hudson.model.TaskListener;
 /*
  * ################################################################################################
  * #                                                                                              #
- * #     THIS IS A TEMPLATE: COPY THIS FILE AS A STARTING POINT TO IMPLEMENT FURTHER STEPS.       #
+ * #  THIS IS A TEMPLATE: YOU MAY COPY THIS FILE AS A STARTING POINT TO IMPLEMENT FURTHER STEPS.  #
  * #                                                                                              # 
  * ################################################################################################
  */
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcExampleStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcExampleStep step;
+
+    public BtcExampleStepExecution(BtcExampleStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set resonse code (field: response)
+     */
+    @Override
+    protected void performAction() throws Exception {
+        jenkinsConsole.println("The value of the string parameter is " + step.getStrStepParam());
+        jenkinsConsole.println("The value of the integer parameter is " + step.getIntStepParam());
+        jenkinsConsole.println("Workspace: " + Paths.get(getContext().get(FilePath.class).toURI()).toString());
+        // print success message and return response code
+        jenkinsConsole.println("--> [200] Example step successfully executed.");
+        response = 200;
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -105,36 +138,3 @@ public class BtcExampleStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcExampleStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcExampleStep step;
-
-    public BtcExampleStepExecution(BtcExampleStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set resonse code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-        jenkinsConsole.println("The value of the string parameter is " + step.getStrStepParam());
-        jenkinsConsole.println("The value of the integer parameter is " + step.getIntStepParam());
-        jenkinsConsole.println("Workspace: " + Paths.get(getContext().get(FilePath.class).toURI()).toString());
-        // print success message and return response code
-        jenkinsConsole.println("--> [200] Example step successfully executed.");
-        response = 200;
-    }
-
-}

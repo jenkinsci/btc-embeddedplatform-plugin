@@ -15,6 +15,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
+import org.openapitools.client.api.ProgressApi;
 import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
 
@@ -25,6 +26,74 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcProfileCreateCStep step;
+
+    public BtcProfileCreateCStepExecution(BtcProfileCreateCStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    private ProfilesApi profilesApi = new ProfilesApi();
+    private ArchitecturesApi archApi = new ArchitecturesApi();
+
+    @Override
+    protected void performAction() throws Exception {
+        /*
+         * Preparation
+         */
+        Path profilePath = resolvePath(step.getProfilePath());
+        Path codeModelPath = resolvePath(step.getCodeModelPath());
+        preliminaryChecks(profilePath, codeModelPath);
+        Store.epp = profilePath.toFile();
+        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+
+        //TODO: Configure ML connection and execute ML Startup Script if needed (requires EP-2535)
+
+        /*
+         * Create the profile based on the code model
+         */
+        profilesApi.createProfile();
+        Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
+        CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
+        Job job = archApi.importArchitecture(info);
+        HttpRequester.waitForCompletion(job.getJobID());
+        new ProgressApi().getProgress(job.getJobID());
+
+        /*
+         * Wrapping up, reporting, etc.
+         */
+        String msg = "Successfully created the profile.";
+        detailWithLink(Store.epp.getName(), profilePath.toString());
+        response = 200;
+        jenkinsConsole.println(msg);
+        info(msg);
+    }
+
+    /**
+     * Checks if the profilePath and codeModelPath are valid (!= null), discards any loaded
+     * profile and warns in case the obsolete option "licenseLocationString" is used.
+     *
+     * @param profilePath the profile path
+     * @param codeModelPath the code model path
+     */
+    private void preliminaryChecks(Path profilePath, Path codeModelPath) {
+        Util.discardLoadedProfileIfPresent(profilesApi);
+        if (step.getLicenseLocationString() != null) {
+            jenkinsConsole.println(
+                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
+        }
+        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
+        checkArgument(codeModelPath != null, "No valid code model path was provided: " + step.getCodeModelPath());
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -169,70 +238,3 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcProfileCreateCStep step;
-
-    public BtcProfileCreateCStepExecution(BtcProfileCreateCStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private ArchitecturesApi archApi = new ArchitecturesApi();
-
-    @Override
-    protected void performAction() throws Exception {
-        /*
-         * Preparation
-         */
-        Path profilePath = resolvePath(step.getProfilePath());
-        Path codeModelPath = resolvePath(step.getCodeModelPath());
-        preliminaryChecks(profilePath, codeModelPath);
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
-
-        //TODO: Configure ML connection and execute ML Startup Script if needed (requires EP-2535)
-
-        /*
-         * Create the profile based on the code model
-         */
-        profilesApi.createProfile();
-        Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
-        CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
-        Job job = archApi.importArchitecture(info);
-        HttpRequester.waitForCompletion(job.getJobID());
-
-        /*
-         * Wrapping up, reporting, etc.
-         */
-        String msg = "Successfully created the profile.";
-        detailWithLink(Store.epp.getName(), profilePath.toString());
-        response = 200;
-        jenkinsConsole.println(msg);
-        info(msg);
-    }
-
-    /**
-     * Checks if the profilePath and codeModelPath are valid (!= null), discards any loaded
-     * profile and warns in case the obsolete option "licenseLocationString" is used.
-     *
-     * @param profilePath the profile path
-     * @param codeModelPath the code model path
-     */
-    private void preliminaryChecks(Path profilePath, Path codeModelPath) {
-        Util.discardLoadedProfileIfPresent(profilesApi);
-        if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
-                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
-        }
-        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
-        checkArgument(codeModelPath != null, "No valid code model path was provided: " + step.getCodeModelPath());
-    }
-
-}

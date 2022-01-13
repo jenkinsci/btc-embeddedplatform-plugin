@@ -28,6 +28,125 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
+ * This class defines what happens when the above step is executed
+ */
+class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcProfileCreateECStep step;
+    private ProfilesApi profilesApi = new ProfilesApi();
+    private ArchitecturesApi archApi = new ArchitecturesApi();
+
+    public BtcProfileCreateECStepExecution(BtcProfileCreateECStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set resonse code (field: response)
+     */
+    @Override
+    protected void performAction() throws Exception {
+        /*
+         * Preparation
+         */
+        Path profilePath = resolvePath(step.getProfilePath());
+        preliminaryChecks();
+        Store.epp = profilePath.toFile();
+        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+
+        /*
+         * Prepare Matlab
+         */
+        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+
+        //TODO: Execute Startup Script (requires EP-2535)
+
+        //TODO: Create Wrapper Model (requires EP-2538)
+
+        /*
+         * Create the profile based on the code model
+         */
+        Path slModelPath = resolvePath(step.getSlModelPath());
+        Path slScriptPath = resolvePath(step.getSlScriptPath());
+        profilesApi.createProfile();
+        ECImportInfo info = new ECImportInfo()
+            .ecModelFile(slModelPath.toString())
+            .ecInitScript(slScriptPath.toString())
+            .fixedStepSolver(true);
+        //TODO: support two-step import process that allows us to filter subsystems/calibrations/codefiles (requires EP-2569)
+        configureParameterHandling(info, step.getParameterHandling());
+        configureTestMode(info, step.getTestMode());
+        Job job = archApi.importEmbeddedCoderArchitecture(info);
+        HttpRequester.waitForCompletion(job.getJobID());
+
+        /*
+         * Wrapping up, reporting, etc.
+         */
+        String msg = "Successfully created the profile.";
+        detailWithLink(Store.epp.getName(), profilePath.toString());
+        response = 200;
+        jenkinsConsole.println(msg);
+        info(msg);
+    }
+
+    /**
+     * Derives the enumValue from the given string and sets it on the ECImportInfo object.
+     *
+     * @param info the ECImportInfo object
+     * @param parameterHandling the string from the user to pick the right enum
+     * @throws ApiException in case of invalid enum string
+     */
+    private void configureParameterHandling(ECImportInfo info, String parameterHandling) throws ApiException {
+        try {
+            ParameterHandlingEnum valueAsEnum = ParameterHandlingEnum.fromValue(parameterHandling.toUpperCase());
+            info.setParameterHandling(valueAsEnum);
+        } catch (Exception e) {
+            throw new ApiException("The specifide parameterHandling enum is not valid. Possible values are: "
+                + ParameterHandlingEnum.values());
+        }
+    }
+
+    /**
+     * Derives the enumValue from the given string and sets it on the ECImportInfo object.
+     *
+     * @param info the ECImportInfo object
+     * @param testMode the string from the user to pick the right enum
+     * @throws ApiException in case of invalid enum string
+     */
+    private void configureTestMode(ECImportInfo info, String testMode) throws ApiException {
+        try {
+            TestModeEnum valueAsEnum = TestModeEnum.fromValue(testMode.toUpperCase());
+            info.setTestMode(valueAsEnum);
+        } catch (Exception e) {
+            throw new ApiException("The specifide testMode enum is not valid. Possible values are: "
+                + TestModeEnum.values());
+        }
+    }
+
+    /**
+     * Discards any loaded profile and warns in case the obsolete option "licenseLocationString" is used.
+     *
+     * @param profilePath the profile path
+     * @param slModelPath the slModelPath
+     * @param addInfoModelPath
+     */
+    private void preliminaryChecks() {
+        Util.discardLoadedProfileIfPresent(profilesApi);
+        if (step.getLicenseLocationString() != null) {
+            jenkinsConsole.println(
+                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
+        }
+    }
+
+}
+
+/**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
@@ -52,11 +171,10 @@ public class BtcProfileCreateECStep extends Step implements Serializable {
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateECStep(String profilePath, String slModelPath, String matlabVersion) {
+    public BtcProfileCreateECStep(String profilePath, String slModelPath) {
         super();
         this.profilePath = profilePath;
         this.slModelPath = slModelPath;
-        this.matlabVersion = matlabVersion;
     }
 
     @Override
@@ -169,6 +287,11 @@ public class BtcProfileCreateECStep extends Step implements Serializable {
     }
 
     @DataBoundSetter
+    public void setMatlabVersion(String matlabVersion) {
+        this.matlabVersion = matlabVersion;
+    }
+
+    @DataBoundSetter
     public void setSaveProfileAfterEachStep(boolean saveProfileAfterEachStep) {
         this.saveProfileAfterEachStep = saveProfileAfterEachStep;
     }
@@ -183,121 +306,3 @@ public class BtcProfileCreateECStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcProfileCreateECStep step;
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private ArchitecturesApi archApi = new ArchitecturesApi();
-
-    public BtcProfileCreateECStepExecution(BtcProfileCreateECStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set resonse code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-        /*
-         * Preparation
-         */
-        Path profilePath = resolvePath(step.getProfilePath());
-        Path slModelPath = resolvePath(step.getSlModelPath());
-        Path slScriptPath = resolvePath(step.getSlScriptPath());
-        preliminaryChecks();
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
-
-        /*
-         * Prepare Matlab
-         */
-        Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-
-        //TODO: Execute Startup Script (requires EP-2535)
-
-        //TODO: Create Wrapper Model (requires EP-2538)
-
-        /*
-         * Create the profile based on the code model
-         */
-        profilesApi.createProfile();
-        ECImportInfo info = new ECImportInfo()
-            .ecModelFile(slModelPath.toString())
-            .ecInitScript(slScriptPath.toString())
-            .fixedStepSolver(true);
-        configureParameterHandling(info, step.getParameterHandling());
-        configureTestMode(info, step.getTestMode());
-        Job job = archApi.importEmbeddedCoderArchitecture(info);
-        HttpRequester.waitForCompletion(job.getJobID());
-
-        /*
-         * Wrapping up, reporting, etc.
-         */
-        String msg = "Successfully created the profile.";
-        detailWithLink(Store.epp.getName(), profilePath.toString());
-        response = 200;
-        jenkinsConsole.println(msg);
-        info(msg);
-    }
-
-    /**
-     * Derives the enumValue from the given string and sets it on the ECImportInfo object.
-     *
-     * @param info the ECImportInfo object
-     * @param parameterHandling the string from the user to pick the right enum
-     * @throws ApiException in case of invalid enum string
-     */
-    private void configureParameterHandling(ECImportInfo info, String parameterHandling) throws ApiException {
-        try {
-            ParameterHandlingEnum valueAsEnum = ParameterHandlingEnum.fromValue(parameterHandling.toUpperCase());
-            info.setParameterHandling(valueAsEnum);
-        } catch (Exception e) {
-            throw new ApiException("The specifide parameterHandling enum is not valid. Possible values are: "
-                + ParameterHandlingEnum.values());
-        }
-    }
-
-    /**
-     * Derives the enumValue from the given string and sets it on the ECImportInfo object.
-     *
-     * @param info the ECImportInfo object
-     * @param testMode the string from the user to pick the right enum
-     * @throws ApiException in case of invalid enum string
-     */
-    private void configureTestMode(ECImportInfo info, String testMode) throws ApiException {
-        try {
-            TestModeEnum valueAsEnum = TestModeEnum.fromValue(testMode.toUpperCase());
-            info.setTestMode(valueAsEnum);
-        } catch (Exception e) {
-            throw new ApiException("The specifide testMode enum is not valid. Possible values are: "
-                + TestModeEnum.values());
-        }
-    }
-
-    /**
-     * Discards any loaded profile and warns in case the obsolete option "licenseLocationString" is used.
-     *
-     * @param profilePath the profile path
-     * @param slModelPath the slModelPath
-     * @param addInfoModelPath
-     */
-    private void preliminaryChecks() {
-        Util.discardLoadedProfileIfPresent(profilesApi);
-        if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
-                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
-        }
-    }
-
-}

@@ -51,170 +51,6 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
- */
-public class BtcRBTStep extends Step implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String executionConfigString;
-    private String reportSource = "SCOPE";
-    private boolean createReport = false;
-    private String scopesWhitelist;
-    private String scopesBlacklist;
-    private String requirementsWhitelist;
-    private String requirementsBlacklist;
-    private String foldersWhitelist;
-    private String foldersBlacklist;
-    private String testCasesWhitelist;
-    private String testCasesBlacklist;
-
-    @DataBoundConstructor
-    public BtcRBTStep() {
-        super();
-    }
-
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcRBTStepExecution(this, context);
-    }
-
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
-
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
-
-        @Override
-        public String getFunctionName() {
-            return "btcRbtExecution";
-        }
-
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "Perform Back-to-Back Test with BTC EmbeddedPlatform";
-        }
-    }
-
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
-
-    public String getExecutionConfigString() {
-        return executionConfigString;
-    }
-
-    public String getReportSource() {
-        return reportSource;
-    }
-
-    public boolean isCreateReport() {
-        return createReport;
-    }
-
-    public String getScopesWhitelist() {
-        return scopesWhitelist;
-    }
-
-    public String getScopesBlacklist() {
-        return scopesBlacklist;
-    }
-
-    public String getRequirementsWhitelist() {
-        return requirementsWhitelist;
-    }
-
-    public String getRequirementsBlacklist() {
-        return requirementsBlacklist;
-    }
-
-    public String getFoldersWhitelist() {
-        return foldersWhitelist;
-    }
-
-    public String getFoldersBlacklist() {
-        return foldersBlacklist;
-    }
-
-    public String getTestCasesWhitelist() {
-        return testCasesWhitelist;
-    }
-
-    public String getTestCasesBlacklist() {
-        return testCasesBlacklist;
-    }
-
-    @DataBoundSetter
-    public void setExecutionConfigString(String executionConfigString) {
-        this.executionConfigString = executionConfigString;
-    }
-
-    @DataBoundSetter
-    public void setReportSource(String reportSource) {
-        this.reportSource = reportSource;
-    }
-
-    @DataBoundSetter
-    public void setCreateReport(boolean createReport) {
-        this.createReport = createReport;
-    }
-
-    @DataBoundSetter
-    public void setScopesWhitelist(String scopesWhitelist) {
-        this.scopesWhitelist = scopesWhitelist;
-    }
-
-    @DataBoundSetter
-    public void setScopesBlacklist(String scopesBlacklist) {
-        this.scopesBlacklist = scopesBlacklist;
-    }
-
-    @DataBoundSetter
-    public void setRequirementsWhitelist(String requirementsWhitelist) {
-        this.requirementsWhitelist = requirementsWhitelist;
-    }
-
-    @DataBoundSetter
-    public void setRequirementsBlacklist(String requirementsBlacklist) {
-        this.requirementsBlacklist = requirementsBlacklist;
-    }
-
-    @DataBoundSetter
-    public void setFoldersWhitelist(String foldersWhitelist) {
-        this.foldersWhitelist = foldersWhitelist;
-    }
-
-    @DataBoundSetter
-    public void setFoldersBlacklist(String foldersBlacklist) {
-        this.foldersBlacklist = foldersBlacklist;
-    }
-
-    @DataBoundSetter
-    public void setTestCasesWhitelist(String testCasesWhitelist) {
-        this.testCasesWhitelist = testCasesWhitelist;
-    }
-
-    @DataBoundSetter
-    public void setTestCasesBlacklist(String testCasesBlacklist) {
-        this.testCasesBlacklist = testCasesBlacklist;
-    }
-
-    /*
-     * End of getter/setter section
-     */
-
-} // end of step class
-
-/**
  * This class defines what happens when the above step is executed
  */
 class BtcRBTStepExecution extends AbstractBtcStepExecution {
@@ -446,3 +282,167 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
     //    }
 
 }
+
+/**
+ * This class defines a step for Jenkins Pipeline including its parameters.
+ * When the step is called the related StepExecution is triggered (see the class below this one)
+ */
+public class BtcRBTStep extends Step implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    /*
+     * Each parameter of the step needs to be listed here as a field
+     */
+    private String executionConfigString;
+    private String reportSource = "SCOPE";
+    private boolean createReport = false;
+    private String scopesWhitelist;
+    private String scopesBlacklist;
+    private String requirementsWhitelist;
+    private String requirementsBlacklist;
+    private String foldersWhitelist;
+    private String foldersBlacklist;
+    private String testCasesWhitelist;
+    private String testCasesBlacklist;
+
+    @DataBoundConstructor
+    public BtcRBTStep() {
+        super();
+    }
+
+    @Override
+    public StepExecution start(StepContext context) throws Exception {
+        return new BtcRBTStepExecution(this, context);
+    }
+
+    @Extension
+    public static class DescriptorImpl extends StepDescriptor {
+
+        @Override
+        public Set<? extends Class<?>> getRequiredContext() {
+            return Collections.singleton(TaskListener.class);
+        }
+
+        @Override
+        public String getFunctionName() {
+            return "btcRbtExecution";
+        }
+
+        /*
+         * Display name (should be somewhat "human readable")
+         */
+        @Override
+        public String getDisplayName() {
+            return "Requirements Test with BTC EmbeddedPlatform";
+        }
+    }
+
+    /*
+     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
+     */
+
+    public String getExecutionConfigString() {
+        return executionConfigString;
+    }
+
+    public String getReportSource() {
+        return reportSource;
+    }
+
+    public boolean isCreateReport() {
+        return createReport;
+    }
+
+    public String getScopesWhitelist() {
+        return scopesWhitelist;
+    }
+
+    public String getScopesBlacklist() {
+        return scopesBlacklist;
+    }
+
+    public String getRequirementsWhitelist() {
+        return requirementsWhitelist;
+    }
+
+    public String getRequirementsBlacklist() {
+        return requirementsBlacklist;
+    }
+
+    public String getFoldersWhitelist() {
+        return foldersWhitelist;
+    }
+
+    public String getFoldersBlacklist() {
+        return foldersBlacklist;
+    }
+
+    public String getTestCasesWhitelist() {
+        return testCasesWhitelist;
+    }
+
+    public String getTestCasesBlacklist() {
+        return testCasesBlacklist;
+    }
+
+    @DataBoundSetter
+    public void setExecutionConfigString(String executionConfigString) {
+        this.executionConfigString = executionConfigString;
+    }
+
+    @DataBoundSetter
+    public void setReportSource(String reportSource) {
+        this.reportSource = reportSource;
+    }
+
+    @DataBoundSetter
+    public void setCreateReport(boolean createReport) {
+        this.createReport = createReport;
+    }
+
+    @DataBoundSetter
+    public void setScopesWhitelist(String scopesWhitelist) {
+        this.scopesWhitelist = scopesWhitelist;
+    }
+
+    @DataBoundSetter
+    public void setScopesBlacklist(String scopesBlacklist) {
+        this.scopesBlacklist = scopesBlacklist;
+    }
+
+    @DataBoundSetter
+    public void setRequirementsWhitelist(String requirementsWhitelist) {
+        this.requirementsWhitelist = requirementsWhitelist;
+    }
+
+    @DataBoundSetter
+    public void setRequirementsBlacklist(String requirementsBlacklist) {
+        this.requirementsBlacklist = requirementsBlacklist;
+    }
+
+    @DataBoundSetter
+    public void setFoldersWhitelist(String foldersWhitelist) {
+        this.foldersWhitelist = foldersWhitelist;
+    }
+
+    @DataBoundSetter
+    public void setFoldersBlacklist(String foldersBlacklist) {
+        this.foldersBlacklist = foldersBlacklist;
+    }
+
+    @DataBoundSetter
+    public void setTestCasesWhitelist(String testCasesWhitelist) {
+        this.testCasesWhitelist = testCasesWhitelist;
+    }
+
+    @DataBoundSetter
+    public void setTestCasesBlacklist(String testCasesBlacklist) {
+        this.testCasesBlacklist = testCasesBlacklist;
+    }
+
+    /*
+     * End of getter/setter section
+     */
+
+} // end of step class
