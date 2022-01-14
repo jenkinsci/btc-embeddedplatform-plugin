@@ -60,14 +60,8 @@ def startup(body = {}) {
 
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
-    if (config.port != null) {
-        epJenkinsPort = config.port
-    } else {
-        epJenkinsPort = "29267" // default as fallback
-    }
-    def timeoutSeconds = 120
-    if (config.timeout != null)
-        timeoutSeconds = config.timeout
+    epJenkinsPort = config.port != null ? config.port : "29267"
+    def timeoutSeconds = config.timeout != null ? config.timeout : 120
     
     /*
     * EP Startup configuration
@@ -118,6 +112,7 @@ def startup(body = {}) {
     }
     epJenkinsPort = findNextAvailablePort(epJenkinsPort)
 
+    def preferenceDir = config.preferenceDir != null ? config.preferenceDir : "${env:programdata}/BTC/ep/${epVersion}/EPPreferences"
     printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds).\n(The log file on the agent can be found here: ${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs/current.log)")
     timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
         try {
@@ -141,6 +136,7 @@ def startup(body = {}) {
                 \"-Dosgi.instance.area.default=`\"\${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/workspace`\"\", \
                 '-Dep.configuration.logpath=AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs', \
                 '-Dep.runtime.workdir=BTC/ep/${epVersion}/${epJenkinsPort}', \
+                '-Dep.preference.dir=${preferenceDir}', \
                 '-Dep.licensing.package=${licensingPackage}',"""
             // before/after package refactoring
             if (compareVersions(epVersion, '2.11p0') >= 0) {
