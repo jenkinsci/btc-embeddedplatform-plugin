@@ -113,6 +113,9 @@ def startup(body = {}) {
     epJenkinsPort = findNextAvailablePort(epJenkinsPort)
 
     def preferenceDir = config.preferenceDir != null ? config.preferenceDir : "${env:programdata}/BTC/ep/${epVersion}/EPPreferences"
+    if (!fileExists(preferenceDir)) {
+        def ignored = bat returnStdout: true, script: "@echo off & mkdir \"$preferenceDir\" 1>nul 2>nul"
+    }
     printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds).\n(The log file on the agent can be found here: ${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs/current.log)")
     timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
         try {
