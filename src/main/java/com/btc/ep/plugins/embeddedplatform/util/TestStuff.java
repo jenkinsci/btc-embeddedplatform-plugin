@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.util;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcB2BStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
@@ -14,11 +15,12 @@ public class TestStuff {
      * Currently requires minor modification in BtcStepExecution class to accept the fake step context
      */
     private static final StepContext DUMMY_CONTEXT = StepContextStub.getInstance();
-    private static final String BASE_DIR = "E:/EP2/SupportPlugins/EPJenkinsAutomation/TestSuite/Architectures";
+    //private static final String BASE_DIR = "E:/EP2/SupportPlugins/EPJenkinsAutomation/TestSuite/Architectures";
+    private static final String BASE_DIR = "C:/Users/nathand/Desktop/PowerWindow/PowerWindow_EmbeddedCoder";
 
     public static void main(String[] args) throws Exception {
         BtcStartupStep start = new BtcStartupStep();
-        start.setInstallPath("E:/Program Files/BTC/ep2.11p0");
+        start.setInstallPath("C:/Program Files/BTC/ep2.11p0");
         start.setPort(29268);
         start.setAdditionalJvmArgs("-Xmx2g");
         start.start(DUMMY_CONTEXT).start();
@@ -82,13 +84,13 @@ public class TestStuff {
         //        tlProfile.start(DUMMY_CONTEXT).start();
 
                 BtcProfileCreateECStep ecProfile = new BtcProfileCreateECStep("embeddedcoder-profile-210.epp",
-                    BASE_DIR + "/EmbeddedCoder/FromScratch/powerwindow_ec.slx");
+                    BASE_DIR + "/powerwindow_ec.slx");
                 ecProfile.setSlScriptPath(
-                    BASE_DIR + "/EmbeddedCoder/FromScratch/start.m");
+                    BASE_DIR + "/start.m");
                 ecProfile.setMatlabVersion("2019b");
                 ecProfile.start(DUMMY_CONTEXT).start();
 
-                BtcVectorGenerationStep vectorGen = new BtcVectorGenerationStep();
+                /*BtcVectorGenerationStep vectorGen = new BtcVectorGenerationStep();
                 vectorGen.setPll("F");
                 vectorGen.setAnalyzeSubscopesHierarchically(false);
                 vectorGen.setGlobalTimeout(5);
@@ -98,7 +100,13 @@ public class TestStuff {
                 BtcB2BStep b2b = new BtcB2BStep();
                 b2b.setReference("SL MIL");
                 b2b.setComparison("SIL");
-                b2b.start(DUMMY_CONTEXT).start();
+                b2b.start(DUMMY_CONTEXT).start();*/
+                
+                BtcAddDomainCheckGoals domainCheckGoals = new BtcAddDomainCheckGoals();
+                domainCheckGoals.setRaster("30");
+                //domainCheckGoals.setScopePath("*");
+                domainCheckGoals.setActivateRangeViolationCheck(true);
+                domainCheckGoals.start(DUMMY_CONTEXT).start();
 
                 BtcWrapUpStep wrapUp = new BtcWrapUpStep();
                 wrapUp.setCloseEp(false);
