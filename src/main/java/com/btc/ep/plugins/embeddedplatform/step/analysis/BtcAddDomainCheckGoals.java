@@ -30,6 +30,7 @@ import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.Status;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -66,9 +67,25 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
      */
     private DomainChecksApi domainApi = new DomainChecksApi();
     private ScopesApi scopesApi = new ScopesApi();
+    private ProfilesApi profilesApi = new ProfilesApi();
     
     @Override
     protected void performAction() throws Exception {
+    	jenkinsConsole.println("--> [200] domain check step successfully executed.");
+        response = 200; // assume is OK... if we have an error we set response and let it fall through
+        status(Status.OK);
+        passed();
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+        	response = 500;
+        	failed();
+            throw new IllegalStateException("You need an active profile to add domain check goals to");
+        }
+        List<Scope> scopesList = scopesApi.getScopesByQuery1(null, true);
+        checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
+    	
     	// check if we have to iterate over all scopes,
     	// only top level scope, or the given scope
     	if (step.getScopePath() != "*") { // find a specific scope
@@ -92,9 +109,6 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		}
     	}
     	
-        jenkinsConsole.println("--> [200] domain check step successfully executed.");
-        response = 200;
-    	
     }
     final private void SendPerformAction(String scopeuid) {
     	// if we are given a config file, import the XML settings
@@ -102,14 +116,18 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     	if (step.getDcXmlPath() != null) {
         	Path DcXmlPath = resolvePath(step.getDcXmlPath());
         	RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
-        	r.setScopeUid(step.getScopePath());
+        	r.setScopeUid(scopeuid);
         	r.setFilePath(DcXmlPath.toString());
         	try {
         		Job job = domainApi.importDomainChecksGoals(r);
         		HttpRequester.waitForCompletion(job.getJobID(), "result");
 	        	jenkinsConsole.println("Successfully imported domain checks for scope " + scopeuid + ": " + response);
 			} catch (Exception e) {
+				result("FAILED: " + e.getMessage());
+				failed();
+				status(Status.ERROR);
 				jenkinsConsole.println("failed API call: " + e.getMessage());
+				response = 500;
 			}	
         } else { // no config file given-- use our input variables
     		// create API object
@@ -122,7 +140,11 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     			String response = domainApi.createDomainChecksRanges(r);
     			jenkinsConsole.println("Successfully updated domain checks for scope " + scopeuid + ": " + response);
     		} catch (Exception e) {
+    			result("FAILED: " + e.getMessage());
+				failed();
+				status(Status.ERROR);
     			jenkinsConsole.println("failed API call: " + e.getMessage());
+    			response = 500;
     		}
         }
     }

@@ -6,6 +6,7 @@ import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcB2BStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
 
@@ -14,7 +15,7 @@ public class TestStuff {
     /*
      * Currently requires minor modification in BtcStepExecution class to accept the fake step context
      */
-    private static final StepContext DUMMY_CONTEXT = StepContextStub.getInstance();
+    private static final StepContext DUMMY_CONTEXT = StepContextStub.getInstance("C:/workspace/");
     //private static final String BASE_DIR = "E:/EP2/SupportPlugins/EPJenkinsAutomation/TestSuite/Architectures";
     private static final String BASE_DIR = "C:/Users/nathand/Desktop/PowerWindow/PowerWindow_EmbeddedCoder";
 
@@ -25,9 +26,9 @@ public class TestStuff {
         start.setAdditionalJvmArgs("-Xmx2g");
         start.start(DUMMY_CONTEXT).start();
 
-        //        BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("E:/profile_210.epp");
-        //        profileLoad.setUpdateRequired(false);
-        //        profileLoad.start(DUMMY_CONTEXT).start();
+        BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("C:/workspace/profile.epp");
+        profileLoad.setUpdateRequired(false);
+        profileLoad.start(DUMMY_CONTEXT).start();
 
 //        BtcMigrationSourceStep ms = new BtcMigrationSourceStep("E:/profile_211_ccms.epp");
 //        ms.setInstallPath("E:/Program Files/BTC/ep2.11p0");
@@ -82,13 +83,13 @@ public class TestStuff {
         //            BASE_DIR + "/TargetLink/FromScratch/PowerWindowController/start.m");
         //        tlProfile.setReuseExistingCode(true);
         //        tlProfile.start(DUMMY_CONTEXT).start();
-
-                BtcProfileCreateECStep ecProfile = new BtcProfileCreateECStep("embeddedcoder-profile-210.epp",
-                    BASE_DIR + "/powerwindow_ec.slx");
-                ecProfile.setSlScriptPath(
-                    BASE_DIR + "/start.m");
-                ecProfile.setMatlabVersion("2019b");
-                ecProfile.start(DUMMY_CONTEXT).start();
+//
+//                BtcProfileCreateECStep ecProfile = new BtcProfileCreateECStep("embeddedcoder-profile-210.epp",
+//                    BASE_DIR + "/powerwindow_ec.slx");
+//                ecProfile.setSlScriptPath(
+//                    BASE_DIR + "/start.m");
+//                ecProfile.setMatlabVersion("2019b");
+//                ecProfile.start(DUMMY_CONTEXT).start();
 
                 /*BtcVectorGenerationStep vectorGen = new BtcVectorGenerationStep();
                 vectorGen.setPll("F");
@@ -103,8 +104,9 @@ public class TestStuff {
                 b2b.start(DUMMY_CONTEXT).start();*/
                 
                 BtcAddDomainCheckGoals domainCheckGoals = new BtcAddDomainCheckGoals();
+                //domainCheckGoals.setDcXmlPath("C:/workspace/domain_checks.xml");
                 domainCheckGoals.setRaster("30");
-                //domainCheckGoals.setScopePath("*");
+                domainCheckGoals.setScopePath("*");
                 domainCheckGoals.setActivateRangeViolationCheck(true);
                 domainCheckGoals.start(DUMMY_CONTEXT).start();
 

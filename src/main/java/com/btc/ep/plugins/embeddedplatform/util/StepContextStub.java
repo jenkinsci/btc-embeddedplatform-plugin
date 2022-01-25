@@ -19,10 +19,16 @@ import hudson.model.TaskListener;
 public class StepContextStub extends StepContext {
 
     private static StepContext instance;
+	private String pathname;
 
-    public static StepContext getInstance() {
+    public StepContextStub(String pathname) {
+		// TODO Auto-generated constructor stub
+    	this.pathname = pathname;
+	}
+
+	public static StepContext getInstance(String pathname) {
         if (instance == null) {
-            instance = new StepContextStub();
+            instance = new StepContextStub(pathname);
         }
         return instance;
     }
@@ -59,7 +65,7 @@ public class StepContextStub extends StepContext {
     @Override
     public <T> T get(Class<T> key) throws IOException, InterruptedException {
         if (FilePath.class.equals(key)) {
-            return (T)new FilePath(new File("E:/workspace"));
+            return (T)new FilePath(new File(this.pathname));
         } else if (TaskListener.class.equals(key)) {
             TaskListener t = new TaskListener() {
 

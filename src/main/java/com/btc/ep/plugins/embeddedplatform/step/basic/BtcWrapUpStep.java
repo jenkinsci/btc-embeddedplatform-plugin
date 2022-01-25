@@ -53,7 +53,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
         /*
          * Generate the project report
          */
-        //TODO assembleProjectReport();
+        assembleProjectReport();
 
         /*
          * Save the profile
@@ -63,7 +63,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
         if (profilePath instanceof String) {
             // save the epp to the designated location
         	System.out.println("Saving to " + profilePath);
-            ///TODO profileApi.saveProfile(new ProfilePath().path(profilePath));
+            profileApi.saveProfile(new ProfilePath().path(profilePath));
         }
 
         /*
