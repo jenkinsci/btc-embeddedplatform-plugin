@@ -4,7 +4,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -13,11 +15,15 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
+import org.openapitools.client.model.Architecture;
+import org.openapitools.client.model.B2BStimuliVector;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestRBTestCaseExportInfo;
 import org.openapitools.client.model.RestStimuliVectorExportInfo;
+import org.openapitools.client.model.RestVectorExportDetails;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -45,9 +51,11 @@ public class BtcVectorExportStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String dir;
-    private String vectorFormat = "TC"; //UPDATE THIS ON THE DOCUMENTATION
+    private String vectorFormat;// = "CSV"; // TODO: UPDATE THIS ON THE DOCUMENTATION
     private String vectorKind = "TC";
-
+    private String csvDelimiter = "Semicolon";
+    private boolean singleFile = true;
+    
     @DataBoundConstructor
     public BtcVectorExportStep() {
         super();
@@ -141,6 +149,24 @@ public class BtcVectorExportStep extends Step implements Serializable {
         this.vectorKind = vectorKind;
     }
 
+	public String getCsvDelimiter() {
+		return csvDelimiter;
+	}
+
+	@DataBoundSetter
+	public void setCsvDelimiter(String csvDelimiter) {
+		this.csvDelimiter = csvDelimiter;
+	}
+
+	public boolean isSingleFile() {
+		return singleFile;
+	}
+
+	@DataBoundSetter
+	public void setSingleFile(boolean singleFile) {
+		this.singleFile = singleFile;
+	}
+
     /*
      * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
      */
@@ -185,6 +211,9 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
      * - print text to the Jenkins console (field: jenkinsConsole)
      * - set response code (field: response)
      */
+    private StimuliVectorsApi vectorApi = new StimuliVectorsApi();
+    private ArchitecturesApi archApi = new ArchitecturesApi();
+    
     @Override
     protected void performAction() throws Exception {
 
@@ -194,20 +223,42 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 
         // Stimuli Vector  -- Default info.setVectorKind("TC");
         Job job;
+        List<B2BStimuliVector> allVectors = vectorApi.getStimuliVectors();
+        List<String> allVectorNames = new ArrayList<String>();
+        for (B2BStimuliVector vector : allVectors) {
+        	allVectorNames.add(vector.getUid());
+        }
+
+        RestVectorExportDetails r = new RestVectorExportDetails();
+        if (step.getVectorFormat() == "Excel") {
+        	List<Architecture> architectures = archApi.getArchitectures(null);
+        	r.setArchitectureUid(architectures.get(1).getUid().toString());
+        	// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
+        } else if (step.getVectorFormat() == "CSV") {
+        	r.setCsvDelimiter(step.getCsvDelimiter());
+        	r.setSingleFile(step.isSingleFile());
+        } else {
+        	throw new IllegalStateException("Unknown Vector Export Type: " + step.getVectorFormat() +
+        			".\n Valid options are 'CSV' or 'Excel'.");
+        }
+        
         if (step.getVectorKind().equals("SV")) {
             // Stimuli Vector
             RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
-            info.setExportFormat(step.getVectorFormat().toLowerCase());
+            info.setExportFormat(step.getVectorFormat()); // TODO: do we have to fix documentation? this used to convert 
+            											// the format to all lower-case, but internally it expected CamelCase
             info.setExportDirectory(exportDir.toString());
-            //info.setUiDs(); //TODO NEED TO GET ALL UIDS FOR EXPORT
+            info.setUiDs(allVectorNames);
+            info.additionalOptions(r);
             job = stimuliVectorsApi.exportStimuliVectors(info);
             info("Exported Stimuli Vectors.");
         } else {
             // Test Case
             RestRBTestCaseExportInfo info = new RestRBTestCaseExportInfo();
-            info.setExportFormat(step.getVectorFormat().toLowerCase());
+            info.setExportFormat(step.getVectorFormat());
             info.setExportDirectory(exportDir.toString());
-            //info.setUiDs(); //TODO NEED TO GET ALL UIDS FOR EXPORT
+            info.setUiDs(allVectorNames);
+            info.additionalOptions(r);
             job = rbTestCaseApi.exportRBTestCases(info);
             info("Imported Test Cases.");
         }

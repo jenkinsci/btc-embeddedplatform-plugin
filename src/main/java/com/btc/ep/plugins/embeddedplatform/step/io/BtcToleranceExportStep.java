@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -12,7 +13,10 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.api.TolerancesApi;
+import org.openapitools.client.model.Scope;
+import org.openapitools.client.model.ToleranceDefinition;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
@@ -133,6 +137,7 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
      * This field can be used to indicate what's happening during the execution
      */
     private TolerancesApi tolerancesApi = new TolerancesApi();
+    private ScopesApi scopesApi = new ScopesApi();
 
     /**
      * Constructor
@@ -159,12 +164,21 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
         // Get the path
         Path path = resolvePath(step.getPath());
         checkArgument(path.toFile().exists(), "Error: Export xml does not exist " + path);
+        //TODO: this will function just fine if you pass in a dir that isn't a file, or any file 
+        // that exists which isnt an xml.
 
-        // Goal:
+        // Goal: TODO: write this.
         // Take path, make sure xml file exists
         // Write the tolerances to this xml file
         // Matlab API has tolerance export
-
+        // ^ what do you mean by Matlab API? i can't find a class with that name (~nathan drasovean).
+        
+        List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
+        
+        List<ToleranceDefinition> tolerances = 
+        		tolerancesApi.getGlobalTolerances(scopes.get(0).getUid().toString(), step.getUseCase(), null);
+        
+        
     }
 
 }

@@ -15,6 +15,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.api.FoldersApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.Job;
@@ -41,7 +42,7 @@ public class BtcVectorImportStep extends Step implements Serializable {
 
     private String importDir;
     private String vectorKind = "TC";
-    private String vectorFormat = "TC";
+    private String vectorFormat = "excel";
 
     @DataBoundConstructor
     public BtcVectorImportStep(String importDir) {
@@ -121,6 +122,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 
     private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
     private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
+    private FoldersApi foldersApi = new FoldersApi();
 
     public BtcVectorImportStepExecution(BtcVectorImportStep step, StepContext context) {
         super(step, context);
@@ -139,7 +141,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             vectorFilePaths.add(vectorFile.getAbsolutePath());
         }
         Job job;
-        if (step.getVectorKind().toUpperCase().equals("TC")) {
+        if (step.getVectorKind().equals("TC")) {
             // import test cases
             RBTestCaseImportInfo info = new RBTestCaseImportInfo();
             info.setOverwritePolicy(OVERWRITE);
@@ -151,7 +153,11 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             StimuliVectorImportInfo info = new StimuliVectorImportInfo();
             info.setOverwritePolicy(OVERWRITE);
             info.setPaths(vectorFilePaths);
-            info.setFormat(step.getVectorFormat().toLowerCase()); //needs to be lower case according to docs
+            //info.setVectorKind(step.getVectorKind());
+            //info.setFormat(step.getVectorFormat().toLowerCase()); // according to doc only takes lowercase
+            //info.setDelimiter("Semicolon");
+            //String fUid = foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
+            //info.setFolderUID(fUid);
             job = stimuliVectorsApi.importStimuliVectors(info);
         }
         Object status = HttpRequester.waitForCompletion(job.getJobID(), "importStatus");

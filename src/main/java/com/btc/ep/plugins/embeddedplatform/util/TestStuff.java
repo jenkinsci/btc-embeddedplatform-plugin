@@ -1,14 +1,21 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcB2BStep;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcRBTStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorExportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
 
 public class TestStuff {
 
@@ -62,19 +69,23 @@ public class TestStuff {
         //        profileCreateSL.setSlScriptPath(BASE_DIR + "/Simulink/FromScratch/start.m");
         //        profileCreateSL.start(DUMMY_CONTEXT).start();
 
-        //        BtcVectorImportStep vectorImportStep = new BtcVectorImportStep(
-        //            BASE_DIR + "/Simulink/FromScratch/testcases");
-        //        vectorImportStep.start(DUMMY_CONTEXT).start();
-
+//        		System.out.println("Started import");
+//                BtcVectorImportStep vectorImportStep = new BtcVectorImportStep(
+//                    BASE_DIR + "/tests/");
+//                vectorImportStep.start(DUMMY_CONTEXT).start();
+//                System.out.println("Finished import");
+                
         //        BtcToleranceImportStep tolImportStep = new BtcToleranceImportStep("E:/tolerances.xml");
         //        tolImportStep.setUseCase("RBT");
         //        tolImportStep.start(DUMMY_CONTEXT).start();
-
-        //        BtcRBTStep rbt = new BtcRBTStep();
-        //        rbt.setExecutionConfigString("SL MIL");
-        //        rbt.setTestCasesBlacklist("TC-REQ_PW_3");
-        //        rbt.setCreateReport(true);
-        //        rbt.start(DUMMY_CONTEXT).start();
+//
+                System.out.println("Started RBT");
+                BtcRBTStep rbt = new BtcRBTStep();
+                rbt.setExecutionConfigString("SIL");
+                rbt.setTestCasesBlacklist("SV_ATG_3");
+                rbt.setCreateReport(true);
+                rbt.start(DUMMY_CONTEXT).start();
+                System.out.println("Finished RBT");
 
         //        BtcProfileCreateTLStep tlProfile = new BtcProfileCreateTLStep("targetlink-profile-210.epp",
         //            BASE_DIR + "/TargetLink/FromScratch/PowerWindowController/powerwindow_tl_v01.slx",
@@ -92,23 +103,40 @@ public class TestStuff {
 //                ecProfile.start(DUMMY_CONTEXT).start();
 
                 /*BtcVectorGenerationStep vectorGen = new BtcVectorGenerationStep();
-                vectorGen.setPll("F");
+                //vectorGen.setPll("F");
                 vectorGen.setAnalyzeSubscopesHierarchically(false);
-                vectorGen.setGlobalTimeout(5);
-                vectorGen.setEngine("ATG");
+                vectorGen.setGlobalTimeout(50);
+                vectorGen.setEngine("ATG+CV");
                 vectorGen.start(DUMMY_CONTEXT).start();
+                
+                BtcVectorExportStep vecEx = new BtcVectorExportStep();
+                vecEx.setExportDir("C:/workspace/tests");
+                vecEx.setVectorKind("TC");
+                vecEx.setVectorFormat("CSV");
+                vecEx.start(DUMMY_CONTEXT).start();*/
+        
+        		System.out.println("Importing");
+        		BtcVectorImportStep vecImp = new BtcVectorImportStep("C:/workspace/tests");
+        		vecImp.setVectorKind("Excel");
+        		// //vecImp.setVectorFormat("Excel");
+        		vecImp.start(DUMMY_CONTEXT).start();
+        		
+        		/*BtcToleranceExportStep tolEx = new BtcToleranceExportStep("C:/workspace/tolerances/tol1.xml");
+        		tolEx.setUseCase("B2B");
+        		tolEx.start(DUMMY_CONTEXT).start();*/
+        		
 
-                BtcB2BStep b2b = new BtcB2BStep();
+                /*BtcB2BStep b2b = new BtcB2BStep();
                 b2b.setReference("SL MIL");
                 b2b.setComparison("SIL");
                 b2b.start(DUMMY_CONTEXT).start();*/
                 
-                BtcAddDomainCheckGoals domainCheckGoals = new BtcAddDomainCheckGoals();
+                /*BtcAddDomainCheckGoals domainCheckGoals = new BtcAddDomainCheckGoals();
                 //domainCheckGoals.setDcXmlPath("C:/workspace/domain_checks.xml");
                 domainCheckGoals.setRaster("30");
                 domainCheckGoals.setScopePath("*");
                 domainCheckGoals.setActivateRangeViolationCheck(true);
-                domainCheckGoals.start(DUMMY_CONTEXT).start();
+                domainCheckGoals.start(DUMMY_CONTEXT).start();*/
 
                 BtcWrapUpStep wrapUp = new BtcWrapUpStep();
                 wrapUp.setCloseEp(false);

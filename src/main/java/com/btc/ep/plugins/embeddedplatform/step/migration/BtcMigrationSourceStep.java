@@ -27,6 +27,7 @@ import org.openapitools.client.model.ProfilePath;
 
 import com.btc.ep.plugins.embeddedplatform.reporting.project.SerializableReportingContainer;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcSimulationStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateCStep;
@@ -121,7 +122,18 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
         /*
          * 4. Creates Domain Check Goals (optional)
          */
-        //TODO: Add DCG step once it is available
+        if (step.getDcXmlPath() != null) {
+        	BtcAddDomainCheckGoals DCG = new BtcAddDomainCheckGoals();
+        	DCG.setDcXmlPath(step.getDcXmlPath());
+        	DCG.start(getContext()).start();
+        } else if(step.getScopePath() != null) {
+        	BtcAddDomainCheckGoals DCG = new BtcAddDomainCheckGoals();
+        	DCG.setScopePath(step.getScopePath());
+        	DCG.setRaster(step.getRaster());
+        	DCG.setActivateBoundaryCheck(step.isActivateBoundaryCheck());
+        	DCG.setActivateRangeViolationCheck(step.isActivateRangeViolationCheck());
+        	DCG.start(getContext()).start();
+        }
 
         /*
          * 5. Generate Vectors for structural coverage
@@ -309,8 +321,8 @@ public class BtcMigrationSourceStep extends Step implements Serializable {
     private String scopePath;
     private String dcXmlPath;
     private String raster;
-    private String activateRangeViolationCheck;
-    private String activateBoundaryCheck;
+    private boolean activateRangeViolationCheck;
+    private boolean activateBoundaryCheck;
 
     // simulation
     private String executionConfigString = "SIL";
@@ -598,11 +610,11 @@ public class BtcMigrationSourceStep extends Step implements Serializable {
         return raster;
     }
 
-    public String getActivateRangeViolationCheck() {
+    public boolean isActivateRangeViolationCheck() {
         return activateRangeViolationCheck;
     }
 
-    public String getActivateBoundaryCheck() {
+    public boolean isActivateBoundaryCheck() {
         return activateBoundaryCheck;
     }
 
@@ -912,12 +924,12 @@ public class BtcMigrationSourceStep extends Step implements Serializable {
     }
 
     @DataBoundSetter
-    public void setActivateRangeViolationCheck(String activateRangeViolationCheck) {
+    public void setActivateRangeViolationCheck(boolean activateRangeViolationCheck) {
         this.activateRangeViolationCheck = activateRangeViolationCheck;
     }
 
     @DataBoundSetter
-    public void setActivateBoundaryCheck(String activateBoundaryCheck) {
+    public void setActivateBoundaryCheck(boolean activateBoundaryCheck) {
         this.activateBoundaryCheck = activateBoundaryCheck;
     }
 

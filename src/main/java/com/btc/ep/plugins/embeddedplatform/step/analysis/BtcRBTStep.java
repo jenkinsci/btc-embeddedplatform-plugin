@@ -21,9 +21,11 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
+import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.RequirementBasedTestExecutionApi;
 import org.openapitools.client.api.RequirementBasedTestExecutionReportsApi;
 import org.openapitools.client.api.ScopesApi;
+import org.openapitools.client.api.TestApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RBTExecutionDataExtendedNoReport;
 import org.openapitools.client.model.RBTExecutionDataNoReport;
@@ -71,6 +73,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
     private ScopesApi scopesApi = new ScopesApi();
     private ProfilesApi profilesApi = new ProfilesApi();
     private ReportsApi reportingApi = new ReportsApi();
+    private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
 
     @Override
     protected void performAction() throws Exception {
@@ -86,13 +89,16 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
         RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
         List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
-        data.setForceExecute(false);
+        data.setForceExecute(true); // TODO: default is false, but true makes for easier debugging
         data.setExecConfigNames(executionConfigNames);
         //TODO: the fallback should be: execution config list empty? -> execute on all configs (requires EP-2536)
         info.setUiDs(tcUids);
         info.setData(data);
 
-        // Execute test and return result
+        // Execute test and return result. 
+        // TODO: this can timeout, giving us an internal server error (500).
+        // this DOESNT cause an exception (at least not one that crashes),
+        // so figure out how to catch and handle it.
         Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
         Object testResults = HttpRequester.waitForCompletion(job.getJobID(), "testResults");
         Gson gson = new Gson();
@@ -102,9 +108,12 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         // map: result data by execution config
         Map<String, RBTestCaseExecutionResultSetData> testResultData = gson.fromJson(jsonElement, type);
 
-        analyzeResults(testResultData, tcUids.isEmpty());
-
-        generateAndExportReport(testResultData.keySet());
+        if (testResultData != null) {
+	        analyzeResults(testResultData, tcUids.isEmpty());
+	        generateAndExportReport(testResultData.keySet());
+        } else { // TODO: this is a problem that we should figure out how to handle.
+        	System.out.println("ERROR no test result data");
+        }
 
     }
 
@@ -214,7 +223,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
      * @throws ApiException
      */
     private List<String> getRelevantTestCaseUIDs() throws ApiException {
-        List<RequirementBasedTestCase> testCases = new ArrayList<>();
+        //List<RequirementBasedTestCase> testCases = new ArrayList<>();
         List<Scope> scopes = scopesApi.getScopesByQuery1(null, false);
 
         List<String> blacklistedRequirements = Util.getValuesFromCsv(step.getRequirementsBlacklist());
@@ -236,36 +245,22 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 
         checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
 
+        List<RequirementBasedTestCase> filteredTestCases = null;
         for (Scope scope : scopes) {
             if (Util.matchesScopeFilter(scope.getName(), blacklistedScopes, whitelistedScopes)) {
-                /*
-                 * Start of workaround for EP-2537
-                 */
-                //TODO: replace workaround for EP-2537
-                GenericResponse genericResponse = HttpRequester.get("/ep/scopes/" + scope.getUid() + "/test-cases-rbt");
-                if (genericResponse.getStatus().getStatusCode() == 200) {
-                    List<Object> contentAsList = genericResponse.getContentAsList();
-                    List<RequirementBasedTestCase> tcs = new ArrayList<>(contentAsList.size());
-                    for (Object o : contentAsList) {
-                        String tcInitStringWithUID = "{ \"uid\" : \"" + ((Map<?, ?>)o).get("uid").toString() + "\" }";
-                        RequirementBasedTestCase tc =
-                            new Gson().fromJson(tcInitStringWithUID, RequirementBasedTestCase.class);
-                        tc.setName(((Map<?, ?>)o).get("name").toString());
-                        tcs.add(tc);
-                    }
-                    List<RequirementBasedTestCase> filteredTestCases =
-                        Util.filterTestCases(tcs, filteredRequirements, blacklistedTestCases, whitelistedTestCases);
-                    testCases.addAll(filteredTestCases);
+                try {
+                filteredTestCases =
+                    Util.filterTestCases(testCasesApi.getRBTestCasesByScope(scope.getUid()), filteredRequirements,
+                        blacklistedTestCases, whitelistedTestCases);
+                } catch (ApiException e) {
+                	if (e.getMessage().contains("Not Found")) {
+                			continue; // no tests for this scope, so we just pass over it.
+                	}
+                	else throw e;
                 }
-                /*
-                 * End of workaround for EP-2537
-                 */
-                //                List<RequirementBasedTestCase> filteredTestCases =
-                //                    Util.filterTestCases(testCasesApi.getRBTestCasesByScope(scope.getUid()), filteredRequirements,
-                //                        blacklistedTestCases, whitelistedTestCases);
             }
         }
-        List<String> tcUids = testCases.stream().map(tc -> tc.getUid()).collect(Collectors.toList());
+        List<String> tcUids = filteredTestCases.stream().map(tc -> tc.getUid().toString()).collect(Collectors.toList());
         return tcUids;
     }
 
