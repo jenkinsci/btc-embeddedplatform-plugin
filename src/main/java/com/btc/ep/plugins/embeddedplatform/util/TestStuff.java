@@ -79,13 +79,13 @@ public class TestStuff {
         //        tolImportStep.setUseCase("RBT");
         //        tolImportStep.start(DUMMY_CONTEXT).start();
 //
-                System.out.println("Started RBT");
-                BtcRBTStep rbt = new BtcRBTStep();
-                rbt.setExecutionConfigString("SIL");
-                rbt.setTestCasesBlacklist("SV_ATG_3");
-                rbt.setCreateReport(true);
-                rbt.start(DUMMY_CONTEXT).start();
-                System.out.println("Finished RBT");
+//                System.out.println("Started RBT");
+//                BtcRBTStep rbt = new BtcRBTStep();
+//                rbt.setExecutionConfigString("SIL");
+//                rbt.setTestCasesBlacklist("SV_ATG_3");
+//                rbt.setCreateReport(true);
+//                rbt.start(DUMMY_CONTEXT).start();
+//                System.out.println("Finished RBT");
 
         //        BtcProfileCreateTLStep tlProfile = new BtcProfileCreateTLStep("targetlink-profile-210.epp",
         //            BASE_DIR + "/TargetLink/FromScratch/PowerWindowController/powerwindow_tl_v01.slx",
@@ -117,7 +117,7 @@ public class TestStuff {
         
         		System.out.println("Importing");
         		BtcVectorImportStep vecImp = new BtcVectorImportStep("C:/workspace/tests");
-        		vecImp.setVectorKind("Excel");
+        		vecImp.setVectorKind("CSV");
         		// //vecImp.setVectorFormat("Excel");
         		vecImp.start(DUMMY_CONTEXT).start();
         		

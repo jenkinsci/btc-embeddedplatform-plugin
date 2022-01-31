@@ -24,6 +24,7 @@ import org.openapitools.client.model.StimuliVectorImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.google.gson.internal.LinkedTreeMap;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -153,16 +154,51 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             StimuliVectorImportInfo info = new StimuliVectorImportInfo();
             info.setOverwritePolicy(OVERWRITE);
             info.setPaths(vectorFilePaths);
-            //info.setVectorKind(step.getVectorKind());
-            //info.setFormat(step.getVectorFormat().toLowerCase()); // according to doc only takes lowercase
-            //info.setDelimiter("Semicolon");
-            //String fUid = foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
-            //info.setFolderUID(fUid);
+           /* info.setVectorKind(step.getVectorKind());
+            info.setFormat(step.getVectorFormat().toLowerCase()); // according to doc only takes lowercase
+            info.setDelimiter("Semicolon");
+            String fUid = foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
+            info.setFolderUID(fUid);*/
             job = stimuliVectorsApi.importStimuliVectors(info);
         }
-        Object status = HttpRequester.waitForCompletion(job.getJobID(), "importStatus");
-        System.out.println(status);
-        //TODO: parse importStatus and adapt response accordingly
+        Object status = HttpRequester.waitForCompletion(job.getJobID(), "result");
+        if (status == null) {
+        	// i think the callback will at least return an error message? so we should never be here.
+        	// but might as well throw it in just in case i'm wrong
+        	System.out.println("Something has gone horribly wrong in importing the vectors");
+        	return;
+        }
+        @SuppressWarnings("unchecked")
+        LinkedTreeMap<String, ArrayList<LinkedTreeMap<String, ArrayList<String>>>> status_l1 = ((LinkedTreeMap<String, ArrayList<LinkedTreeMap<String, ArrayList<String>>>>) status);
+        ArrayList<LinkedTreeMap<String, ArrayList<String>>> status_l2 = status_l1.get("importStatus");
+        String returnString = null;
+        try {
+        	status_l2.get(0).get("UIDs");
+        } catch (Exception e) {
+        	// no UIDs. this is probably an issue
+        	returnString += "No UIDs to import into\n";
+        	
+        }
+        try {
+        	ArrayList<String> status_l32 = status_l2.get(0).get("warnings");
+        	returnString += status_l32.toString();
+        } catch (Exception e) {
+        	// no warnings. dont need to do anything
+        }
+        try {
+        	ArrayList<String> status_l34 = status_l2.get(0).get("errors");
+        	returnString += status_l34.toString();
+        } catch (Exception e) {
+        	// no warnings. dont need to do anything
+        }
+        if (returnString != null) {
+        	System.out.println(returnString);
+        	info(returnString);
+        }
+        else {
+        	System.out.println("Successfully imported test cases with no errors");
+        }
+        
     }
 
     /**
