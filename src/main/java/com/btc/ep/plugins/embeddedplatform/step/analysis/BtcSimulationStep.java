@@ -79,7 +79,7 @@ class BtcExampleStepExecution extends AbstractBtcStepExecution {
          */
 
         // print success message and return response code
-        jenkinsConsole.println("--> [200] Simulation successfully executed.");
+        //jenkinsConsole.println("--> [200] Simulation successfully executed.");
         response = 200;
     }
 

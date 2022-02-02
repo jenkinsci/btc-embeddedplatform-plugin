@@ -85,11 +85,11 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         }
 
         // Prepare data
-        List<String> tcUids = getRelevantTestCaseUIDs(); // <-- waiting for EP-2537
+        List<String> tcUids = getRelevantTestCaseUIDs(); // <-- TODO waiting for EP-2537
         RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
         RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
         List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
-        data.setForceExecute(true); // TODO: default is false, but true makes for easier debugging
+        data.setForceExecute(false);
         data.setExecConfigNames(executionConfigNames);
         //TODO: the fallback should be: execution config list empty? -> execute on all configs (requires EP-2536)
         info.setUiDs(tcUids);

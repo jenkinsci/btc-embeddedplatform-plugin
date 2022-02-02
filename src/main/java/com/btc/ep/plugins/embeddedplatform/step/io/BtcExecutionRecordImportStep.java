@@ -16,6 +16,7 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ExecutionRecordsApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ExecutionRecordImportInfo;
 import org.openapitools.client.model.Job;
 
@@ -39,11 +40,24 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         this.step = step;
     }
 
-    ExecutionRecordsApi erApi = new ExecutionRecordsApi();
+    private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
+    private ProfilesApi profilesApi = new ProfilesApi();
 
     @Override
     protected void performAction() throws Exception {
-        Path exportDir = resolvePath(step.getDir());
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
+        Path exportDir = null;
+        try {
+        exportDir = resolvePath(step.getDir());
+        } catch (Exception e) {
+        	jenkinsConsole.println("Error: Couldnt find dir: " + step.getDir());
+        }
+        
         File[] files = exportDir.toFile().listFiles(new FileFilter() {
 
             @Override
@@ -62,11 +76,44 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         data.setPaths(paths);
         data.setFolderName(step.getFolderName());
         Job job = erApi.importExecutionRecord(data);
-        HttpRequester.waitForCompletion(job.getJobID()); //response = null
+        Object response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
+        int response = (int) response_obj;
+        // TODO: if we pass in a bad executionConfig (ex, JK SIL instead of TL SIL),
+        // the API call goes through just fine and doesn't throw an error. this is probably an API bug
+        switch (step.getExecutionConfig()) {
+        	case "TL MIL":
+        	case "SL MIL":
+        	case "PIL":
+        	case "SIL":
+        		break;
+        	default:
+        		jenkinsConsole.println("Error: invalid execution config " + step.getExecutionConfig()
+        		+ ". Supported options are TL MIL, SL MIL, PIL, and SIL.");
+        		failed();
+        		return;
+        }
+        switch (response) {
+        	case 201:
+        		// successful. nothing to report.
+        		response = 200;
+        		break;
+        	case 400:
+        		jenkinsConsole.println("Error: Bad request (make sure the arguments you passed in are valid");
+        		response = 400;
+        		failed();
+        		break;
+        	case 404:
+        		jenkinsConsole.println("Error: Not found.");
+        		response = 404;
+        		failed();
+        		break;
+        	case 500: 
+        		jenkinsConsole.println("Error: Internal server error.");
+        		response = 500;
+        		failed();
+        		break;
+        }
 
-        // print success message and return response code
-        jenkinsConsole.println("--> [200] Example step successfully executed.");
-        response = 200;
     }
 
 }

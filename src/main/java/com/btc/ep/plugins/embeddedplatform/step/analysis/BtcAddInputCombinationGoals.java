@@ -11,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.api.ProfilesApi;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
@@ -47,14 +48,12 @@ class BtcAddInputCombinationGoalsExecution extends AbstractBtcStepExecution {
      * - print text to the Jenkins console (field: jenkinsConsole)
      * - set resonse code (field: response)
      */
+    	ProfilesApi profilesApi = new ProfilesApi();
     @Override
     protected void performAction() throws Exception {
-        jenkinsConsole.println("The value of the string parameter is " + step.getStrStepParam());
-        jenkinsConsole.println("The value of the integer parameter is " + step.getIntStepParam());
-        jenkinsConsole.println("Workspace: " + Paths.get(getContext().get(FilePath.class).toURI()).toString());
-        // print success message and return response code
-        jenkinsConsole.println("--> [200] Example step successfully executed.");
-        response = 200;
+    	// Check preconditions
+        jenkinsConsole.println("WARNING: this function is deprecated. Nothing has been executed!");
+        
     }
 
 }

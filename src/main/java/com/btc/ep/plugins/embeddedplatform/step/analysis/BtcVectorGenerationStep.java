@@ -1,5 +1,7 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Paths;
@@ -17,6 +19,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
 import org.openapitools.client.api.CoverageGenerationApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Config;
@@ -313,9 +316,18 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     private ScopesApi scopeApi = new ScopesApi();
     private ReportsApi reportApi = new ReportsApi();
     private CodeAnalysisReportsB2BApi b2bCodeAnalysisReportApi = new CodeAnalysisReportsB2BApi();
-
+    private ProfilesApi profilesApi = new ProfilesApi();
+    
     @Override
     protected void performAction() throws Exception {
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
+        List<Scope> scopesList = scopeApi.getScopesByQuery1(null, true);
+        checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
         prepareAndExecuteVectorGeneration();
         String msg = "Successfully executed vectorGeneration";
         // Reporting

@@ -13,6 +13,8 @@ import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
@@ -115,11 +117,11 @@ public class TestStuff {
                 vecEx.setVectorFormat("CSV");
                 vecEx.start(DUMMY_CONTEXT).start();*/
         
-        		System.out.println("Importing");
+        		/*System.out.println("Importing");
         		BtcVectorImportStep vecImp = new BtcVectorImportStep("C:/workspace/tests");
         		vecImp.setVectorKind("CSV");
         		// //vecImp.setVectorFormat("Excel");
-        		vecImp.start(DUMMY_CONTEXT).start();
+        		vecImp.start(DUMMY_CONTEXT).start();*/
         		
         		/*BtcToleranceExportStep tolEx = new BtcToleranceExportStep("C:/workspace/tolerances/tol1.xml");
         		tolEx.setUseCase("B2B");
@@ -137,7 +139,35 @@ public class TestStuff {
                 domainCheckGoals.setScopePath("*");
                 domainCheckGoals.setActivateRangeViolationCheck(true);
                 domainCheckGoals.start(DUMMY_CONTEXT).start();*/
-
+        
+        		// TEST workflow
+//        		BtcProfileCreateECStep prof = new BtcProfileCreateECStep("C:/workspace/ECprof1.epp",
+//        				BASE_DIR + "/powerwindow_ec.slx");
+//        		prof.setSlScriptPath(BASE_DIR + "/start.m");
+//        		prof.setExportPath("C:/workspace/reports/");
+//        		prof.start(DUMMY_CONTEXT).start();
+		        /*BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("C:/workspace/ECprof1.epp");
+		        profileLoad.setUpdateRequired(false);
+		        profileLoad.start(DUMMY_CONTEXT).start();*/
+        		
+	// here
+        		/*System.out.println("Generating vectors");
+		        BtcVectorGenerationStep vectorGen = new BtcVectorGenerationStep();
+                vectorGen.start(DUMMY_CONTEXT).start();
+        		
+        		/*System.out.println("B2B");
+        		BtcB2BStep b2b = new BtcB2BStep();
+        		b2b.start(DUMMY_CONTEXT).start();*/
+        		
+        		/*System.out.println("Exporting vectors");
+        		BtcVectorExportStep ve = new BtcVectorExportStep("C:/workspace/tests", "Excel");
+        		ve.setVectorKind("SV");
+        		ve.start(DUMMY_CONTEXT).start();*/
+        
+        		System.out.println("importing execution records:");
+        		BtcExecutionRecordImportStep er = new BtcExecutionRecordImportStep("C:/workspace/ExecutionRecords1", "JK SIL");
+        		er.start(DUMMY_CONTEXT).start();
+        		
                 BtcWrapUpStep wrapUp = new BtcWrapUpStep();
                 wrapUp.setCloseEp(false);
                 wrapUp.start(DUMMY_CONTEXT).start();

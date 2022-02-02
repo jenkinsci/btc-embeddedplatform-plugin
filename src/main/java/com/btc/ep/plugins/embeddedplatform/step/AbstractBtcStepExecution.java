@@ -259,7 +259,8 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                     return new File(baseDir, path.toString()).toPath();
                 }
             } catch (Exception e) {
-                System.out.println("Cannot resolve path from " + filePathString);
+                jenkinsConsole.println("Cannot resolve path from " + filePathString);
+                failed();
             }
         }
         return null;

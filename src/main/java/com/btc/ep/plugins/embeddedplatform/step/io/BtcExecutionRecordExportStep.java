@@ -14,6 +14,7 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ExecutionRecordsApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestExecutionRecordExportInfo;
 
@@ -37,27 +38,46 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         this.step = step;
     }
 
-    ExecutionRecordsApi erApi = new ExecutionRecordsApi();
-
+    private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
+    private ProfilesApi profilesApi = new ProfilesApi();
+    
     @Override
     protected void performAction() throws Exception {
-        Path exportDir = resolvePath(step.getDir());
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
+        Path exportDir;
+        try {
+        	exportDir = resolvePath(step.getDir());
+        } catch (Exception e) {
+        	jenkinsConsole.println("Error: invalid path: " + step.getDir());
+        	jenkinsConsole.println(e.getMessage());
+        	failed();
+        	return;
+        }
         List<String> uids = erApi.getExecutionRecords()
             .stream()
             .filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
                 && (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
             .map(er -> er.getUid())
             .collect(Collectors.toList());
+        if (uids.isEmpty()) {
+        	jenkinsConsole.println("Error: no execution records to export found. Did you run any tests yet?");
+        	failed();
+        	return;
+        }
+        
         RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
         data.setUiDs(uids);
         data.setExportDirectory(exportDir.toString());
         data.setExportFormat("MDF");
         Job job = erApi.exportExecutionRecords(data);
-        Object response = HttpRequester.waitForCompletion(job.getJobID()); //response = null
+        Object response = HttpRequester.waitForCompletion(job.getJobID(), null);
+        // TODO: the callback is always just null. is there a way of checking the status of the job?
 
-        // print success message and return response code
-        jenkinsConsole.println("--> [200] Example step successfully executed.");
-        response = 200;
     }
 
 }

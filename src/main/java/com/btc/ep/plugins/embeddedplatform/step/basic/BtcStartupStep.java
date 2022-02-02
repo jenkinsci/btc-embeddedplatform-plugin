@@ -84,7 +84,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
             ProcessBuilder pb = new ProcessBuilder(command);
             // start process and save it for future use (e.g. to destroy it)
             Store.epProcess = pb.start();
-            jenkinsConsole.println(String.join(" ", command));
+            // jenkinsConsole.println(String.join(" ", command));
 
             // wait for ep rest service to respond
             connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
@@ -94,6 +94,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
                 response = 200;
             } else {
                 jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
+                failed();
                 // Kill EmbeddedPlatform process to prevent zombies!
                 Store.epProcess.destroyForcibly();
                 response = 400;

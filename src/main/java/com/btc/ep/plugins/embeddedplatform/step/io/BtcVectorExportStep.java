@@ -51,14 +51,16 @@ public class BtcVectorExportStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String dir;
-    private String vectorFormat;// = "CSV"; // TODO: UPDATE THIS ON THE DOCUMENTATION
+    private String vectorFormat;
     private String vectorKind = "TC";
     private String csvDelimiter = "Semicolon";
     private boolean singleFile = true;
     
     @DataBoundConstructor
-    public BtcVectorExportStep() {
+    public BtcVectorExportStep(String exportDir, String vectorFormat) {
         super();
+        this.dir = exportDir;
+        this.setVectorFormat(vectorFormat);
     }
 
     @Override
@@ -216,6 +218,10 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
     
     @Override
     protected void performAction() throws Exception {
+    	
+    	checkArgument(step.getVectorFormat() == "Excel" || step.getVectorFormat() == "CSV",
+    			"Error: vectorFormat must be either 'Excel' or 'CSV'.");
+
 
         //Get all vectors
         Path exportDir = resolvePath(step.getExportDir());
@@ -233,13 +239,12 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
         if (step.getVectorFormat() == "Excel") {
         	List<Architecture> architectures = archApi.getArchitectures(null);
         	r.setArchitectureUid(architectures.get(1).getUid().toString());
+        	r.setSingleFile(false); // TODO once EP-2711 is fixed, make sure 
+        							// that we dont get an error on exporting excel (single-file)
         	// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
         } else if (step.getVectorFormat() == "CSV") {
         	r.setCsvDelimiter(step.getCsvDelimiter());
         	r.setSingleFile(step.isSingleFile());
-        } else {
-        	throw new IllegalStateException("Unknown Vector Export Type: " + step.getVectorFormat() +
-        			".\n Valid options are 'CSV' or 'Excel'.");
         }
         
         if (step.getVectorKind().equals("SV")) {
@@ -260,11 +265,11 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
             info.setUiDs(allVectorNames);
             info.additionalOptions(r);
             job = rbTestCaseApi.exportRBTestCases(info);
-            info("Imported Test Cases.");
+            info("Exported Test Cases.");
         }
         HttpRequester.waitForCompletion(job.getJobID());
 
-        // Questions
+        // TODO Questions
         // 1. How should I handle the job from the stimuliVectorsApi.importStimuliVectors(info)?
         // 2. For the Stimuli Vector, do I just need to switch the setVectorKind, or do I need to use another Api?
         // I couldn't find an api for Test Cases

@@ -53,17 +53,26 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
         /*
          * Generate the project report
          */
-        assembleProjectReport();
+        try {
+        	assembleProjectReport();
+        } catch (Exception e) {
+        	info("Failed to generate project report. See Log file for more details: " + e.getMessage());
+        }
 
         /*
          * Save the profile
          */
-        String profilePath =
-            step.getProfilePath() == null ? Store.epp.getPath() : resolvePath(step.getProfilePath()).toString();
-        if (profilePath instanceof String) {
-            // save the epp to the designated location
-        	System.out.println("Saving to " + profilePath);
-            profileApi.saveProfile(new ProfilePath().path(profilePath));
+        try {
+	        String profilePath =
+	            step.getProfilePath() == null ? Store.epp.getPath() : resolvePath(step.getProfilePath()).toString();
+	        if (profilePath instanceof String) {
+	            // save the epp to the designated location
+	        	System.out.println("Saving to " + profilePath);
+	            profileApi.saveProfile(new ProfilePath().path(profilePath));
+	        }
+        } catch (Exception e) {
+        	jenkinsConsole.println("Warning: could not save profile. If you did not load a profile earlier,"
+        			+ "you can safely ignore this message.");
         }
 
         /*

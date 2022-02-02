@@ -71,17 +71,14 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     
     @Override
     protected void performAction() throws Exception {
-    	jenkinsConsole.println("--> [200] domain check step successfully executed.");
-        response = 200; // assume is OK... if we have an error we set response and let it fall through
-        status(Status.OK);
-        passed();
+  
     	// Check preconditions
         try {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
         	response = 500;
         	failed();
-            throw new IllegalStateException("You need an active profile to add domain check goals to");
+            throw new IllegalStateException("You need an active profile for the current command");
         }
         List<Scope> scopesList = scopesApi.getScopesByQuery1(null, true);
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
@@ -114,7 +111,14 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     	// if we are given a config file, import the XML settings
     	// as our domain check goals.
     	if (step.getDcXmlPath() != null) {
-        	Path DcXmlPath = resolvePath(step.getDcXmlPath());
+    		Path DcXmlPath;
+    		try {
+        	DcXmlPath = resolvePath(step.getDcXmlPath());
+    		} catch (Exception e) {
+    			jenkinsConsole.println("Error: invalid path given: "+step.getDcXmlPath());
+    			failed();
+    			return;
+    		}
         	RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
         	r.setScopeUid(scopeuid);
         	r.setFilePath(DcXmlPath.toString());

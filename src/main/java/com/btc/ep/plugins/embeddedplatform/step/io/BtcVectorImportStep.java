@@ -165,7 +165,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
         if (status == null) {
         	// i think the callback will at least return an error message? so we should never be here.
         	// but might as well throw it in just in case i'm wrong
-        	System.out.println("Something has gone horribly wrong in importing the vectors");
+        	jenkinsConsole.println("Something has gone horribly wrong in importing the vectors");
         	return;
         }
         @SuppressWarnings("unchecked")
