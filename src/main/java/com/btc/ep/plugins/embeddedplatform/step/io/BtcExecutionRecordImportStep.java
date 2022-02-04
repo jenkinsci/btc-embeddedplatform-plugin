@@ -53,7 +53,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         }
         Path exportDir = null;
         try {
-        exportDir = resolvePath(step.getDir());
+        	exportDir = resolvePath(step.getDir());
         } catch (Exception e) {
         	jenkinsConsole.println("Error: Couldnt find dir: " + step.getDir());
         }
@@ -77,9 +77,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         data.setFolderName(step.getFolderName());
         Job job = erApi.importExecutionRecord(data);
         Object response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
-        int response = (int) response_obj;
-        // TODO: if we pass in a bad executionConfig (ex, JK SIL instead of TL SIL),
-        // the API call goes through just fine and doesn't throw an error. this is probably an API bug
+        int response_int = (int) response_obj;
         switch (step.getExecutionConfig()) {
         	case "TL MIL":
         	case "SL MIL":
@@ -87,29 +85,24 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         	case "SIL":
         		break;
         	default:
-        		jenkinsConsole.println("Error: invalid execution config " + step.getExecutionConfig()
-        		+ ". Supported options are TL MIL, SL MIL, PIL, and SIL.");
-        		failed();
-        		return;
+        		jenkinsConsole.println("Warning: non-standard execution config " + step.getExecutionConfig()
+        		+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
         }
-        switch (response) {
+        response = response_int;
+        switch (response_int) {
         	case 201:
         		// successful. nothing to report.
-        		response = 200;
         		break;
         	case 400:
         		jenkinsConsole.println("Error: Bad request (make sure the arguments you passed in are valid");
-        		response = 400;
         		failed();
         		break;
         	case 404:
         		jenkinsConsole.println("Error: Not found.");
-        		response = 404;
         		failed();
         		break;
         	case 500: 
         		jenkinsConsole.println("Error: Internal server error.");
-        		response = 500;
         		failed();
         		break;
         }

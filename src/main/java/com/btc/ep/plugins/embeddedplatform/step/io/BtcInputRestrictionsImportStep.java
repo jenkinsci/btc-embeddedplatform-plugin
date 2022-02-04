@@ -13,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.api.InputRestrictionsApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -124,6 +125,8 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
         super(step, context);
         this.step = step;
     }
+    
+    private ProfilesApi profilesApi = new ProfilesApi();
 
     /*
      * Put the desired action here:
@@ -135,7 +138,12 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
      */
     @Override
     protected void performAction() throws Exception {
-
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
         // Get the path
         Path path = resolvePath(step.getPath());
         checkArgument(path.toFile().exists(), "Error: Export xml does not exist " + path);

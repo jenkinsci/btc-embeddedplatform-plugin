@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
@@ -246,20 +247,28 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      *
      * @param filePathString An absolute or relative path (relative to the pipelines pwd)
      * @return the path object
+     * @throws Exception 
      */
-    protected Path resolvePath(String filePathString) {
+    protected Path resolvePath(String filePathString) throws Exception {
         if (filePathString != null) {
             try {
                 Path path = Paths.get(filePathString);
                 if (path.isAbsolute()) {
+                	if (!Files.exists(path)) {
+                    	throw new Exception();
+                    }
                     return path;
                 } else {
                     FilePath workspace = getContext().get(FilePath.class);
                     String baseDir = Paths.get(workspace.toURI()).toString();
-                    return new File(baseDir, path.toString()).toPath();
+                    path = new File(baseDir, path.toString()).toPath();
+                    if (!Files.exists(path)) {
+                    	throw new Exception();
+                    }
+                    return path;
                 }
             } catch (Exception e) {
-                jenkinsConsole.println("Cannot resolve path from " + filePathString);
+                jenkinsConsole.println("Cannot resolve path: " + filePathString);
                 failed();
             }
         }

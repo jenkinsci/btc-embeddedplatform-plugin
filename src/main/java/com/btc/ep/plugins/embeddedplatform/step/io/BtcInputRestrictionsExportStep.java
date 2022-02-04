@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -12,7 +13,9 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -124,6 +127,8 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
         super(step, context);
         this.step = step;
     }
+    
+    private ProfilesApi profilesApi = new ProfilesApi();
 
     /*
      * Put the desired action here:
@@ -135,14 +140,27 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
      */
     @Override
     protected void performAction() throws Exception {
-
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
         // Get the path
-        Path path = resolvePath(step.getPath());
-        checkArgument(path.toFile().exists(), "Error: Export xml does not exist " + path);
+        File fileio = new File(step.getPath());
+        String parentPath = fileio.getAbsoluteFile().getParent();
+        Path path = resolvePath(parentPath);
+        checkArgument(path.toFile().exists(), "Error: Export directory does not exist " + path);
 
         InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
-        file.setFilePath(path.toString());
-        inputRestrictionsApi.exportToFile(file);
+        file.setFilePath(step.getPath());
+        try {
+        	inputRestrictionsApi.exportToFile(file);
+        } catch (ApiException e) {
+        	// TODO: convenience workaround EP-2722
+        	jenkinsConsole.println("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
+        	failed();
+        }
 
     }
 

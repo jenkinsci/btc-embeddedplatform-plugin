@@ -15,6 +15,7 @@ import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordImportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
@@ -164,9 +165,17 @@ public class TestStuff {
         		ve.setVectorKind("SV");
         		ve.start(DUMMY_CONTEXT).start();*/
         
-        		System.out.println("importing execution records:");
-        		BtcExecutionRecordImportStep er = new BtcExecutionRecordImportStep("C:/workspace/ExecutionRecords1", "JK SIL");
-        		er.start(DUMMY_CONTEXT).start();
+        		/*System.out.println("importing execution records:");
+        		BtcExecutionRecordImportStep er = new BtcExecutionRecordImportStep("C:/workspace/ExecutionRecords", "JK SIL");
+        		er.start(DUMMY_CONTEXT).start();*/
+        
+        		/*System.out.println("exporting input restrictions");
+        		BtcInputRestrictionsExportStep ires = new BtcInputRestrictionsExportStep("C:/workspace/inputRestrictions/export.xml");
+        		ires.start(DUMMY_CONTEXT).start();*/
+        
+		        System.out.println("exporting tolerances");
+				BtcToleranceExportStep ires = new BtcToleranceExportStep("C:/workspace/profile.epp", "C:/workspace/tolerances/export.xml");
+				ires.start(DUMMY_CONTEXT).start();
         		
                 BtcWrapUpStep wrapUp = new BtcWrapUpStep();
                 wrapUp.setCloseEp(false);

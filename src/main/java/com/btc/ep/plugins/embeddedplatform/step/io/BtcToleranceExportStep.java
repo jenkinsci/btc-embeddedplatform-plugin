@@ -2,19 +2,26 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.mathworks.engine.*;
+import com.mathworks.matlab.types.HandleObject;
+import com.mathworks.matlab.types.Struct;
+
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.api.TolerancesApi;
+import org.openapitools.client.model.Profile;
 import org.openapitools.client.model.Scope;
 import org.openapitools.client.model.ToleranceDefinition;
 
@@ -35,12 +42,14 @@ public class BtcToleranceExportStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String path;
+    private String profilePath;
     private String useCase = "B2B";
 
     @DataBoundConstructor
-    public BtcToleranceExportStep(String path) {
+    public BtcToleranceExportStep(String profilePath, String path) {
         super();
         this.setPath(path);
+        this.setProfilePath(profilePath);
     }
 
     @Override
@@ -66,6 +75,14 @@ public class BtcToleranceExportStep extends Step implements Serializable {
     public void setPath(String path) {
         this.path = path;
 
+    }
+    
+    public String getProfilePath() {
+    	return profilePath;
+    }
+    
+    public void setProfilePath(String profilePath) {
+    	this.profilePath = profilePath;
     }
 
     /**
@@ -150,6 +167,7 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
         this.step = step;
     }
 
+    private ProfilesApi profilesApi = new ProfilesApi();
     /*
      * Put the desired action here:
      * - checking preconditions
@@ -160,24 +178,38 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
      */
     @Override
     protected void performAction() throws Exception {
-
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
         // Get the path
-        Path path = resolvePath(step.getPath());
-        checkArgument(path.toFile().exists(), "Error: Export xml does not exist " + path);
-        //TODO: this will function just fine if you pass in a dir that isn't a file, or any file 
-        // that exists which isnt an xml.
+    	File fileio = new File(step.getPath());
+        String parentPath = fileio.getAbsoluteFile().getParent();
+        Path path = resolvePath(parentPath);
+        checkArgument(path.toFile().exists(), "Error: Export directory does not exist " + path);
 
-        // Goal: TODO: write this.
-        // Take path, make sure xml file exists
-        // Write the tolerances to this xml file
-        // Matlab API has tolerance export
-        // ^ what do you mean by Matlab API? i can't find a class with that name (~nathan drasovean).
+        String kind = step.getUseCase();
+        checkArgument(kind == "RBT" || kind == "B2B", "Error: invalid use case '" + kind + 
+        		"'. Supported cases are 'RBT' and 'B2B'.");
         
-        List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
+        // // // 
+        // if this below code fails do the following integration steps:
+        // 1) add MATLABROOT\R2021b\bin\win64 to PATH
+        // 2) point eclipse to MATLABROOT\R2021b\extern\engines\java\jar\engine.jar as an external library
+        // // //
+        // TODO: ep-2723. this is a temporary workaround in the meantime.
+        MatlabEngine eng = MatlabEngine.connectMatlab();
         
-        List<ToleranceDefinition> tolerances = 
-        		tolerancesApi.getGlobalTolerances(scopes.get(0).getUid().toString(), step.getUseCase(), null);
+        eng.eval("oApp = epi_application_start");
+        eng.eval("oProfile = epi_application_profile_open(oApp, 'File', '"+step.getProfilePath()+"')");
+        HandleObject oProfile = eng.getVariable("oProfile");
+  
+        eng.feval(0, "epi_profile_tolerance_settings_export", oProfile, "File".toCharArray(), 
+        		step.getPath().toCharArray(), "Kind".toCharArray(), kind.toCharArray());
         
+        eng.close();
         
     }
 
