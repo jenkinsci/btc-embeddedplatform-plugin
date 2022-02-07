@@ -22,7 +22,7 @@ import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ExecutionRecord;
 import org.openapitools.client.model.ExecutionRecordsMoveData;
 import org.openapitools.client.model.Folder;
-import org.openapitools.client.model.FolderKindTransmisionObject;
+import org.openapitools.client.model.FolderTransmisionObject;
 import org.openapitools.client.model.ProfilePath;
 
 import com.btc.ep.plugins.embeddedplatform.reporting.project.SerializableReportingContainer;
@@ -209,7 +209,7 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
         ExecutionRecordsApi erApi = new ExecutionRecordsApi();
         FoldersApi folderApi = new FoldersApi();
 
-        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords();
+        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords2();
         //TODO: query all Execution configs if nothing is specified (requires EP-2536)
         for (String config : executionConfigs) {
             if (step.isCreateProfilesFromScratch()) {
@@ -224,8 +224,8 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
                     .filter(er -> config.equals(er.getExecutionConfig()) && config.equals(er.getFolderName()))
                     .map(er -> er.getUid())
                     .collect(Collectors.toList());
-                FolderKindTransmisionObject folderKind =
-                    new FolderKindTransmisionObject().folderKind(EXECUTION_RECORD);
+                FolderTransmisionObject folderKind =
+                    new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
                 Folder folder = folderApi.addFolder(folderKind);
                 ExecutionRecordsMoveData moveData = new ExecutionRecordsMoveData().uiDs(erUids);
                 erApi.moveExecutionRecords(folder.getUid(), moveData);

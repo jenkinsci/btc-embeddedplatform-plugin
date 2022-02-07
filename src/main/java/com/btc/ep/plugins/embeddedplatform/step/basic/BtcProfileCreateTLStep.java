@@ -71,7 +71,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
          */
         Path tlModelPath = resolvePath(step.getTlModelPath());
         Path tlScriptPath = resolvePath(step.getTlScriptPath());
-        profilesApi.createProfile();
+        profilesApi.createProfile(true);
         TLImportInfo info = new TLImportInfo()
             .tlModelFile(tlModelPath.toString())
             .tlInitScript(tlScriptPath.toString())
@@ -99,8 +99,10 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         if (step.getTlSubsystem() != null) {
             info.setTlSubsystem(step.getTlSubsystem());
         }
+        
+        
         //TODO: support two-step import process that allows us to filter subsystems/calibrations/codefiles (requires EP-2569)
-        Job job = archApi.importTargetLinkArchitecture1(info);
+        Job job = archApi.importTargetLinkArchitecture(info);
         HttpRequester.waitForCompletion(job.getJobID());
 
         /*

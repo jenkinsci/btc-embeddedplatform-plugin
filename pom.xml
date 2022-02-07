@@ -97,7 +97,7 @@
 	    <dependency>
             <groupId>org.openapitools</groupId>
             <artifactId>openapi-java-client</artifactId>
-            <version>2.11p0</version>
+            <version>22.1p0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.freemarker/freemarker -->
 		<dependency>

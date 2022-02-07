@@ -23,7 +23,7 @@ import org.openapitools.client.api.RegressionTestsApi;
 import org.openapitools.client.model.ExecutionRecord;
 import org.openapitools.client.model.ExecutionRecordsMoveData;
 import org.openapitools.client.model.Folder;
-import org.openapitools.client.model.FolderKindTransmisionObject;
+import org.openapitools.client.model.FolderTransmisionObject;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RegressionTest;
 import org.openapitools.client.model.RegressionTest.VerdictStatusEnum;
@@ -125,8 +125,8 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         FoldersApi folderApi = new FoldersApi();
         if (step.getImportDir() != null) {
             for (String config : executionConfigs) {
-                FolderKindTransmisionObject folderKind =
-                    new FolderKindTransmisionObject().folderKind(EXECUTION_RECORD);
+                FolderTransmisionObject folderKind =
+                    new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
                 Folder folder = folderApi.addFolder(folderKind);
                 BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir(), config);
                 importStep.setFolderName(folder.getName());
@@ -152,8 +152,8 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
                 .collect(Collectors.toList());
             checkArgument(!erFolders.isEmpty(), "No user-defined Execution Record Folders available.");
             RegressionTestExecutionData data = new RegressionTestExecutionData();
-            FolderKindTransmisionObject folderKind =
-                new FolderKindTransmisionObject().folderKind(EXECUTION_RECORD);
+            FolderTransmisionObject folderKind =
+                new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
             Folder targetFolder = folderApi.addFolder(folderKind);
             data.setCompFolderUID(targetFolder.getUid());
             data.setCompMode(config);
@@ -244,7 +244,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         ExecutionRecordsApi erApi = new ExecutionRecordsApi();
         FoldersApi folderApi = new FoldersApi();
 
-        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords();
+        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords2();
         //TODO: query all Execution configs if nothing is specified (requires EP-2536)
         for (String config : executionConfigs) {
             if (step.isCreateProfilesFromScratch()) {
@@ -259,8 +259,8 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
                     .filter(er -> config.equals(er.getExecutionConfig()) && config.equals(er.getFolderName()))
                     .map(er -> er.getUid())
                     .collect(Collectors.toList());
-                FolderKindTransmisionObject folderKind =
-                    new FolderKindTransmisionObject().folderKind(EXECUTION_RECORD);
+                FolderTransmisionObject folderKind =
+                    new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
                 Folder folder = folderApi.addFolder(folderKind);
                 ExecutionRecordsMoveData moveData = new ExecutionRecordsMoveData().uiDs(erUids);
                 erApi.moveExecutionRecords(folder.getUid(), moveData);

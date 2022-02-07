@@ -74,7 +74,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
          */
         Path slModelPath = resolvePath(step.getSlModelPath());
         Path slScriptPath = resolvePath(step.getSlScriptPath());
-        profilesApi.createProfile();
+        profilesApi.createProfile(true);
         ECImportInfo info = new ECImportInfo()
             .ecModelFile(slModelPath.toString())
             .ecInitScript(slScriptPath.toString())

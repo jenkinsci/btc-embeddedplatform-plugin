@@ -55,7 +55,6 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         Path profilePath = resolvePath(step.getProfilePath());
         Path slModelPath = resolvePath(step.getSlModelPath());
         Path slScriptPath = resolvePath(step.getSlScriptPath());
-        Path addInfoModelPath = resolvePath(step.getAddInfoModelPath());
         preliminaryChecks();
         Store.epp = profilePath.toFile();
         Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
@@ -70,11 +69,10 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         /*
          * Create the profile based on the code model
          */
-        profilesApi.createProfile();
+        profilesApi.createProfile(true);
         SLImportInfo info = new SLImportInfo()
             .slModelFile(slModelPath.toString())
-            .slInitScriptFile(slScriptPath.toString())
-            .addModelInfoFile(addInfoModelPath.toString());
+            .slInitScriptFile(slScriptPath.toString());
         Job job = archApi.importSimulinkArchitecture(info);
         HttpRequester.waitForCompletion(job.getJobID());
 
@@ -121,7 +119,6 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
 
     private String slModelPath;
     private String slScriptPath;
-    private String addInfoModelPath;
     private String startupScriptPath;
     private String matlabVersion;
     private String matlabInstancePolicy = "AUTO";
@@ -133,7 +130,6 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
         super();
         this.profilePath = profilePath;
         this.slModelPath = slModelPath;
-        this.addInfoModelPath = addInfoModelPath;
     }
 
     @Override
@@ -183,9 +179,6 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
         return slScriptPath;
     }
 
-    public String getAddInfoModelPath() {
-        return addInfoModelPath;
-    }
 
     public String getStartupScriptPath() {
         return startupScriptPath;

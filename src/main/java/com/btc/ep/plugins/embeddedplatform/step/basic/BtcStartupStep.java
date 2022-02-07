@@ -60,31 +60,35 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
         HttpRequester.port = step.getPort();
         Store.startDate = new Date();
         boolean connected = HttpRequester.checkConnection("/test", 200);
+        
+        // prepare data for process call
+        String epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
+        String jreDirectory = getJreDir();
+        String licensingPackage = step.getLicensingPackage();
+        
         if (connected) {
             jenkinsConsole
                 .println("Successfully connected to a running instance of BTC EmbeddedPlatform on port "
                     + step.getPort());
             response = 201;
         } else {
-            // Check preconditions
-            checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
-                "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
-            File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
-            checkArgument(epExecutable.exists(),
-                "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
+            // start command call can be skipped if we only connect to a starting instance (e.g. in docker)
+            if (!step.isSimplyConnect()) {
+            	// Check preconditions
+                checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
+                    "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
+                File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
+                checkArgument(epExecutable.exists(),
+                    "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
 
-            // prepare data for process call
-            String epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
-            String jreDirectory = getJreDir();
-            String licensingPackage = step.getLicensingPackage();
-
-            // prepare ep start command
-            List<String> command =
-                createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
-            ProcessBuilder pb = new ProcessBuilder(command);
-            // start process and save it for future use (e.g. to destroy it)
-            Store.epProcess = pb.start();
-            // jenkinsConsole.println(String.join(" ", command));
+                // prepare ep start command
+                List<String> command =
+                    createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
+                ProcessBuilder pb = new ProcessBuilder(command);
+                // start process and save it for future use (e.g. to destroy it)
+                Store.epProcess = pb.start();
+                jenkinsConsole.println(String.join(" ", command));
+            }
 
             // wait for ep rest service to respond
             connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
@@ -192,6 +196,7 @@ public class BtcStartupStep extends Step implements Serializable {
     private String additionalJvmArgs;
     private int timeout = 120;
     private int port = 29267;
+    private boolean simplyConnect;
 
     @DataBoundConstructor
     public BtcStartupStep() {
@@ -241,6 +246,15 @@ public class BtcStartupStep extends Step implements Serializable {
     public void setInstallPath(String installPath) {
         this.installPath = installPath;
     }
+    
+    public boolean isSimplyConnect() {
+		return simplyConnect;
+	}
+	
+	@DataBoundSetter
+	public void setSimplyConnect(boolean simplyConnect) {
+		this.simplyConnect = simplyConnect;
+	}
 
     public int getPort() {
         return port;
