@@ -52,7 +52,7 @@ class BtcAddInputCombinationGoalsExecution extends AbstractBtcStepExecution {
     @Override
     protected void performAction() throws Exception {
     	// Check preconditions
-        jenkinsConsole.println("WARNING: this function is deprecated. Nothing has been executed!");
+        log("WARNING: this function is deprecated. Nothing has been executed!");
         
     }
 
@@ -96,7 +96,7 @@ public class BtcAddInputCombinationGoals extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcExample";
+            return "btcAddInputCombinationGoals";
         }
 
         /*
@@ -104,7 +104,7 @@ public class BtcAddInputCombinationGoals extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Example Step";
+            return "BTC Input Combination Goals Step";
         }
     }
 

@@ -197,7 +197,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
             }
         }
         info(infoText);
-        jenkinsConsole.println("Requirements-based Test finished with result: " + overallResult);
+        log("Requirements-based Test finished with result: " + overallResult);
         if ("PASSED".equalsIgnoreCase(overallResult)) {
             status(Status.OK).passed().result(overallResult);
             response = 200;

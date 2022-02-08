@@ -6,12 +6,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
-
-import com.mathworks.engine.*;
-import com.mathworks.matlab.types.HandleObject;
-import com.mathworks.matlab.types.Struct;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -21,9 +16,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.api.TolerancesApi;
-import org.openapitools.client.model.Profile;
-import org.openapitools.client.model.Scope;
-import org.openapitools.client.model.ToleranceDefinition;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
@@ -200,16 +192,6 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
         // 2) point eclipse to MATLABROOT\R2021b\extern\engines\java\jar\engine.jar as an external library
         // // //
         // TODO: ep-2723. this is a temporary workaround in the meantime.
-        MatlabEngine eng = MatlabEngine.connectMatlab();
-        
-        eng.eval("oApp = epi_application_start");
-        eng.eval("oProfile = epi_application_profile_open(oApp, 'File', '"+step.getProfilePath()+"')");
-        HandleObject oProfile = eng.getVariable("oProfile");
-  
-        eng.feval(0, "epi_profile_tolerance_settings_export", oProfile, "File".toCharArray(), 
-        		step.getPath().toCharArray(), "Kind".toCharArray(), kind.toCharArray());
-        
-        eng.close();
         
     }
 

@@ -158,7 +158,7 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
         	inputRestrictionsApi.exportToFile(file);
         } catch (ApiException e) {
         	// TODO: convenience workaround EP-2722
-        	jenkinsConsole.println("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
+        	log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
         	failed();
         }
 

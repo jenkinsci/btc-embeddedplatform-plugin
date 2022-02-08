@@ -44,6 +44,152 @@ import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /**
+ * This class defines what happens when the above step is executed
+ */
+class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcVectorGenerationStep step;
+
+    public BtcVectorGenerationExecution(BtcVectorGenerationStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    private CoverageGenerationApi vectorGenerationApi = new CoverageGenerationApi();
+    private ScopesApi scopeApi = new ScopesApi();
+    private ReportsApi reportApi = new ReportsApi();
+    private CodeAnalysisReportsB2BApi b2bCodeAnalysisReportApi = new CodeAnalysisReportsB2BApi();
+    private ProfilesApi profilesApi = new ProfilesApi();
+    
+    @Override
+    protected void performAction() throws Exception {
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
+        List<Scope> scopesList = scopeApi.getScopesByQuery1(null, true);
+        checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
+        prepareAndExecuteVectorGeneration();
+        String msg = "Successfully executed vectorGeneration";
+        // Reporting
+        if (step.isCreateReport()) {
+            Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
+            Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+            ReportExportInfo info = new ReportExportInfo();
+            info.setNewName("CodeCoverageReport");
+            String path = new File(Paths.get(getContext().get(FilePath.class).toURI()).toString(), Store.exportPath)
+                .getCanonicalPath();
+            info.setExportPath(path);
+            reportApi.exportReport(report.getUid(), info);
+            msg += " and exported the coverage report";
+        }
+        //FIXME: faking... EP-2581: no coverage info available atm.
+        double stmD = 100d;
+        double mcdcD = 100d; // 
+        String info = stmD + "% Statement, " + mcdcD + "% MC/DC";
+        log(msg + ": " + info);
+        info(info);
+        response = 200;
+    }
+
+    private boolean isDummyRoot(ScopesApi scopeApi) throws ApiException {
+        try {
+            scopeApi.getScopesByQuery1(null, true);
+        } catch (ApiException e) {
+            if (404 == e.getCode()) {
+                // no toplevel ? --> dummy root
+                return true;
+            } else {
+                throw e;
+            }
+        }
+        return false;
+    }
+
+    private void addAtgEngine(BtcVectorGenerationStep step, EngineSettings settings) {
+        EngineAtg atg = settings.getEngineAtg();
+        atg.setSearchDepthSteps(step.getDepthAtg());
+        atg.setTimeoutSecondsPerSubsystem(step.getScopeTimeout());
+        ExecutionModeEnum executionModeAtg = ExecutionModeEnum.valueOf(step.getExecutionModeAtg());
+        atg.setExecutionMode(executionModeAtg);
+        settings.setEngineAtg(atg);
+    }
+
+    private void addCvEngine(BtcVectorGenerationStep step, EngineSettings settings) {
+        EngineCv cv = settings.getEngineCv();
+        cv.setSearchDepthSteps(step.getDepthCv());
+        cv.timeoutSecondsPerSubsystem(step.getScopeTimeout());
+        cv.setTimeoutSecondsPerProperty(step.getPropertyTimeout());
+        cv.setLoopUnroll(step.getLoopUnroll());
+        // hard coded...
+        cv.setSearchFocus(SearchFocusEnum.BALANCED);
+        cv.setCoreEngines(Arrays.asList(new CoreEngine().name("ISAT").use(true)));
+        // search focus
+        // assumption check
+        // core engines
+        // memory limit
+        ParallelExecutionModeEnum parallelExecutionMode =
+            ParallelExecutionModeEnum.valueOf(step.getParallelExecutionMode());
+        cv.setParallelExecutionMode(parallelExecutionMode);
+        cv.setMaximumNumberOfThreads(step.getNumberOfThreads());
+        settings.setEngineCv(cv);
+    }
+
+    private void prepareAndExecuteVectorGeneration() throws ApiException {
+        Config config = vectorGenerationApi.getConfiguration();
+        config.setTargetDefinitions(Collections.emptyList());
+        config.setPllString(step.getPll());
+        config.setCheckUnreachableProperties(step.isRecheckUnreachable());
+        config.setIsSubscopesGoalsConsidered(step.isConsiderSubscopes());
+        EngineSettings engineSettings = config.getEngineSettings();
+        switch (step.getEngine().toUpperCase()) {
+            case "ATG+CV":
+                addAtgEngine(step, engineSettings);
+                addCvEngine(step, engineSettings);
+                break;
+            case "ATG":
+                addAtgEngine(step, engineSettings);
+                // disable cv
+                engineSettings.setEngineCv(new EngineCv().use(false));
+                break;
+            case "CV":
+                addCvEngine(step, engineSettings);
+                // disable atg
+                engineSettings.setEngineAtg(new EngineAtg().use(false));
+                break;
+            default:
+                break;
+        }
+        engineSettings.setAllowDenormalizedFloats(step.isAllowDenormalizedFloats());
+        engineSettings.setAnalyseSubScopesHierarchically(step.isAnalyzeSubscopesHierarchically());
+        engineSettings.setHandlingRateThreshold(step.getHandlingRateThreshold());
+        engineSettings.setTimeoutSeconds(step.getGlobalTimeout());
+        config.setEngineSettings(engineSettings);
+
+        if (isDummyRoot(scopeApi)) {
+            // toplevel s a dummy scope
+            List<Scope> scopes = scopeApi.getScopesByQuery1(null, false);
+            for (Scope scope : scopes) {
+                config.setScope(scope);
+                Job vectorGeneration = vectorGenerationApi.execute(config);
+                HttpRequester.waitForCompletion(vectorGeneration.getJobID());
+            }
+        } else {
+            // toplevel scope is part of the SUT
+            Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
+            config.setScope(toplevel);
+            Job vectorGeneration = vectorGenerationApi.execute(config);
+            HttpRequester.waitForCompletion(vectorGeneration.getJobID());
+        }
+
+    }
+
+}
+
+/**
  * This class defines a step for Jenkins Pipeline including its parameters.
  * When the step is called the related StepExecution is triggered (see the class below this one)
  */
@@ -298,149 +444,3 @@ public class BtcVectorGenerationStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcVectorGenerationStep step;
-
-    public BtcVectorGenerationExecution(BtcVectorGenerationStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    private CoverageGenerationApi vectorGenerationApi = new CoverageGenerationApi();
-    private ScopesApi scopeApi = new ScopesApi();
-    private ReportsApi reportApi = new ReportsApi();
-    private CodeAnalysisReportsB2BApi b2bCodeAnalysisReportApi = new CodeAnalysisReportsB2BApi();
-    private ProfilesApi profilesApi = new ProfilesApi();
-    
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
-        List<Scope> scopesList = scopeApi.getScopesByQuery1(null, true);
-        checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-        prepareAndExecuteVectorGeneration();
-        String msg = "Successfully executed vectorGeneration";
-        // Reporting
-        if (step.isCreateReport()) {
-            Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
-            Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
-            ReportExportInfo info = new ReportExportInfo();
-            info.setNewName("CodeCoverageReport");
-            String path = new File(Paths.get(getContext().get(FilePath.class).toURI()).toString(), Store.exportPath)
-                .getCanonicalPath();
-            info.setExportPath(path);
-            reportApi.exportReport(report.getUid(), info);
-            msg += " and exported the coverage report";
-        }
-        //FIXME: faking... EP-2581: no coverage info available atm.
-        double stmD = 100d;
-        double mcdcD = 100d; // 
-        String info = stmD + "% Statement, " + mcdcD + "% MC/DC";
-        jenkinsConsole.println(msg + ": " + info);
-        info(info);
-        response = 200;
-    }
-
-    private boolean isDummyRoot(ScopesApi scopeApi) throws ApiException {
-        try {
-            scopeApi.getScopesByQuery1(null, true);
-        } catch (ApiException e) {
-            if (404 == e.getCode()) {
-                // no toplevel ? --> dummy root
-                return true;
-            } else {
-                throw e;
-            }
-        }
-        return false;
-    }
-
-    private void addAtgEngine(BtcVectorGenerationStep step, EngineSettings settings) {
-        EngineAtg atg = settings.getEngineAtg();
-        atg.setSearchDepthSteps(step.getDepthAtg());
-        atg.setTimeoutSecondsPerSubsystem(step.getScopeTimeout());
-        ExecutionModeEnum executionModeAtg = ExecutionModeEnum.valueOf(step.getExecutionModeAtg());
-        atg.setExecutionMode(executionModeAtg);
-        settings.setEngineAtg(atg);
-    }
-
-    private void addCvEngine(BtcVectorGenerationStep step, EngineSettings settings) {
-        EngineCv cv = settings.getEngineCv();
-        cv.setSearchDepthSteps(step.getDepthCv());
-        cv.timeoutSecondsPerSubsystem(step.getScopeTimeout());
-        cv.setTimeoutSecondsPerProperty(step.getPropertyTimeout());
-        cv.setLoopUnroll(step.getLoopUnroll());
-        // hard coded...
-        cv.setSearchFocus(SearchFocusEnum.BALANCED);
-        cv.setCoreEngines(Arrays.asList(new CoreEngine().name("ISAT").use(true)));
-        // search focus
-        // assumption check
-        // core engines
-        // memory limit
-        ParallelExecutionModeEnum parallelExecutionMode =
-            ParallelExecutionModeEnum.valueOf(step.getParallelExecutionMode());
-        cv.setParallelExecutionMode(parallelExecutionMode);
-        cv.setMaximumNumberOfThreads(step.getNumberOfThreads());
-        settings.setEngineCv(cv);
-    }
-
-    private void prepareAndExecuteVectorGeneration() throws ApiException {
-        Config config = vectorGenerationApi.getConfiguration();
-        config.setTargetDefinitions(Collections.emptyList());
-        config.setPllString(step.getPll());
-        config.setCheckUnreachableProperties(step.isRecheckUnreachable());
-        config.setIsSubscopesGoalsConsidered(step.isConsiderSubscopes());
-        EngineSettings engineSettings = config.getEngineSettings();
-        switch (step.getEngine().toUpperCase()) {
-            case "ATG+CV":
-                addAtgEngine(step, engineSettings);
-                addCvEngine(step, engineSettings);
-                break;
-            case "ATG":
-                addAtgEngine(step, engineSettings);
-                // disable cv
-                engineSettings.setEngineCv(new EngineCv().use(false));
-                break;
-            case "CV":
-                addCvEngine(step, engineSettings);
-                // disable atg
-                engineSettings.setEngineAtg(new EngineAtg().use(false));
-                break;
-            default:
-                break;
-        }
-        engineSettings.setAllowDenormalizedFloats(step.isAllowDenormalizedFloats());
-        engineSettings.setAnalyseSubScopesHierarchically(step.isAnalyzeSubscopesHierarchically());
-        engineSettings.setHandlingRateThreshold(step.getHandlingRateThreshold());
-        engineSettings.setTimeoutSeconds(step.getGlobalTimeout());
-        config.setEngineSettings(engineSettings);
-
-        if (isDummyRoot(scopeApi)) {
-            // toplevel s a dummy scope
-            List<Scope> scopes = scopeApi.getScopesByQuery1(null, false);
-            for (Scope scope : scopes) {
-                config.setScope(scope);
-                Job vectorGeneration = vectorGenerationApi.execute(config);
-                HttpRequester.waitForCompletion(vectorGeneration.getJobID());
-            }
-        } else {
-            // toplevel scope is part of the SUT
-            Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
-            config.setScope(toplevel);
-            Job vectorGeneration = vectorGenerationApi.execute(config);
-            HttpRequester.waitForCompletion(vectorGeneration.getJobID());
-        }
-
-    }
-
-}

@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
@@ -41,12 +40,12 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- ORIGINAL: START ---------------
      */
-    //    public BtcStepExecution(Step step, StepContext context) {
-    //        super(context);
-    //        this.functionName = step.getDescriptor().getFunctionName();
-    //        this.reportingStep = new TestStep(functionName);
-    //        recordStepArguments(step);
-    //    }
+    public AbstractBtcStepExecution(Step step, StepContext context) {
+        super(context);
+        this.functionName = step.getDescriptor().getFunctionName();
+        this.reportingStep = new TestStep(functionName);
+        recordStepArguments(step);
+    }
 
     /*
      * -------------- ORIGINAL: END -----------------
@@ -55,23 +54,25 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- Testing: START -----------------
      */
-    public AbstractBtcStepExecution(Step step, StepContext context) {
-        this.context = context;
-        this.functionName = "DUMMY";
-        this.reportingStep = new TestStep(functionName);
-        recordStepArguments(step);
-    }
-
-    private StepContext context;
-    private boolean reportingDisabled = false;
-
-    @Override
-    public StepContext getContext() {
-        return this.context;
-    }
+//    public AbstractBtcStepExecution(Step step, StepContext context) {
+//    	this.context = context;
+//    	this.functionName = "DUMMY";
+//    	this.reportingStep = new TestStep(functionName);
+//    	recordStepArguments(step);
+//    }
+//
+//    private StepContext context;
+//    @Override
+//    public StepContext getContext() {
+//    	return this.context;
+//    }
     /*
      * --------------- Testing: END -----------------
      */
+    
+    
+    private boolean reportingDisabled = false;
+
 
     public boolean start() throws Exception {
         TimerTask t = new TimerTask() {
@@ -91,7 +92,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                 } catch (Exception e) {
                     if (e instanceof ApiException && jenkinsConsole != null) {
                         String responseBody = ((ApiException)e).getResponseBody();
-                        jenkinsConsole.println(
+                        log(
                             "Error during call of " + functionName + "(): " + responseBody);
                     }
                     status(Status.ERROR);
@@ -243,6 +244,16 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     }
 
     /**
+     * Writes the given message to the jenkins console output.
+     * All messages are prefixed with "[BTC] "
+     * @param message
+     */
+    protected void log(String message) {
+    	jenkinsConsole.print("[BTC] ");
+    	jenkinsConsole.println(message);
+    }
+    
+    /**
      * Converts an absolute or relative path into a Path object.
      *
      * @param filePathString An absolute or relative path (relative to the pipelines pwd)
@@ -254,26 +265,51 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
             try {
                 Path path = Paths.get(filePathString);
                 if (path.isAbsolute()) {
-                	if (!Files.exists(path)) {
-                    	throw new Exception();
-                    }
                     return path;
                 } else {
                     FilePath workspace = getContext().get(FilePath.class);
                     String baseDir = Paths.get(workspace.toURI()).toString();
                     path = new File(baseDir, path.toString()).toPath();
-                    if (!Files.exists(path)) {
-                    	throw new Exception();
-                    }
                     return path;
                 }
             } catch (Exception e) {
-                jenkinsConsole.println("Cannot resolve path: " + filePathString);
+                log("Cannot resolve path: " + filePathString);
                 failed();
             }
         }
         return null;
     }
+    
+    /**
+     * Returns a resolved profilePath that uses the give profilePath (may be relative)
+     * if not null. Otherwise it derives the path from the model path or, if that is null,
+     * it returns a fallback "profile.epp" in the workspace root.
+     * 
+     * @param stepProfilePath the profile path, may be relative, may be null
+     * @param modelPath the resolved model path, may be null
+     * @return a resolved profile path
+     * @throws Exception 
+     */
+    protected Path getProfilePathOrDefault(String stepProfilePath, Path modelPath) throws Exception {
+		if (stepProfilePath != null) {
+			// resolve selected string to a path
+			return resolvePath(stepProfilePath);
+		} else {
+			// no profilePath specified, use model name or fallback value
+			if (modelPath == null) {
+				// fallback
+				return resolvePath("profile.epp");
+			} else {
+				// derive epp name from model file name
+				String modelFileName = modelPath.toFile().getName();
+				if (modelFileName.contains(".")) {
+					modelFileName = modelFileName.substring(0, modelFileName.lastIndexOf("."));
+				}
+				String eppName = modelFileName + ".epp";
+				return resolvePath(eppName);
+			}
+		}
+	}
 
     /**
      * Implemented by the individual btc step executors.

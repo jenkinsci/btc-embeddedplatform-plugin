@@ -55,7 +55,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         try {
         	exportDir = resolvePath(step.getDir());
         } catch (Exception e) {
-        	jenkinsConsole.println("Error: Couldnt find dir: " + step.getDir());
+        	log("Error: Couldnt find dir: " + step.getDir());
         }
         
         File[] files = exportDir.toFile().listFiles(new FileFilter() {
@@ -85,7 +85,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         	case "SIL":
         		break;
         	default:
-        		jenkinsConsole.println("Warning: non-standard execution config " + step.getExecutionConfig()
+        		log("Warning: non-standard execution config " + step.getExecutionConfig()
         		+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
         }
         response = response_int;
@@ -94,15 +94,15 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         		// successful. nothing to report.
         		break;
         	case 400:
-        		jenkinsConsole.println("Error: Bad request (make sure the arguments you passed in are valid");
+        		log("Error: Bad request (make sure the arguments you passed in are valid");
         		failed();
         		break;
         	case 404:
-        		jenkinsConsole.println("Error: Not found.");
+        		log("Error: Not found.");
         		failed();
         		break;
         	case 500: 
-        		jenkinsConsole.println("Error: Internal server error.");
+        		log("Error: Internal server error.");
         		failed();
         		break;
         }

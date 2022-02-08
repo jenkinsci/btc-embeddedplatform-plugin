@@ -90,6 +90,9 @@ public class HttpRequester {
         Map<String, Object> responseObject = new HashMap<>();
         GenericResponse r;
         r = HttpRequester.get("/ep/progress/" + jobId);
+        if (r == null) {
+        	return null;
+        }
         String responseString = r.getContent();
         int statusCode = r.getStatus().getStatusCode();
         responseObject.put("statusCode", statusCode);
@@ -131,6 +134,7 @@ public class HttpRequester {
     /**
      * Waits for the job to complete and returns the created object (if available) or null.
      * Outputs are printed to System.out.
+     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
      *
      * @param jobId the job to wait for
      * @return the created object (if available) or null
@@ -142,6 +146,7 @@ public class HttpRequester {
     /**
      * Waits for the job to complete and returns the created object (if available) or null.
      * Outputs are printed to System.out.
+     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
      *
      * @param jobId the job to wait for
      * @return the created object (if available) or null
@@ -149,9 +154,11 @@ public class HttpRequester {
     public static Object waitForCompletion(String jobId) {
         return waitForCompletion(jobId, "uid", System.out);
     }
-
+    
     /**
      * Waits for the job to complete and returns the created object (if available) or null.
+     * 
+     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
      *
      * @param jobId the job to wait for
      * @param topic name of the topic being processed (may be null)
@@ -172,9 +179,9 @@ public class HttpRequester {
                     break;
                 }
                 // job still in progress:
-                if (progress.containsKey("message") && progress.containsKey("progressDone")) {
+                if (progress.containsKey("message") && progress.containsKey("progress")) {
                     String message = (String)progress.get("message");
-                    double progressDone = (double)progress.get("progressDone");
+                    double progressDone = (double)progress.get("progress");
                     if (progressDone > oldProgressDone) {
                         System.out.println(message + " | " + progressDone + "%");
                         oldProgressDone = progressDone;
@@ -184,7 +191,7 @@ public class HttpRequester {
                 out.println("No progress info available!");
                 break;
             }
-            sleep(2000);
+//            sleep(2000);
         }
         return createdObject;
     }

@@ -60,20 +60,17 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
         HttpRequester.port = step.getPort();
         Store.startDate = new Date();
         boolean connected = HttpRequester.checkConnection("/test", 200);
-        
-        // prepare data for process call
-        String epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
-        String jreDirectory = getJreDir();
-        String licensingPackage = step.getLicensingPackage();
-        
+        String epVersion = "";
         if (connected) {
-            jenkinsConsole
-                .println("Successfully connected to a running instance of BTC EmbeddedPlatform on port "
-                    + step.getPort());
             response = 201;
         } else {
             // start command call can be skipped if we only connect to a starting instance (e.g. in docker)
             if (!step.isSimplyConnect()) {
+            	// prepare data for process call
+            	epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
+            	String jreDirectory = getJreDir();
+            	String licensingPackage = step.getLicensingPackage();
+            	
             	// Check preconditions
                 checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
                     "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
@@ -87,17 +84,17 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
                 ProcessBuilder pb = new ProcessBuilder(command);
                 // start process and save it for future use (e.g. to destroy it)
                 Store.epProcess = pb.start();
-                jenkinsConsole.println(String.join(" ", command));
+                log(String.join(" ", command));
             }
 
             // wait for ep rest service to respond
             connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
             if (connected) {
-                jenkinsConsole.println("Successfully connected to BTC EmbeddedPlatform " + epVersion
+                log("Successfully connected to BTC EmbeddedPlatform " + epVersion
                     + " on port " + step.getPort());
                 response = 200;
             } else {
-                jenkinsConsole.println("Connection timed out after " + step.getTimeout() + " seconds.");
+                log("Connection timed out after " + step.getTimeout() + " seconds.");
                 failed();
                 // Kill EmbeddedPlatform process to prevent zombies!
                 Store.epProcess.destroyForcibly();

@@ -47,7 +47,6 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         /*
          * Preliminary checks
          */
-        Util.discardLoadedProfileIfPresent(profilesApi);
         Path profilePath = resolvePath(step.getProfilePath());
         checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
         checkArgument(profilePath.toFile().exists(),
@@ -57,6 +56,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         /*
          * Load the profile
          */
+        log("Loading profile '" + profilePath.toFile().getName() + "'"); 
         profilesApi.openProfile(step.getProfilePath(), true);
         updateModelPaths();
         String msg = "Successfully loaded the profile";
@@ -83,13 +83,13 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
          * Update architecture if required
          */
         if (step.isUpdateRequired()) {
-            Util.discardLoadedProfileIfPresent(profilesApi);
             Job archUpdate = archApi.architectureUpdate();
+            log("Updating architecture...");
             HttpRequester.waitForCompletion(archUpdate.getJobID());
             msg += " (incl. arch-update)";
             response = 201;
         }
-        jenkinsConsole.println(msg + ".");
+        log(msg + ".");
         detailWithLink(Store.epp.getName(), profilePath.toString());
         info(msg + ".");
         response = 200;

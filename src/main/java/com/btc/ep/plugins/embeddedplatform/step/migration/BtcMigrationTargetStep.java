@@ -107,7 +107,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
             Util.applyMatchingFields(step, tlProfileCreation).start(getContext()).start();
         } else if (step.getSlModelPath() != null) {
             BtcProfileCreateECStep ecProfileCreation =
-                new BtcProfileCreateECStep(profilePath.toString(), step.getSlModelPath());
+                new BtcProfileCreateECStep(step.getSlModelPath());
             Util.applyMatchingFields(step, ecProfileCreation).start(getContext()).start();
         } else if (step.getCodeModelPath() != null) {
             BtcProfileCreateCStep cProfileCreation =
@@ -196,7 +196,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         wrapUp.start(getContext()).start();
 
         // print success message and return response code
-        jenkinsConsole.println("--> [200] Migration Target successfully executed.");
+        log("--> [200] Migration Target successfully executed.");
         response = 200;
     }
 

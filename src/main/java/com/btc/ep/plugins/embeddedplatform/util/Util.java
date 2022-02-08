@@ -12,8 +12,6 @@ import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,12 +30,10 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.PreferencesApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.RequirementsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Preference;
-import org.openapitools.client.model.ProfilePath;
 import org.openapitools.client.model.Requirement;
 import org.openapitools.client.model.RequirementBasedTestCase;
 import org.openapitools.client.model.RequirementSource;
@@ -140,16 +136,6 @@ public class Util {
     public static File getResourceAsFile(Class<?> referenceClass, String resourcePath) {
         ClassLoader classLoader = referenceClass.getClassLoader();
         return new File(classLoader.getResource(resourcePath).getFile().replace("%20", " "));
-    }
-
-    //set to @Deprecated once EP22.1 arrives 
-    public static void discardLoadedProfileIfPresent(ProfilesApi profilesApi) {
-        try {
-            Path tmpFile = Files.createTempFile("deleteme", ".epp");
-            profilesApi.saveProfile(new ProfilePath().path(tmpFile.toString()));
-            Files.delete(tmpFile);
-        } catch (Exception ignored) {
-        }
     }
 
     public static String getCompilerPreferenceValue(String compilerShortName) {

@@ -15,7 +15,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
-import org.openapitools.client.api.ProgressApi;
 import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
 
@@ -63,8 +62,8 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
         CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
         Job job = archApi.importArchitecture(info);
+        log("Importing C-Code architecture...");
         HttpRequester.waitForCompletion(job.getJobID());
-        new ProgressApi().getProgress(job.getJobID());
 
         /*
          * Wrapping up, reporting, etc.
@@ -72,7 +71,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         String msg = "Successfully created the profile.";
         detailWithLink(Store.epp.getName(), profilePath.toString());
         response = 200;
-        jenkinsConsole.println(msg);
+        log(msg);
         info(msg);
     }
 
@@ -84,9 +83,8 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
      * @param codeModelPath the code model path
      */
     private void preliminaryChecks(Path profilePath, Path codeModelPath) {
-        Util.discardLoadedProfileIfPresent(profilesApi);
         if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
+            log(
                 "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
         checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());

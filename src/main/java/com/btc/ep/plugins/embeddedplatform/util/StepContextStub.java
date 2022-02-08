@@ -52,7 +52,7 @@ public class StepContextStub extends StepContext {
 
     @Override
     public void onSuccess(Object result) {
-        System.out.println("Step finished with result: " + result);
+        System.out.println("[Debug output] Step finished with result: " + result);
     }
 
     @Override

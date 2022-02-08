@@ -15,6 +15,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.FoldersApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
@@ -70,7 +71,7 @@ public class BtcVectorImportStep extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcExample";
+            return "btcVectorImport";
         }
 
         /*
@@ -78,7 +79,7 @@ public class BtcVectorImportStep extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Example Step";
+            return "BTC Vector Import";
         }
     }
 
@@ -94,6 +95,7 @@ public class BtcVectorImportStep extends Step implements Serializable {
         return vectorKind;
     }
 
+    @DataBoundSetter
     public void setVectorKind(String vectorKind) {
         this.vectorKind = vectorKind;
     }
@@ -101,7 +103,8 @@ public class BtcVectorImportStep extends Step implements Serializable {
     public String getVectorFormat() {
         return vectorFormat;
     }
-
+    
+    @DataBoundSetter
     public void setVectorFormat(String vectorFormat) {
         this.vectorFormat = vectorFormat;
     }
@@ -165,7 +168,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
         if (status == null) {
         	// i think the callback will at least return an error message? so we should never be here.
         	// but might as well throw it in just in case i'm wrong
-        	jenkinsConsole.println("Something has gone horribly wrong in importing the vectors");
+        	log("Something has gone horribly wrong in importing the vectors");
         	return;
         }
         @SuppressWarnings("unchecked")

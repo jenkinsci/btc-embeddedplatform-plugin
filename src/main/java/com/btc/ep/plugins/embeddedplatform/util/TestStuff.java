@@ -1,44 +1,39 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
-import java.util.Arrays;
-import java.util.List;
-
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
-import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
-import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcB2BStep;
-import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcRBTStep;
-import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
-import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
-import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
-import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordImportStep;
-import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
-import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorExportStep;
-import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
 
 public class TestStuff {
 
     /*
      * Currently requires minor modification in BtcStepExecution class to accept the fake step context
      */
-    private static final StepContext DUMMY_CONTEXT = StepContextStub.getInstance("C:/workspace/");
-    //private static final String BASE_DIR = "E:/EP2/SupportPlugins/EPJenkinsAutomation/TestSuite/Architectures";
-    private static final String BASE_DIR = "C:/Users/nathand/Desktop/PowerWindow/PowerWindow_EmbeddedCoder";
+	//private static final StepContext DUMMY_CONTEXT = StepContextStub.getInstance("C:/workspace/");
+	private static final StepContext DUMMY_CONTEXT = StepContextStub.getInstance("E:/workspace/");
+    private static final String BASE_DIR = "E:/EP2/SupportPlugins/EPJenkinsAutomation/TestSuite/Architectures";
+    //private static final String BASE_DIR = "C:/Users/nathand/Desktop/PowerWindow/PowerWindow_EmbeddedCoder";
 
     public static void main(String[] args) throws Exception {
         BtcStartupStep start = new BtcStartupStep();
-        start.setInstallPath("C:/Program Files/BTC/ep2.11p0");
+        start.setInstallPath("E:/Program Files/BTC/ep22.1p0");
         start.setPort(29268);
         start.setAdditionalJvmArgs("-Xmx2g");
         start.start(DUMMY_CONTEXT).start();
 
-        BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("C:/workspace/profile.epp");
-        profileLoad.setUpdateRequired(false);
-        profileLoad.start(DUMMY_CONTEXT).start();
+//        BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("C:/workspace/profile.epp");
+//        profileLoad.setUpdateRequired(false);
+//        profileLoad.start(DUMMY_CONTEXT).start();
+        
+        
+        String slModelPath = BASE_DIR + "/EmbeddedCoder/Autosar/autosar_swc_expfcns.slx";
+        BtcProfileCreateECStep profileCreateEC = new BtcProfileCreateECStep(slModelPath);
+        profileCreateEC.setCreateWrapperModel(true);
+        profileCreateEC.start(DUMMY_CONTEXT).start();
+        
 
 //        BtcMigrationSourceStep ms = new BtcMigrationSourceStep("E:/profile_211_ccms.epp");
 //        ms.setInstallPath("E:/Program Files/BTC/ep2.11p0");
@@ -173,9 +168,9 @@ public class TestStuff {
         		BtcInputRestrictionsExportStep ires = new BtcInputRestrictionsExportStep("C:/workspace/inputRestrictions/export.xml");
         		ires.start(DUMMY_CONTEXT).start();*/
         
-		        System.out.println("exporting tolerances");
+		        /*System.out.println("exporting tolerances");
 				BtcToleranceExportStep ires = new BtcToleranceExportStep("C:/workspace/profile.epp", "C:/workspace/tolerances/export.xml");
-				ires.start(DUMMY_CONTEXT).start();
+				ires.start(DUMMY_CONTEXT).start();*/
         		
                 BtcWrapUpStep wrapUp = new BtcWrapUpStep();
                 wrapUp.setCloseEp(false);

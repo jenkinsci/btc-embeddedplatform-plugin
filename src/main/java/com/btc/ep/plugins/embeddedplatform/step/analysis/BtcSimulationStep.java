@@ -29,12 +29,12 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExampleStepExecution extends AbstractBtcStepExecution {
+class BtcSimulationStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
     private BtcSimulationStep step;
 
-    public BtcExampleStepExecution(BtcSimulationStep step, StepContext context) {
+    public BtcSimulationStepExecution(BtcSimulationStep step, StepContext context) {
         super(step, context);
         this.step = step;
     }
@@ -79,7 +79,7 @@ class BtcExampleStepExecution extends AbstractBtcStepExecution {
          */
 
         // print success message and return response code
-        //jenkinsConsole.println("--> [200] Simulation successfully executed.");
+        //log("--> [200] Simulation successfully executed.");
         response = 200;
     }
 
@@ -105,7 +105,7 @@ public class BtcSimulationStep extends Step implements Serializable {
 
     @Override
     public StepExecution start(StepContext context) throws Exception {
-        return new BtcExampleStepExecution(this, context);
+        return new BtcSimulationStepExecution(this, context);
     }
 
     @Extension

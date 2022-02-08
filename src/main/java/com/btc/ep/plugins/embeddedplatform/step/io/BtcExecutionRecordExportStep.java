@@ -53,8 +53,8 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         try {
         	exportDir = resolvePath(step.getDir());
         } catch (Exception e) {
-        	jenkinsConsole.println("Error: invalid path: " + step.getDir());
-        	jenkinsConsole.println(e.getMessage());
+        	log("Error: invalid path: " + step.getDir());
+        	log(e.getMessage());
         	failed();
         	return;
         }
@@ -65,7 +65,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
             .map(er -> er.getUid())
             .collect(Collectors.toList());
         if (uids.isEmpty()) {
-        	jenkinsConsole.println("Error: no execution records to export found. Did you run any tests yet?");
+        	log("Error: no execution records to export found. Did you run any tests yet?");
         	failed();
         	return;
         }

@@ -71,7 +71,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 	            profileApi.saveProfile(new ProfilePath().path(profilePath));
 	        }
         } catch (Exception e) {
-        	jenkinsConsole.println("Warning: could not save profile. If you did not load a profile earlier,"
+        	log("Warning: could not save profile. If you did not load a profile earlier,"
         			+ "you can safely ignore this message.");
         }
 
@@ -84,7 +84,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
                 // ... und bist du nicht willig, so brauch ich Gewalt!
                 Store.epProcess.destroyForcibly();
             }
-            jenkinsConsole.println("Successfully closed BTC EmbeddedPlatform.");
+            log("Successfully closed BTC EmbeddedPlatform.");
         }
         response = 200;
     }

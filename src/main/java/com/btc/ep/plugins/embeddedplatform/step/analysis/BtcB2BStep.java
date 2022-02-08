@@ -79,14 +79,14 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         try {
 	        job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
         } catch (Exception e) {
-        	jenkinsConsole.println("Error: failed to execute B2B test: " + e.getMessage());
+        	log("Error: failed to execute B2B test: " + e.getMessage());
         	return;
         }
         Map<?,?> resultMap = (Map<?,?>)HttpRequester.waitForCompletion(job.getJobID(), "result");
         String b2bTestUid = (String)resultMap.get("uid");
         BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
         String verdictStatus = b2bTest.getVerdictStatus().toString();
-        jenkinsConsole.println("Back-to-Back Test finished with result: " + verdictStatus);
+        log("Back-to-Back Test finished with result: " + verdictStatus);
         // status, etc.
         String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
             + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";

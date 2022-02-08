@@ -115,7 +115,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		try {
         	DcXmlPath = resolvePath(step.getDcXmlPath());
     		} catch (Exception e) {
-    			jenkinsConsole.println("Error: invalid path given: "+step.getDcXmlPath());
+    			log("Error: invalid path given: "+step.getDcXmlPath());
     			failed();
     			return;
     		}
@@ -125,12 +125,12 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         	try {
         		Job job = domainApi.importDomainChecksGoals(r);
         		HttpRequester.waitForCompletion(job.getJobID(), "result");
-	        	jenkinsConsole.println("Successfully imported domain checks for scope " + scopeuid + ": " + response);
+	        	log("Successfully imported domain checks for scope " + scopeuid + ": " + response);
 			} catch (Exception e) {
 				result("FAILED: " + e.getMessage());
 				failed();
 				status(Status.ERROR);
-				jenkinsConsole.println("failed API call: " + e.getMessage());
+				log("failed API call: " + e.getMessage());
 				response = 500;
 			}	
         } else { // no config file given-- use our input variables
@@ -142,12 +142,12 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		r.setPercentage(Integer.parseInt(step.getRaster()));
     		try { //send API object
     			String response = domainApi.createDomainChecksRanges(r);
-    			jenkinsConsole.println("Successfully updated domain checks for scope " + scopeuid + ": " + response);
+    			log("Successfully updated domain checks for scope " + scopeuid + ": " + response);
     		} catch (Exception e) {
     			result("FAILED: " + e.getMessage());
 				failed();
 				status(Status.ERROR);
-    			jenkinsConsole.println("failed API call: " + e.getMessage());
+    			log("failed API call: " + e.getMessage());
     			response = 500;
     		}
         }

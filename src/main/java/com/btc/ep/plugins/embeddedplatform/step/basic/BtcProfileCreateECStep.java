@@ -1,8 +1,10 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
+import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -17,6 +19,8 @@ import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ECImportInfo;
 import org.openapitools.client.model.ECImportInfo.ParameterHandlingEnum;
 import org.openapitools.client.model.ECImportInfo.TestModeEnum;
+import org.openapitools.client.model.ECWrapperImportInfo;
+import org.openapitools.client.model.ECWrapperResultInfo;
 import org.openapitools.client.model.Job;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
@@ -49,40 +53,71 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
      * - calling EP Rest API
      * - print text to the Jenkins console (field: jenkinsConsole)
      * - set resonse code (field: response)
-     */
+     */	
     @Override
     protected void performAction() throws Exception {
         /*
          * Preparation
          */
-        Path profilePath = resolvePath(step.getProfilePath());
+    	Path slModelPath = resolvePath(step.getSlModelPath());
+    	Path slScriptPath = resolvePath(step.getSlScriptPath());
+        Path profilePath = getProfilePathOrDefault(step.getProfilePath(), slModelPath);
         preliminaryChecks();
         Store.epp = profilePath.toFile();
         Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
 
+        profilesApi.createProfile(true);
         /*
          * Prepare Matlab
          */
+        log("Connecting to Matlab...");
         Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
 
+        
+        //TODO: check if files exist?
+        
         //TODO: Execute Startup Script (requires EP-2535)
 
         //TODO: Create Wrapper Model (requires EP-2538)
+        String modelPath = slModelPath.toString();
+    	String scriptPath = slScriptPath == null ? null : slScriptPath.toString();
+        if (step.isCreateWrapperModel()) {
+        	ECWrapperImportInfo wrapperInfo = new ECWrapperImportInfo();
+        	wrapperInfo.setEcModelFile(modelPath);
+        	wrapperInfo.setEcInitScript(scriptPath);
+        	Job job = archApi.createEmbeddedCoderCWrapperModel(wrapperInfo);
+        	log("Creating wrapper model for autosar component '" + slModelPath.toFile().getName() + "'...");
+        	Object resultObj = HttpRequester.waitForCompletion(job.getJobID(), "result");
+        	try {
+        		modelPath = (String) ((Map<?,?>)resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_MODEL_FILE);
+        		scriptPath = (String) ((Map<?,?>)resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_INIT_FILE);
+        		log("EmbeddedCoder Autosar wrapper model creation succeeded.");
+        	} catch (Exception e) {
+        		throw new ApiException("Wrapper model creation did not return the expected result: " + resultObj);
+        	}
+        }
 
         /*
          * Create the profile based on the code model
          */
-        Path slModelPath = resolvePath(step.getSlModelPath());
-        Path slScriptPath = resolvePath(step.getSlScriptPath());
-        profilesApi.createProfile(true);
         ECImportInfo info = new ECImportInfo()
-            .ecModelFile(slModelPath.toString())
-            .ecInitScript(slScriptPath.toString())
+            .ecModelFile(modelPath)
+            .ecInitScript(scriptPath)
             .fixedStepSolver(true);
-        //TODO: support two-step import process that allows us to filter subsystems/calibrations/codefiles (requires EP-2569)
+        if (step.getSubsystemMatcher() != null) {
+        	info.setSubsystemMatcher(step.getSubsystemMatcher());
+        }
+        if (step.getCalibrationMatcher() != null) {
+        	info.setParameterMatcher(step.getCalibrationMatcher());
+        }
+        if (step.getCodeFileMatcher() != null) {
+        	//TODO: Implement as soon as the EC arch import offers a code file matcher
+        	//info.setCodeFileMatcher(step.getCodeFileMatcher());
+        }
         configureParameterHandling(info, step.getParameterHandling());
         configureTestMode(info, step.getTestMode());
         Job job = archApi.importEmbeddedCoderArchitecture(info);
+        log("Importing EmbeddedCoder architecture '" + new File(modelPath).getName() + "'...");
         HttpRequester.waitForCompletion(job.getJobID());
 
         /*
@@ -91,11 +126,11 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         String msg = "Successfully created the profile.";
         detailWithLink(Store.epp.getName(), profilePath.toString());
         response = 200;
-        jenkinsConsole.println(msg);
+        log(msg);
         info(msg);
     }
 
-    /**
+	/**
      * Derives the enumValue from the given string and sets it on the ECImportInfo object.
      *
      * @param info the ECImportInfo object
@@ -137,9 +172,8 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
      * @param addInfoModelPath
      */
     private void preliminaryChecks() {
-        Util.discardLoadedProfileIfPresent(profilesApi);
         if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
+            log(
                 "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
     }
@@ -167,13 +201,17 @@ public class BtcProfileCreateECStep extends Step implements Serializable {
     private String startupScriptPath;
     private String matlabVersion;
     private String matlabInstancePolicy = "AUTO";
+    
+    private String subsystemMatcher;
+	private String calibrationMatcher;
+    private String codeFileMatcher;
     private boolean saveProfileAfterEachStep;
+    private boolean createWrapperModel;
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateECStep(String profilePath, String slModelPath) {
+    public BtcProfileCreateECStep(String slModelPath) {
         super();
-        this.profilePath = profilePath;
         this.slModelPath = slModelPath;
     }
 
@@ -208,6 +246,18 @@ public class BtcProfileCreateECStep extends Step implements Serializable {
         }
     }
 
+    public String getSubsystemMatcher() {
+		return subsystemMatcher;
+	}
+
+	public void setSubsystemMatcher(String subsystemMatcher) {
+		this.subsystemMatcher = subsystemMatcher;
+	}
+
+	public String getCalibrationMatcher() {
+		return calibrationMatcher;
+	}
+    
     public String getProfilePath() {
         return profilePath;
     }
@@ -254,6 +304,29 @@ public class BtcProfileCreateECStep extends Step implements Serializable {
 
     }
 
+    public boolean isCreateWrapperModel() {
+    	return createWrapperModel;
+    }
+    
+    public String getCodeFileMatcher() {
+    	return codeFileMatcher;
+    }
+
+    @DataBoundSetter
+    public void setCalibrationMatcher(String calibrationMatcher) {
+		this.calibrationMatcher = calibrationMatcher;
+	}
+	
+	@DataBoundSetter
+	public void setCodeFileMatcher(String codeFileMatcher) {
+		this.codeFileMatcher = codeFileMatcher;
+	}
+    
+    @DataBoundSetter
+    public void setProfilePath(String profilePath) {
+    	this.profilePath = profilePath;
+    }
+    
     @DataBoundSetter
     public void setTestMode(String testMode) {
         this.testMode = testMode;
@@ -300,6 +373,12 @@ public class BtcProfileCreateECStep extends Step implements Serializable {
     public void setLicenseLocationString(String licenseLocationString) {
         this.licenseLocationString = licenseLocationString;
     }
+
+
+	@DataBoundSetter
+	public void setCreateWrapperModel(boolean createWrapperModel) {
+		this.createWrapperModel = createWrapperModel;
+	}
 
     /*
      * End of getter/setter section

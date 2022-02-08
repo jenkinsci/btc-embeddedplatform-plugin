@@ -93,7 +93,7 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
             Util.applyMatchingFields(step, tlProfileCreation).start(getContext()).start();
         } else if (step.getSlModelPath() != null) {
             BtcProfileCreateECStep ecProfileCreation =
-                new BtcProfileCreateECStep(profilePath.toString(), step.getSlModelPath());
+                new BtcProfileCreateECStep(step.getSlModelPath());
             Util.applyMatchingFields(step, ecProfileCreation).start(getContext()).start();
         } else if (step.getCodeModelPath() != null) {
             BtcProfileCreateCStep cProfileCreation =
@@ -159,7 +159,7 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
         saveProfileAndReportData(profilePath.toString());
 
         // print success message and return response code
-        jenkinsConsole.println("--> [200] Migration Source successfully executed.");
+        log("--> [200] Migration Source successfully executed.");
         response = 200;
     }
 

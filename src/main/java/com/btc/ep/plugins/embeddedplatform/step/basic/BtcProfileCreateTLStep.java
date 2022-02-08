@@ -99,10 +99,17 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         if (step.getTlSubsystem() != null) {
             info.setTlSubsystem(step.getTlSubsystem());
         }
-        
-        
-        //TODO: support two-step import process that allows us to filter subsystems/calibrations/codefiles (requires EP-2569)
+        if (step.getSubsystemMatcher() != null) {
+        	info.setSubsystemMatcher(step.getSubsystemMatcher());
+        }
+        if (step.getCalibrationMatcher() != null) {
+        	info.setCalibrationMatcher(step.getCalibrationMatcher());
+        }
+        if (step.getCodeFileMatcher() != null) {
+        	info.setCfileMatcher(step.getCodeFileMatcher());
+        }
         Job job = archApi.importTargetLinkArchitecture(info);
+        log("Importing TargetLink architecture '" + tlModelPath.toFile().getName() + "'...");
         HttpRequester.waitForCompletion(job.getJobID());
 
         /*
@@ -111,7 +118,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         String msg = "Successfully created the profile.";
         detailWithLink(Store.epp.getName(), profilePath.toString());
         response = 200;
-        jenkinsConsole.println(msg);
+        log(msg);
         info(msg);
     }
 
@@ -123,9 +130,8 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
      * @param addInfoModelPath
      */
     private void preliminaryChecks() {
-        Util.discardLoadedProfileIfPresent(profilesApi);
         if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
+            log(
                 "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
     }
@@ -154,9 +160,9 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
     private String calibrationHandling = "EXPLICIT PARAM";
     private String testMode = "GREY BOX";
     private boolean reuseExistingCode;
-    private String tlSubsystemFilter;
-    private String tlCodeFileFilter;
-    private String tlCalibrationFilter;
+    private String subsystemMatcher;
+	private String calibrationMatcher;
+    private String codeFileMatcher;
     private String startupScriptPath;
     private String matlabVersion;
     private String matlabInstancePolicy = "AUTO";
@@ -261,17 +267,32 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
         return reuseExistingCode;
     }
 
-    public String getTlSubsystemFilter() {
-        return tlSubsystemFilter;
+    public String getSubsystemMatcher() {
+		return subsystemMatcher;
+	}
+
+    public String getCalibrationMatcher() {
+    	return calibrationMatcher;
     }
 
-    public String getTlCodeFileFilter() {
-        return tlCodeFileFilter;
+    public String getCodeFileMatcher() {
+    	return codeFileMatcher;
     }
 
-    public String getTlCalibrationFilter() {
-        return tlCalibrationFilter;
-    }
+    @DataBoundSetter
+	public void setSubsystemMatcher(String subsystemMatcher) {
+		this.subsystemMatcher = subsystemMatcher;
+	}
+
+    @DataBoundSetter
+	public void setCalibrationMatcher(String calibrationMatcher) {
+		this.calibrationMatcher = calibrationMatcher;
+	}
+
+    @DataBoundSetter
+	public void setCodeFileMatcher(String codeFileMatcher) {
+		this.codeFileMatcher = codeFileMatcher;
+	}
 
     @DataBoundSetter
     public void setTlSubsystem(String tlSubsystem) {
@@ -301,21 +322,6 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
     @DataBoundSetter
     public void setReuseExistingCode(boolean reuseExistingCode) {
         this.reuseExistingCode = reuseExistingCode;
-    }
-
-    @DataBoundSetter
-    public void setTlSubsystemFilter(String tlSubsystemFilter) {
-        this.tlSubsystemFilter = tlSubsystemFilter;
-    }
-
-    @DataBoundSetter
-    public void setTlCodeFileFilter(String tlCodeFileFilter) {
-        this.tlCodeFileFilter = tlCodeFileFilter;
-    }
-
-    @DataBoundSetter
-    public void setTlCalibrationFilter(String tlCalibrationFilter) {
-        this.tlCalibrationFilter = tlCalibrationFilter;
     }
 
     @DataBoundSetter

@@ -66,14 +66,12 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
 
         //TODO: Execute Startup Script (requires EP-2535)
 
-        /*
-         * Create the profile based on the code model
-         */
         profilesApi.createProfile(true);
         SLImportInfo info = new SLImportInfo()
             .slModelFile(slModelPath.toString())
             .slInitScriptFile(slScriptPath.toString());
         Job job = archApi.importSimulinkArchitecture(info);
+        log("Importing Simulink architecture '" + slModelPath.toFile().getName() + "'...");
         HttpRequester.waitForCompletion(job.getJobID());
 
         /*
@@ -82,7 +80,7 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         String msg = "Successfully created the profile.";
         detailWithLink(Store.epp.getName(), profilePath.toString());
         response = 200;
-        jenkinsConsole.println(msg);
+        log(msg);
         info(msg);
     }
 
@@ -94,9 +92,8 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
      * @param addInfoModelPath
      */
     private void preliminaryChecks() {
-        Util.discardLoadedProfileIfPresent(profilesApi);
         if (step.getLicenseLocationString() != null) {
-            jenkinsConsole.println(
+            log(
                 "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
     }
