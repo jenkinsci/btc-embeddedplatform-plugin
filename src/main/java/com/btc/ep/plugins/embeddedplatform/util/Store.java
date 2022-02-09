@@ -9,10 +9,12 @@ import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
 
+import hudson.Proc;
+
 public class Store {
 
     // General
-    public static Process epProcess;
+    public static Proc epProcess;
     public static File epp;
     public static String exportPath;
     public static String globalSuffix;

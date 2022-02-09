@@ -82,7 +82,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
             applicationApi.exitApplication(true);
             if (Store.epProcess != null && Store.epProcess.isAlive()) {
                 // ... und bist du nicht willig, so brauch ich Gewalt!
-                Store.epProcess.destroyForcibly();
+                Store.epProcess.kill();
             }
             log("Successfully closed BTC EmbeddedPlatform.");
         }

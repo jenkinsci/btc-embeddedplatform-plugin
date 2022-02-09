@@ -81,9 +81,9 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
                 // prepare ep start command
                 List<String> command =
                     createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
-                ProcessBuilder pb = new ProcessBuilder(command);
+                
                 // start process and save it for future use (e.g. to destroy it)
-                Store.epProcess = pb.start();
+                Store.epProcess = spawnManagedProcess(command);
                 log(String.join(" ", command));
             }
 
@@ -97,7 +97,8 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
                 log("Connection timed out after " + step.getTimeout() + " seconds.");
                 failed();
                 // Kill EmbeddedPlatform process to prevent zombies!
-                Store.epProcess.destroyForcibly();
+                // Hmm, is this important? Jenkins does this eventually using the process killer...
+                Store.epProcess.kill();
                 response = 400;
                 return;
             }
@@ -169,6 +170,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 
             }
         });
+        checkArgument(javaDirs != null, "Failed to find the Java directory in the EP installation ('" + jreParentDir + "')");
         checkArgument(javaDirs.length > 0, "Failed to find the Java runtime in " + jreParentDir.getPath());
         String jreBinPath = javaDirs[0].getPath() + "/bin";
         return jreBinPath;

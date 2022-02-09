@@ -3,12 +3,16 @@ package com.btc.ep.plugins.embeddedplatform.step;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.TimerTask;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -20,13 +24,17 @@ import com.btc.ep.plugins.embeddedplatform.reporting.project.BasicStep;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStep;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
+import com.btc.ep.plugins.embeddedplatform.util.TestStuff_FakeProc;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.FilePath;
+import hudson.Launcher;
+import hudson.Proc;
 import hudson.model.TaskListener;
 
 public abstract class AbstractBtcStepExecution extends StepExecution {
 
+	private static final String JENKINS_NODE_COOKIE = "JENKINS_NODE_COOKIE";
     private static final long serialVersionUID = 1L;
     protected Status status = Status.OK;
     protected PrintStream jenkinsConsole;
@@ -40,12 +48,12 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- ORIGINAL: START ---------------
      */
-    public AbstractBtcStepExecution(Step step, StepContext context) {
-        super(context);
-        this.functionName = step.getDescriptor().getFunctionName();
-        this.reportingStep = new TestStep(functionName);
-        recordStepArguments(step);
-    }
+//    public AbstractBtcStepExecution(Step step, StepContext context) {
+//        super(context);
+//        this.functionName = step.getDescriptor().getFunctionName();
+//        this.reportingStep = new TestStep(functionName);
+//        recordStepArguments(step);
+//    }
 
     /*
      * -------------- ORIGINAL: END -----------------
@@ -54,18 +62,18 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- Testing: START -----------------
      */
-//    public AbstractBtcStepExecution(Step step, StepContext context) {
-//    	this.context = context;
-//    	this.functionName = "DUMMY";
-//    	this.reportingStep = new TestStep(functionName);
-//    	recordStepArguments(step);
-//    }
-//
-//    private StepContext context;
-//    @Override
-//    public StepContext getContext() {
-//    	return this.context;
-//    }
+	@SuppressWarnings("deprecation")
+	public AbstractBtcStepExecution(Step step, StepContext context) {
+    	this.context = context;
+    	this.functionName = "DUMMY";
+    	this.reportingStep = new TestStep(functionName);
+    	recordStepArguments(step);
+    }
+    private StepContext context;
+    @Override
+    public StepContext getContext() {
+    	return this.context;
+    }
     /*
      * --------------- Testing: END -----------------
      */
@@ -252,6 +260,35 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     	jenkinsConsole.print("[BTC] ");
     	jenkinsConsole.println(message);
     }
+    
+    /**
+     * Launches a process with the given command using hudson.Launcher.class, starts it and returns the process.
+     * The process inherits the environment from Jenkins which allows Jenkins to kill processes when the run finishes/aborts/exits prematurely, etc.
+     * 
+     * @param command the command to run
+     * @return the process object
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    protected Proc spawnManagedProcess(List<String> command) throws IOException, InterruptedException {
+    	// Shortcut for testing outside of the Jenkins context 
+    	if ("DUMMY".equals(this.functionName)) {
+    		return new TestStuff_FakeProc(command);
+    	}
+    	
+    	// Use magical "get(...)" command from context to get the Launcher
+    	Launcher launcher = getContext().get(Launcher.class);
+    	
+    	// Use magical "get(...)" command from context to get the set of EnvVars that contains the required cookie
+    	// This cookie is some sort of hash that jenkins needs to be able to kill a spawned process
+    	Map<String, String> taskHandle = new HashMap<>();
+    	String cookie = getContext().get(hudson.EnvVars.class).get(JENKINS_NODE_COOKIE);
+    	taskHandle.put(JENKINS_NODE_COOKIE, cookie);
+    	
+    	// Start external process with the identifying cookie and return the process object
+    	Proc process = launcher.launch().cmds(command).envs(taskHandle).start();
+		return process;
+	}
     
     /**
      * Converts an absolute or relative path into a Path object.

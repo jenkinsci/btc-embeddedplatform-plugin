@@ -46,7 +46,6 @@ import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordImportStep;
-import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
@@ -138,11 +137,11 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         /*
          * 3. Tolerances
          */
-        if (step.getTolerancesXmlPath() != null) {
-            BtcToleranceImportStep toleranceImport = new BtcToleranceImportStep(step.getTolerancesXmlPath());
-            toleranceImport.setUseCase("B2B");
-            toleranceImport.start(getContext()).start();
-        }
+//        if (step.getTolerancesXmlPath() != null) {
+//            BtcToleranceImportStep toleranceImport = new BtcToleranceImportStep(step.getTolerancesXmlPath());
+//            toleranceImport.setUseCase("B2B");
+//            toleranceImport.start(getContext()).start();
+//        }
 
         for (String config : executionConfigs) {
             RegressionTestsApi regressionTestApi = new RegressionTestsApi();
