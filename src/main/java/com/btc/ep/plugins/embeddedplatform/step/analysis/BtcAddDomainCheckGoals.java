@@ -4,15 +4,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.configuration2.XMLConfiguration;
-import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
-import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -22,7 +17,6 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.DomainChecksApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ScopesApi;
-import org.openapitools.client.model.BackToBackTest;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestDomainChecksIOInfo;
 import org.openapitools.client.model.RestDomainChecksRangesInput;
@@ -33,7 +27,6 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /*

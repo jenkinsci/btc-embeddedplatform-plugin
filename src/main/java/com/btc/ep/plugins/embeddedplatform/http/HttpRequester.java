@@ -2,31 +2,43 @@ package com.btc.ep.plugins.embeddedplatform.http;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.Configuration;
 
 import com.google.gson.Gson;
 
 public class HttpRequester {
 
+	private static final int SUCCESS = 200;
     private static final int CREATED = 201;
     private static final int IN_PROGRESS = 202;
     public static String host = "http://localhost";
     public static int port = 29267;
+    
+    // Sometimes EP doesn't respond quickly (when it's very busy doing busy work...)
+    public static int timeoutInSeconds = 10;
+	private static CloseableHttpClient httpClient;
+	public static PrintStream printStream;
 
     public static GenericResponse get(String route) {
-        CloseableHttpClient httpClient = HttpClients.createDefault();
+    	if (httpClient == null) {
+    		httpClient = createHttpClient();
+    	}
         HttpGet get = new HttpGet(getBasePath() + route);
         get.setHeader("Accept", "application/json");
         try (CloseableHttpResponse response = httpClient.execute(get)) {
@@ -38,17 +50,24 @@ public class HttpRequester {
                 r.setStatus(response.getStatusLine());
                 return r;
             }
-        } catch (IOException e) {
-        } finally {
-            try {
-                httpClient.close();
-            } catch (IOException e) {
-            }
+        } catch (HttpHostConnectException endpointNotAvailable) {
+        	// ignore, this is bound to happend when we check for EP availability
+    	} catch (IOException e) {
+        	e.printStackTrace();
         }
         return null;
     }
 
-    public static GenericResponse post(String route, Object payload) throws IOException {
+    private static CloseableHttpClient createHttpClient() {
+    	RequestConfig requestConfig = RequestConfig.custom()
+    			.setConnectTimeout(timeoutInSeconds * 1000)
+    			.setConnectionRequestTimeout(timeoutInSeconds * 1000)
+    			.setSocketTimeout(timeoutInSeconds * 1000).build();
+        return HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+        
+	}
+
+	public static GenericResponse post(String route, Object payload) throws IOException {
         String json = new Gson().toJson(payload);
         return post(route, json);
     }
@@ -84,9 +103,10 @@ public class HttpRequester {
      *
      * @param jobId the jobId to retrieve the progress for
      * @return
+     * @throws ApiException 
      */
     @SuppressWarnings ("unchecked")
-    public static Map<String, Object> getProgress(String jobId) {
+    public static Map<String, Object> getProgress(String jobId) throws ApiException {
         Map<String, Object> responseObject = new HashMap<>();
         GenericResponse r;
         r = HttpRequester.get("/ep/progress/" + jobId);
@@ -111,8 +131,9 @@ public class HttpRequester {
                     return responseObject;
                 }
             default:
-                System.err.println(r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase());
-                break;
+            	String msg = r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase();
+                System.err.println(msg);
+                throw new ApiException("Request returned :" + msg);
         }
         return null;
     }
@@ -128,31 +149,6 @@ public class HttpRequester {
             basePath = host + ":" + port;
         }
         return basePath;
-
-    }
-
-    /**
-     * Waits for the job to complete and returns the created object (if available) or null.
-     * Outputs are printed to System.out.
-     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
-     *
-     * @param jobId the job to wait for
-     * @return the created object (if available) or null
-     */
-    public static Object waitForCompletion(String jobId, String expectedObjectName) {
-        return waitForCompletion(jobId, expectedObjectName, System.out);
-    }
-
-    /**
-     * Waits for the job to complete and returns the created object (if available) or null.
-     * Outputs are printed to System.out.
-     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
-     *
-     * @param jobId the job to wait for
-     * @return the created object (if available) or null
-     */
-    public static Object waitForCompletion(String jobId) {
-        return waitForCompletion(jobId, "uid", System.out);
     }
     
     /**
@@ -161,19 +157,83 @@ public class HttpRequester {
      * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
      *
      * @param jobId the job to wait for
-     * @param topic name of the topic being processed (may be null)
-     * @param out the print stream to use to report information
      * @return the created object (if available) or null
      */
-    public static Object waitForCompletion(String jobId, String expectedObjectName, PrintStream out) {
+    @SuppressWarnings("unchecked")
+	public static <T> T waitForCompletion(String jobId) {
+    	return (T) waitForCompletion(jobId, printStream, null, Object.class);
+    }
+    
+    /**
+     * Waits for the job to complete and returns the created object (if available) or null.
+     * 
+     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
+     *
+     * @param jobId the job to wait for
+     * @param out the print stream to use to report information
+     * @param resultFieldName name of the topic being processed (may be null)
+     * @return the created object (if available) or null
+     */
+    @SuppressWarnings("unchecked")
+	public static <T> T waitForCompletion(String jobId, String resultFieldName) {
+    	return (T) waitForCompletion(jobId, printStream, resultFieldName, Object.class);
+    }
+    
+    
+    /**
+     * Waits for the job to complete and returns the created object (if available) or null.
+     * 
+     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
+     *
+     * @param jobId the job to wait for
+     * @param resultFieldName name of the topic being processed (may be null)
+     * @param expectedResponseClass the class that you expect for the return type
+     * @return the created object (if available) or null
+     */
+    public static <T> T waitForCompletion(String jobId, String resultFieldName, Class<T> expectedResponseClass) {
+    	return (T) waitForCompletion(jobId, printStream, resultFieldName, expectedResponseClass);
+    }
+   
+    /**
+     * Waits for the job to complete and returns the created object (if available) or null.
+     * 
+     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
+     *
+     * @param jobId the job to wait for
+     * @param out the print stream to use to report information
+     * @param resultFieldName name of the topic being processed (may be null)
+     * @return the created object (if available) or null
+     */
+    @SuppressWarnings("unchecked")
+	public static <T> T waitForCompletion(String jobId, PrintStream out, String resultFieldName) {
+    	return (T) waitForCompletion(jobId, out, resultFieldName, Object.class);
+    }
+    
+    /**
+     * Waits for the job to complete and returns the created object (if available) or null.
+     * 
+     * <br><br><b>Best practice:</b> print what the long running task is supposed to do before starting it
+     *
+     * @param jobId the job to wait for
+     * @param out the print stream to use to report information
+     * @param resultFieldName name of the topic being processed (may be null)
+     * @param expectedResponseClass the class that you expect for the return type
+     * @return the created object (if available) or null
+     */
+	public static <T> T waitForCompletion(String jobId, PrintStream out, String resultFieldName, Class<T> expectedResponseClass) {
         Object createdObject = null;
         double oldProgressDone = 0d;
         while (true) {
-            Map<String, Object> progress = getProgress(jobId);
+            Map<String, Object> progress;
+			try {
+				progress = getProgress(jobId);
+			} catch (ApiException e) {
+				break;
+			}
             if (progress != null) {
                 int statusCode = (int)progress.get("statusCode");
-                if (statusCode == CREATED) {
-                    createdObject = progress.get(expectedObjectName);
+                if (Arrays.asList(CREATED, SUCCESS).contains(statusCode)) {
+                    createdObject = progress.get(resultFieldName);
                 }
                 if (statusCode != IN_PROGRESS) { // 202 -> in progress
                     break;
@@ -183,17 +243,34 @@ public class HttpRequester {
                     String message = (String)progress.get("message");
                     double progressDone = (double)progress.get("progress");
                     if (progressDone > oldProgressDone) {
-                        System.out.println(message + " | " + progressDone + "%");
+                        System.out.println("[Debug output] " + message.replace("Task in progress: ", "") + " | " + progressDone + "%");
                         oldProgressDone = progressDone;
                     }
                 }
             } else { // progress == null -> error
-                out.println("No progress info available!");
-                break;
+                System.out.println("[Debug output] No progress info available!");
+                sleep(2000);
             }
-//            sleep(2000);
         }
-        return createdObject;
+    	T resultingObject = magicJsonToJava(createdObject, expectedResponseClass);
+    	return resultingObject;
+    }
+    
+    /**
+     * Converts the generic object into an object based on the targetClass.
+     * 
+     * @param <T> The target class type
+     * @param obj the generic object (usually a List or a Map)
+     * @param targetClass the target class that the object should be transformed into (must not be null)
+     * @return the resulting object based on the target class
+     */
+	private static <T> T magicJsonToJava(Object obj, Class<T> targetClass) {
+		// convert object to json
+		String json = new Gson().toJson(obj);
+		
+		// convert json to target class
+		T resultingObject = new Gson().fromJson(json, targetClass);
+		return resultingObject;    		
     }
 
     private static void sleep(long millis) {
@@ -236,12 +313,20 @@ public class HttpRequester {
         try {
             GenericResponse response = get(route);
             if (response.getStatus().getStatusCode() == expectedStatusCode) {
-                System.out.println("Successfully connected to " + getBasePath() + route);
+                //System.out.println("Successfully connected to " + getBasePath() + route);
                 return true;
             }
         } catch (Exception e) {
             // ignore
         }
         return false;
+    }
+    
+    public static void closeHttpClient() {
+    	try {
+          httpClient.close();
+      } catch (IOException e) {
+      	e.printStackTrace();
+      }
     }
 }

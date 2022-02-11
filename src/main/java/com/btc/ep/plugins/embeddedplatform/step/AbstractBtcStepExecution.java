@@ -20,11 +20,12 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.openapitools.client.ApiException;
 
+import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.BasicStep;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStep;
+import com.btc.ep.plugins.embeddedplatform.test.TestStuff_FakeProc;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.btc.ep.plugins.embeddedplatform.util.TestStuff_FakeProc;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.FilePath;
@@ -90,7 +91,8 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                 Date t1 = new Date();
                 try {
                     jenkinsConsole = getContext().get(TaskListener.class).getLogger();
-
+                    // set default print stream to jenkinsConsole, relevant for waitForCompletion method
+                    HttpRequester.printStream = jenkinsConsole;
                     /*
                      * Main action (implemented by the individual steps)
                      */
@@ -243,6 +245,22 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      */
     public AbstractBtcStepExecution failed() {
         this.reportingStep.setPassed(false);
+        return this;
+    }
+    
+    /**
+     * Sets the status to ERROR
+     */
+    public AbstractBtcStepExecution error() {
+        this.reportingStep.setStatusOK(false);
+        return this;
+    }
+    
+    /**
+     * Sets the status to warning
+     */
+    public AbstractBtcStepExecution warning() {
+        this.reportingStep.setStatusWARNING(true);
         return this;
     }
 

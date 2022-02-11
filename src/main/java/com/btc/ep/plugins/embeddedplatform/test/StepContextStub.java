@@ -1,4 +1,4 @@
-package com.btc.ep.plugins.embeddedplatform.util;
+package com.btc.ep.plugins.embeddedplatform.test;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,7 +52,7 @@ public class StepContextStub extends StepContext {
 
     @Override
     public void onSuccess(Object result) {
-        System.out.println("[Debug output] Step finished with result: " + result);
+//        System.out.println("[Debug output] Step finished with result: " + result);
     }
 
     @Override

@@ -33,6 +33,8 @@ public class ReportService {
     public static ReportService getInstance() {
         if (instance == null) {
             instance = new ReportService();
+            // un-comment this if you want to see messages from freemarker
+            // BasicConfigurator.configure();
         }
         return instance;
     }
