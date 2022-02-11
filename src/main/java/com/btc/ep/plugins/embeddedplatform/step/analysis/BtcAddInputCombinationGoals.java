@@ -52,7 +52,9 @@ class BtcAddInputCombinationGoalsExecution extends AbstractBtcStepExecution {
     @Override
     protected void performAction() throws Exception {
     	// Check preconditions
-        log("WARNING: this function is deprecated. Nothing has been executed!");
+    	info("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
+    	result("ERROR");
+    	log("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
         
     }
 

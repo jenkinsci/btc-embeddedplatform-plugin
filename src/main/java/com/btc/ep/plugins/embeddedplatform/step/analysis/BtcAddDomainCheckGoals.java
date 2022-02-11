@@ -77,7 +77,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
         	response = 500;
-        	failed();
+        	result("ERROR");
             throw new IllegalStateException("You need an active profile for the current command");
         }
         List<Scope> scopesList = scopesApi.getScopesByQuery1(null, true);
@@ -105,6 +105,8 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     			SendPerformAction(scope.getUid());
     		}
     	}
+    	result("PASSED");
+    	info("Finished adding domain checks");
     	
     }
     final private void SendPerformAction(String scopeuid) {
@@ -116,7 +118,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         	DcXmlPath = resolvePath(step.getDcXmlPath());
     		} catch (Exception e) {
     			log("Error: invalid path given: "+step.getDcXmlPath());
-    			failed();
+    			result("ERROR");
     			return;
     		}
         	RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
@@ -127,10 +129,8 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         		HttpRequester.waitForCompletion(job.getJobID(), "result");
 	        	log("Successfully imported domain checks for scope " + scopeuid + ": " + response);
 			} catch (Exception e) {
-				result("FAILED: " + e.getMessage());
-				failed();
-				status(Status.ERROR);
-				log("failed API call: " + e.getMessage());
+				result("ERROR");
+				log("failed DomainChecks API call: " + e.getMessage());
 				response = 500;
 			}	
         } else { // no config file given-- use our input variables
@@ -144,10 +144,8 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     			String response = domainApi.createDomainChecksRanges(r);
     			log("Successfully updated domain checks for scope " + scopeuid + ": " + response);
     		} catch (Exception e) {
-    			result("FAILED: " + e.getMessage());
-				failed();
-				status(Status.ERROR);
-    			log("failed API call: " + e.getMessage());
+    			result("ERROR");
+    			log("failed DomainChecks API call: " + e.getMessage());
     			response = 500;
     		}
         }

@@ -58,7 +58,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         	failed();
         	return;
         }
-        List<String> uids = erApi.getExecutionRecords2()
+        List<String> uids = erApi.getExecutionRecords1()
             .stream()
             .filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
                 && (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))

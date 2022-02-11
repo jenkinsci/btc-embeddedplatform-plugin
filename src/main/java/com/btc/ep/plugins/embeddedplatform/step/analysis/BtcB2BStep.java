@@ -71,6 +71,16 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 
         // Prepare data for B2B test
         BackToBackTestExecutionData data = new BackToBackTestExecutionData();
+        String ref = step.getReference();
+        String comp = step.getComparison();
+        checkArgument(ref == "TL MIL" || ref == "SIL" || 
+        		ref == "PIL" || ref == "SL MIL", "Error: supported "
+        				+ "reference values for back-to-back tests are "
+        				+ "TL MIL, SIL, PIL, SL MIL");
+        checkArgument(comp == "TL MIL" || comp == "SIL" || 
+        		comp == "PIL" || comp == "SL MIL", "Error: supported "
+        				+ "comparison values for back-to-back tests are "
+        				+ "TL MIL, SIL, PIL, SL MIL");
         data.setRefMode(step.getReference());
         data.setCompMode(step.getComparison());
 
@@ -80,6 +90,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	        job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
         } catch (Exception e) {
         	log("Error: failed to execute B2B test: " + e.getMessage());
+        	result("ERROR");
         	return;
         }
         Map<?,?> resultMap = (Map<?,?>)HttpRequester.waitForCompletion(job.getJobID(), "result");
@@ -109,6 +120,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
             response = 500;
         }
 
+        // detail with link happens internally in the report func
         generateAndExportReport(b2bTestUid);
 
     }
@@ -138,8 +150,8 @@ public class BtcB2BStep extends Step implements Serializable {
     /*
      * Each parameter of the step needs to be listed here as a field
      */
-    private String reference;
-    private String comparison;
+    private String reference = "TL MIL";
+    private String comparison = "TL MIL";
 
     @DataBoundConstructor
     public BtcB2BStep() {

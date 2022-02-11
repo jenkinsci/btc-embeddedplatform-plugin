@@ -108,7 +108,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         if (step.getCodeFileMatcher() != null) {
         	info.setCfileMatcher(step.getCodeFileMatcher());
         }
-        Job job = archApi.importTargetLinkArchitecture(info);
+        Job job = archApi.importTargetLinkArchitecture1(info);
         log("Importing TargetLink architecture '" + tlModelPath.toFile().getName() + "'...");
         HttpRequester.waitForCompletion(job.getJobID());
 
