@@ -60,7 +60,6 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         profilesApi.openProfile(step.getProfilePath(), true);
         updateModelPaths();
         String msg = "Successfully loaded the profile";
-        detailWithLink(Store.epp.getName(), profilePath.toAbsolutePath().toString());
         response = 200;
 
         boolean hasModelBasedArchitecture = archApi.getArchitectures(null)

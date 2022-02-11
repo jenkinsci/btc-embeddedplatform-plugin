@@ -1,4 +1,4 @@
-package com.btc.ep.plugins.embeddedplatform.util;
+package com.btc.ep.plugins.embeddedplatform.test;
 
 import java.io.IOException;
 import java.io.InputStream;

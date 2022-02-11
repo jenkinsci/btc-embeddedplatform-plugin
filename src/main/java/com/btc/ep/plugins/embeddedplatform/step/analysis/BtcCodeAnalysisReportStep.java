@@ -1,0 +1,147 @@
+package com.btc.ep.plugins.embeddedplatform.step.analysis;
+
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import org.jenkinsci.plugins.workflow.steps.Step;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
+import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
+import org.openapitools.client.api.CodeAnalysisReportsRbtApi;
+import org.openapitools.client.api.ReportsApi;
+import org.openapitools.client.api.ScopesApi;
+import org.openapitools.client.model.Report;
+import org.openapitools.client.model.ReportExportInfo;
+import org.openapitools.client.model.Scope;
+
+import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
+
+import hudson.Extension;
+import hudson.model.TaskListener;
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcCodeAnalysisReportStep step;
+
+    public BtcCodeAnalysisReportStepExecution(BtcCodeAnalysisReportStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    private CodeAnalysisReportsRbtApi rbtReportApi = new CodeAnalysisReportsRbtApi();
+    private CodeAnalysisReportsB2BApi b2bReportApi = new CodeAnalysisReportsB2BApi();
+    private ScopesApi scopeApi = new ScopesApi();
+    private ReportsApi reportApi = new ReportsApi();
+    
+    @Override
+    protected void performAction() throws Exception {
+    	Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
+    	Report report;
+    	if ("RBT".equalsIgnoreCase(step.getUseCase())) {
+    		report = rbtReportApi.createCodeAnalysisReportOnScope1(toplevel.getUid());
+    	} else {
+    		report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+    	}
+    	ReportExportInfo info = new ReportExportInfo();
+        info.setNewName(step.getReportName());
+        info.setExportPath(Store.exportPath);
+        reportApi.exportReport(report.getUid(), info);
+        String msg = "Exported the " + step.getUseCase().toUpperCase() + " coverage report.";
+        detailWithLink("Code Coverage Report", step.getReportName() + ".html");
+    	info(msg);
+    	log(msg);
+        response = 200;
+    }
+
+}
+
+/**
+ * This class defines a step for Jenkins Pipeline including its parameters.
+ * When the step is called the related StepExecution is triggered (see the class below this one)
+ */
+public class BtcCodeAnalysisReportStep extends Step implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    /*
+     * Each parameter of the step needs to be listed here as a field
+     */
+    private boolean includeSourceCode;
+	private String reportName = "report.html";
+    private String useCase = "B2B";
+
+    @DataBoundConstructor
+    public BtcCodeAnalysisReportStep() {
+        super();
+    }
+
+    @Override
+    public StepExecution start(StepContext context) throws Exception {
+        return new BtcCodeAnalysisReportStepExecution(this, context);
+    }
+
+    @Extension
+    public static class DescriptorImpl extends StepDescriptor {
+
+        @Override
+        public Set<? extends Class<?>> getRequiredContext() {
+            return Collections.singleton(TaskListener.class);
+        }
+
+        /*
+         * This specifies the step name that the the user can use in his Jenkins Pipeline
+         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
+         */
+        @Override
+        public String getFunctionName() {
+            return "btcCodeAnalysisReport";
+        }
+
+        /*
+         * Display name (should be somewhat "human readable")
+         */
+        @Override
+        public String getDisplayName() {
+            return "BTC Code Analysis Report Step";
+        }
+    }
+
+    /*
+     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
+     */
+    public boolean isIncludeSourceCode() {
+		return includeSourceCode;
+	}
+    @DataBoundSetter
+	public void setIncludeSourceCode(boolean includeSourceCode) {
+		this.includeSourceCode = includeSourceCode;
+	}
+	public String getReportName() {
+		return reportName;
+	}
+	@DataBoundSetter
+	public void setReportName(String reportName) {
+		this.reportName = reportName;
+	}
+	public String getUseCase() {
+		return useCase;
+	}
+	@DataBoundSetter
+	public void setUseCase(String useCase) {
+		this.useCase = useCase;
+	}
+    /*
+     * End of getter/setter section
+     */
+
+} // end of step class

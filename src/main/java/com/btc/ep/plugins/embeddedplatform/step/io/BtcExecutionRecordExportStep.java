@@ -75,7 +75,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         data.setExportDirectory(exportDir.toString());
         data.setExportFormat("MDF");
         Job job = erApi.exportExecutionRecords(data);
-        Object response = HttpRequester.waitForCompletion(job.getJobID(), null);
+        Object response = HttpRequester.waitForCompletion(job.getJobID());
         // TODO: the callback is always just null. is there a way of checking the status of the job?
 
     }

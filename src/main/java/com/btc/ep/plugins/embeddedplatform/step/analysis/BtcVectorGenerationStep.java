@@ -79,12 +79,12 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
             Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
             Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
             ReportExportInfo info = new ReportExportInfo();
-            info.setNewName("CodeCoverageReport");
-            String path = new File(Paths.get(getContext().get(FilePath.class).toURI()).toString(), Store.exportPath)
-                .getCanonicalPath();
-            info.setExportPath(path);
+            String reportName = "CodeCoverageReport";
+            info.setNewName(reportName);
+            info.setExportPath(Store.exportPath);
             reportApi.exportReport(report.getUid(), info);
             msg += " and exported the coverage report";
+            detailWithLink("Code Coverage Report", reportName + ".html");
         }
         //FIXME: faking... EP-2581: no coverage info available atm.
         double stmD = 100d;

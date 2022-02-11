@@ -1,7 +1,5 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -19,16 +17,131 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.FoldersApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
+import org.openapitools.client.model.ImportResult;
+import org.openapitools.client.model.ImportStatus;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RBTestCaseImportInfo;
 import org.openapitools.client.model.StimuliVectorImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
-import com.google.gson.internal.LinkedTreeMap;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+    private BtcVectorImportStep step;
+    private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
+
+    private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
+    private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
+    private FoldersApi foldersApi = new FoldersApi();
+
+    public BtcVectorImportStepExecution(BtcVectorImportStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    @Override
+    protected void performAction() throws Exception {
+        String fileSuffix = deriveSuffix(step.getVectorFormat());
+        Path importDir = resolvePath(step.getImportDir());
+    	// vectorFiles will be an array of files or null
+        File[] vectorFiles = importDir.toFile().exists() ? importDir.toFile().listFiles((f) -> f.getName().toLowerCase().endsWith(fileSuffix.toLowerCase())) : null;
+
+        // we shouldn't throw an error if the directory doesn't exist 
+        if (vectorFiles == null || vectorFiles.length == 0) {
+        	String msg = "Nothing to import.";
+        	log(msg);
+        	info(msg);
+        	skipped();
+        	return;
+        }
+        List<String> vectorFilePaths = new ArrayList<>();
+        for (File vectorFile : vectorFiles) {
+            vectorFilePaths.add(vectorFile.getAbsolutePath());
+        }
+        Job job;
+        if (step.getVectorKind().equals("TC")) {
+            // import test cases
+            RBTestCaseImportInfo info = new RBTestCaseImportInfo();
+            info.setOverwritePolicy(OVERWRITE);
+            info.setPaths(vectorFilePaths);
+            // no format? http://jira.osc.local:8080/browse/EP-2534 --> format is auto-detected based on file extension
+            job = rbTestCasesApi.importRBTestCase(info);
+        } else {
+            // import stimuli vectors
+            StimuliVectorImportInfo info = new StimuliVectorImportInfo();
+            info.setOverwritePolicy(OVERWRITE);
+            info.setPaths(vectorFilePaths);
+           /* info.setVectorKind(step.getVectorKind());
+            info.setFormat(step.getVectorFormat().toLowerCase()); // according to doc only takes lowercase
+            info.setDelimiter("Semicolon");
+            String fUid = foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
+            info.setFolderUID(fUid);*/
+            job = stimuliVectorsApi.importStimuliVectors(info);
+        }
+        ImportResult importResult = HttpRequester.waitForCompletion(job.getJobID(), "result", ImportResult.class);
+        processResult(importResult);
+    }
+
+    /**
+     * Processes the results and adapts the reporting status for this step.
+     * 
+     * @param importResult
+     */
+    private void processResult(ImportResult importResult) {
+    	// collect warnings & errors
+    	int numberOfWarnings = 0;
+    	int numberOfErrors = 0;
+    	for (ImportStatus status : importResult.getImportStatus()) {
+    		if (status.getWarnings() != null && !status.getWarnings().isEmpty()) {
+    			numberOfWarnings++;
+    		}
+    		if (status.getErrors() != null && !status.getErrors().isEmpty()) {
+    			numberOfErrors++;
+    		}
+    	}
+    	// adapt status
+    	String msg = "Imported " + importResult.getImportStatus().size() + " test cases.";
+    	if (numberOfErrors > 0) {
+    		error();
+    		msg += " Encountered " + numberOfErrors + " errors.";
+    	} else {
+    		if (numberOfWarnings > 0) {
+    			msg += " Encountered " + numberOfWarnings + " warnings in the process.";
+    		}
+    	}
+    	info(msg);
+	}
+
+	/**
+     *
+     *
+     * @param vectorFormat
+     * @return
+     * @throws Exception
+     */
+    private String deriveSuffix(String vectorFormat) throws IllegalArgumentException {
+        switch (vectorFormat.toUpperCase()) {
+            case "TC":
+                return ".tc";
+            case "EXCEL":
+                return ".xlsx";
+            case "CSV":
+                return ".csv";
+            default:
+                throw new IllegalArgumentException("Unsupported vector format: " + vectorFormat);
+        }
+
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -44,7 +157,7 @@ public class BtcVectorImportStep extends Step implements Serializable {
 
     private String importDir;
     private String vectorKind = "TC";
-    private String vectorFormat = "excel";
+    private String vectorFormat = "TC";
 
     @DataBoundConstructor
     public BtcVectorImportStep(String importDir) {
@@ -114,115 +227,3 @@ public class BtcVectorImportStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-    private BtcVectorImportStep step;
-    private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
-
-    private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
-    private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
-    private FoldersApi foldersApi = new FoldersApi();
-
-    public BtcVectorImportStepExecution(BtcVectorImportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    @Override
-    protected void performAction() throws Exception {
-        String fileSuffix = deriveSuffix(step.getVectorFormat());
-        Path importDir = resolvePath(step.getImportDir());
-        checkArgument(importDir != null && importDir.toFile().exists(), "Import directory not available: " + importDir);
-
-        File[] vectorFiles = importDir.toFile().listFiles((f) -> f.getName().endsWith(fileSuffix));
-        List<String> vectorFilePaths = new ArrayList<>();
-        for (File vectorFile : vectorFiles) {
-            vectorFilePaths.add(vectorFile.getAbsolutePath());
-        }
-        Job job;
-        if (step.getVectorKind().equals("TC")) {
-            // import test cases
-            RBTestCaseImportInfo info = new RBTestCaseImportInfo();
-            info.setOverwritePolicy(OVERWRITE);
-            info.setPaths(vectorFilePaths);
-            // no format? http://jira.osc.local:8080/browse/EP-2534 --> format is auto-detected based on file extension
-            job = rbTestCasesApi.importRBTestCase(info);
-        } else {
-            // import stimuli vectors
-            StimuliVectorImportInfo info = new StimuliVectorImportInfo();
-            info.setOverwritePolicy(OVERWRITE);
-            info.setPaths(vectorFilePaths);
-           /* info.setVectorKind(step.getVectorKind());
-            info.setFormat(step.getVectorFormat().toLowerCase()); // according to doc only takes lowercase
-            info.setDelimiter("Semicolon");
-            String fUid = foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
-            info.setFolderUID(fUid);*/
-            job = stimuliVectorsApi.importStimuliVectors(info);
-        }
-        Object status = HttpRequester.waitForCompletion(job.getJobID(), "result");
-        if (status == null) {
-        	// i think the callback will at least return an error message? so we should never be here.
-        	// but might as well throw it in just in case i'm wrong
-        	log("Something has gone horribly wrong in importing the vectors");
-        	return;
-        }
-        @SuppressWarnings("unchecked")
-        LinkedTreeMap<String, ArrayList<LinkedTreeMap<String, ArrayList<String>>>> status_l1 = ((LinkedTreeMap<String, ArrayList<LinkedTreeMap<String, ArrayList<String>>>>) status);
-        ArrayList<LinkedTreeMap<String, ArrayList<String>>> status_l2 = status_l1.get("importStatus");
-        String returnString = null;
-        try {
-        	status_l2.get(0).get("UIDs");
-        } catch (Exception e) {
-        	// no UIDs. this is probably an issue
-        	returnString += "No UIDs to import into\n";
-        	
-        }
-        try {
-        	ArrayList<String> status_l32 = status_l2.get(0).get("warnings");
-        	returnString += status_l32.toString();
-        } catch (Exception e) {
-        	// no warnings. dont need to do anything
-        }
-        try {
-        	ArrayList<String> status_l34 = status_l2.get(0).get("errors");
-        	returnString += status_l34.toString();
-        } catch (Exception e) {
-        	// no warnings. dont need to do anything
-        }
-        if (returnString != null) {
-        	System.out.println(returnString);
-        	info(returnString);
-        }
-        else {
-        	System.out.println("Successfully imported test cases with no errors");
-        }
-        
-    }
-
-    /**
-     *
-     *
-     * @param vectorFormat
-     * @return
-     * @throws Exception
-     */
-    private String deriveSuffix(String vectorFormat) throws IllegalArgumentException {
-        switch (vectorFormat.toUpperCase()) {
-            case "TC":
-                return ".tc";
-            case "EXCEL":
-                return ".xlsx";
-            case "CSV":
-                return ".csv";
-            default:
-                throw new IllegalArgumentException("Unsupported vector format: " + vectorFormat);
-        }
-
-    }
-
-}
