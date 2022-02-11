@@ -51,12 +51,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
-        Path exportDir = null;
-        try {
-        	exportDir = resolvePath(step.getDir());
-        } catch (Exception e) {
-        	log("Error: Couldnt find dir: " + step.getDir());
-        }
+        Path exportDir = resolvePath(step.getDir());
         
         File[] files = exportDir.toFile().listFiles(new FileFilter() {
 
@@ -72,6 +67,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         }
         ExecutionRecordImportInfo data = new ExecutionRecordImportInfo();
         data.setFormat("MDF");
+        // execution config can be user-defined, so there's no check to make
         data.setKind(step.getExecutionConfig());
         data.setPaths(paths);
         data.setFolderName(step.getFolderName());
@@ -87,6 +83,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         	default:
         		log("Warning: non-standard execution config " + step.getExecutionConfig()
         		+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
+        		warning();
         }
         response = response_int;
         switch (response_int) {
@@ -95,17 +92,18 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         		break;
         	case 400:
         		log("Error: Bad request (make sure the arguments you passed in are valid");
-        		failed();
+        		error();
         		break;
         	case 404:
         		log("Error: Not found.");
-        		failed();
+        		error();
         		break;
         	case 500: 
         		log("Error: Internal server error.");
-        		failed();
+        		error();
         		break;
         }
+        info("Finished important execution records");
 
     }
 

@@ -16,6 +16,7 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.Architecture;
@@ -213,23 +214,38 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
      * - print text to the Jenkins console (field: jenkinsConsole)
      * - set response code (field: response)
      */
+    private ProfilesApi profilesApi = new ProfilesApi();
     private StimuliVectorsApi vectorApi = new StimuliVectorsApi();
     private ArchitecturesApi archApi = new ArchitecturesApi();
     
     @Override
     protected void performAction() throws Exception {
-    	
-    	checkArgument(step.getVectorFormat() == "Excel" || step.getVectorFormat() == "CSV",
-    			"Error: vectorFormat must be either 'Excel' or 'CSV'.");
-
-
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+        	response = 500;
+        	result("ERROR");
+            throw new IllegalStateException("You need an active profile for the current command");
+        }
+        // TODO: EP-2735
+        String format = step.getVectorFormat();
+        checkArgument(format == "CSV" || format == "Excel", 
+        		"Error: valid vectorFormat is csv or excel, not " + format);
+        
         //Get all vectors
         Path exportDir = resolvePath(step.getExportDir());
         checkArgument(exportDir.toFile().exists(), "Error: Export directory does not exist " + exportDir);
 
         // Stimuli Vector  -- Default info.setVectorKind("TC");
         Job job;
-        List<B2BStimuliVector> allVectors = vectorApi.getStimuliVectors();
+        List<B2BStimuliVector> allVectors = null;
+        try {
+        	allVectors = vectorApi.getStimuliVectors();
+        } catch (Exception e) {
+        	log("ERROR: " + e.getMessage());
+        	error();
+        }
         List<String> allVectorNames = new ArrayList<String>();
         for (B2BStimuliVector vector : allVectors) {
         	allVectorNames.add(vector.getUid());
@@ -247,26 +263,18 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
         	r.setSingleFile(step.isSingleFile());
         }
         
-        if (step.getVectorKind().equals("SV")) {
-            // Stimuli Vector
-            RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
-            info.setExportFormat(step.getVectorFormat()); // TODO: do we have to fix documentation? this used to convert 
-            											// the format to all lower-case, but internally it expected CamelCase
-            info.setExportDirectory(exportDir.toString());
-            info.setUiDs(allVectorNames);
-            info.additionalOptions(r);
-            job = stimuliVectorsApi.exportStimuliVectors(info);
-            info("Exported Stimuli Vectors.");
-        } else {
-            // Test Case
-            RestRBTestCaseExportInfo info = new RestRBTestCaseExportInfo();
-            info.setExportFormat(step.getVectorFormat());
-            info.setExportDirectory(exportDir.toString());
-            info.setUiDs(allVectorNames);
-            info.additionalOptions(r);
-            job = rbTestCaseApi.exportRBTestCases(info);
-            info("Exported Test Cases.");
-        }
+        // Stimuli Vector
+        RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
+        info.setExportFormat(step.getVectorFormat());
+        info.setExportDirectory(exportDir.toString());
+        info.setUiDs(allVectorNames);
+        info.additionalOptions(r);
+        job = stimuliVectorsApi.exportStimuliVectors(info);
+        info("Exported Stimuli Vectors.");
+        // TODO: make sure we can detail to directory. if not, only on CSV single-file export.
+        // the export linked, i think this is giving a 404 not found
+        detailWithLink("Stimuli Vectors Export File", info.getExportDirectory());
+
         HttpRequester.waitForCompletion(job.getJobID());
 
         // TODO Questions

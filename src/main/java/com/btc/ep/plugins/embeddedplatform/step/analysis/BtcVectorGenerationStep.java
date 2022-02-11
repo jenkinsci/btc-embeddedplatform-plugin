@@ -65,10 +65,11 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     @Override
     protected void performAction() throws Exception {
     	// Check preconditions
+    	// TODO: we only need to have a profile for some operations. this is overly strict
         try {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
+            throw new IllegalStateException("You need an active profile to generate tests");
         }
         List<Scope> scopesList = scopeApi.getScopesByQuery1(null, true);
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");

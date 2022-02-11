@@ -119,7 +119,6 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
             status(Status.ERROR).result(verdictStatus);
             response = 500;
         }
-
         // detail with link happens internally in the report func
         generateAndExportReport(b2bTestUid);
 

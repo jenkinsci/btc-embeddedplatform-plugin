@@ -84,8 +84,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
      */
     private void preliminaryChecks(Path profilePath, Path codeModelPath) {
         if (step.getLicenseLocationString() != null) {
-            log(
-                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
+            log("the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
         checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
         checkArgument(codeModelPath != null, "No valid code model path was provided: " + step.getCodeModelPath());

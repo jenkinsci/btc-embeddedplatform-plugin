@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -15,6 +16,7 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.FoldersApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.ImportResult;
@@ -38,6 +40,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
     private BtcVectorImportStep step;
     private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
 
+    private ProfilesApi profilesApi = new ProfilesApi();
     private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
     private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
     private FoldersApi foldersApi = new FoldersApi();
@@ -49,6 +52,22 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 
     @Override
     protected void performAction() throws Exception {
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+        	response = 500;
+        	result("ERROR");
+            throw new IllegalStateException("You need an active profile for the current command");
+        }
+        // TODO: EP-2735
+        String kind = step.getVectorKind();
+        String format = step.getVectorFormat();
+        checkArgument(kind == "TC" || kind == "Excel",
+        		"Error: valid vectorKind is TC or Excel, not " + kind);
+        checkArgument(format == "csv" || format == "excel", 
+        		"Error: valid vectorFormat is csv or excel, not " + format);
+        
         String fileSuffix = deriveSuffix(step.getVectorFormat());
         Path importDir = resolvePath(step.getImportDir());
     	// vectorFiles will be an array of files or null
@@ -74,7 +93,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             info.setPaths(vectorFilePaths);
             // no format? http://jira.osc.local:8080/browse/EP-2534 --> format is auto-detected based on file extension
             job = rbTestCasesApi.importRBTestCase(info);
-        } else {
+        } else { // excel
             // import stimuli vectors
             StimuliVectorImportInfo info = new StimuliVectorImportInfo();
             info.setOverwritePolicy(OVERWRITE);
@@ -115,8 +134,10 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
     	} else {
     		if (numberOfWarnings > 0) {
     			msg += " Encountered " + numberOfWarnings + " warnings in the process.";
+    			warning();
     		}
     	}
+    	log(msg);
     	info(msg);
 	}
 

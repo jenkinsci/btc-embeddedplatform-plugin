@@ -65,18 +65,22 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
         if (step.getUseCase().equals("RBT")) {
             // Requirements-based Test
             info.setToleranceUseCase("RBT");
-        } else {
+        } else if (step.getUseCase().equals("B2B")) {
             // Back-to-Back Test
             info.setToleranceUseCase("B2B");
+        } else {
+        	checkArgument(false, "Valid use cases for Tolerance Import are B2B or RBT");
         }
-        tolerancesApi.setGlobalTolerances(info);
+        try {
+        	tolerancesApi.setGlobalTolerances(info);
+        } catch (Exception e) {
+        	log("ERROR: " + e.getMessage());
+        	error();
+        }
         info("Imported Tolerances.");
 
         //HttpRequester.waitForCompletion(job.getJobID());
 
-        // Questions
-        // 1. Will most of these steps have jobs that need to be completed?
-        // 2. How do I know that I'm using the right APIs and Classes?
 
     }
 

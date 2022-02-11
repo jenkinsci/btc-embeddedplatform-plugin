@@ -112,7 +112,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	        analyzeResults(testResultData, tcUids.isEmpty());
 	        generateAndExportReport(testResultData.keySet());
         } else { // TODO: this is a problem that we should figure out how to handle.
-        	System.out.println("ERROR no test result data");
+        	log("ERROR no test result data");
         }
 
     }

@@ -75,7 +75,10 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         }
         List<Scope> scopesList = scopesApi.getScopesByQuery1(null, true);
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-    	
+        int rast = Integer.parseInt(step.getRaster());
+        checkArgument(rast > 0 && rast <= 100,
+        		"ERROR: Domain Check Raster must be between 0 and 100!");
+        
     	// check if we have to iterate over all scopes,
     	// only top level scope, or the given scope
     	if (step.getScopePath() != "*") { // find a specific scope
@@ -110,7 +113,8 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		try {
         	DcXmlPath = resolvePath(step.getDcXmlPath());
     		} catch (Exception e) {
-    			log("Error: invalid path given: "+step.getDcXmlPath());
+    			log("WARNING: invalid path given: "+step.getDcXmlPath());
+    			warning();
     			result("ERROR");
     			return;
     		}
@@ -123,6 +127,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 	        	log("Successfully imported domain checks for scope " + scopeuid + ": " + response);
 			} catch (Exception e) {
 				result("ERROR");
+				error();
 				log("failed DomainChecks API call: " + e.getMessage());
 				response = 500;
 			}	
@@ -138,6 +143,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     			log("Successfully updated domain checks for scope " + scopeuid + ": " + response);
     		} catch (Exception e) {
     			result("ERROR");
+    			error();
     			log("failed DomainChecks API call: " + e.getMessage());
     			response = 500;
     		}

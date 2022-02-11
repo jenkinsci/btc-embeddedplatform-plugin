@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -13,6 +14,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
 import org.openapitools.client.api.CodeAnalysisReportsRbtApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Report;
@@ -38,6 +40,7 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
         this.step = step;
     }
 
+    private ProfilesApi profilesApi = new ProfilesApi();
     private CodeAnalysisReportsRbtApi rbtReportApi = new CodeAnalysisReportsRbtApi();
     private CodeAnalysisReportsB2BApi b2bReportApi = new CodeAnalysisReportsB2BApi();
     private ScopesApi scopeApi = new ScopesApi();
@@ -45,22 +48,44 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
     
     @Override
     protected void performAction() throws Exception {
-    	Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
-    	Report report;
-    	if ("RBT".equalsIgnoreCase(step.getUseCase())) {
-    		report = rbtReportApi.createCodeAnalysisReportOnScope1(toplevel.getUid());
-    	} else {
-    		report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+        	response = 500;
+        	result("ERROR");
+            throw new IllegalStateException("You need an active profile for the current command");
+        }
+        List<Scope> scopes = scopeApi.getScopesByQuery1(null, true);
+        checkArgument(!scopes.isEmpty(), "ERROR: no top-level scope in selected profile");
+    	Scope toplevel = scopes.get(0);
+    	String usecases = step.getUseCase();
+    	checkArgument(usecases == "B2B" || usecases == "RBT",
+    			"ERROR: valid useCase for CodeAnalysisReport is RBT or B2B, not " + usecases);
+    	
+    	Report report = null;
+    	try {
+	    	if (usecases == "RBT") {
+	    		report = rbtReportApi.createCodeAnalysisReportOnScope1(toplevel.getUid());
+	    	} else { // B2B testing
+	    		report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+	    	}
+    	} catch (Exception e) {
+    		log("ERROR. Report not generated: " + e.getMessage());
+    		error();
+    		result("ERROR");
     	}
-    	ReportExportInfo info = new ReportExportInfo();
-        info.setNewName(step.getReportName());
-        info.setExportPath(Store.exportPath);
-        reportApi.exportReport(report.getUid(), info);
-        String msg = "Exported the " + step.getUseCase().toUpperCase() + " coverage report.";
-        detailWithLink("Code Coverage Report", step.getReportName() + ".html");
-    	info(msg);
-    	log(msg);
-        response = 200;
+    	if (report != null)
+	    { 
+    		ReportExportInfo info = new ReportExportInfo();
+	        info.setNewName(step.getReportName());
+	        info.setExportPath(Store.exportPath);
+	        reportApi.exportReport(report.getUid(), info);
+	        String msg = "Exported the " + usecases + " coverage report.";
+	        detailWithLink("Code Coverage Report", step.getReportName() + ".html");
+	    	info(msg);
+	    	log(msg);
+    	}
     }
 
 }

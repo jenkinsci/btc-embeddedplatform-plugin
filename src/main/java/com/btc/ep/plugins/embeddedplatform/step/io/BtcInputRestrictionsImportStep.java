@@ -146,11 +146,17 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
         }
         // Get the path
         Path path = resolvePath(step.getPath());
-        checkArgument(path.toFile().exists(), "Error: Export xml does not exist " + path);
+        checkArgument(path.toFile().exists(), "Error: xml does not exist " + path);
 
         InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
         file.setFilePath(path.toString());
-        inputRestrictionsApi.importFromFile(file);
+        try {
+        	inputRestrictionsApi.importFromFile(file);
+        } catch (Exception e) {
+        	error();
+        	log("ERROR on input restrictions import: " + e.getMessage());
+        }
+        info("Imported input restructions");
 
     }
 

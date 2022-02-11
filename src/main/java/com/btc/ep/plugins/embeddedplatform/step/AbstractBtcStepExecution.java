@@ -329,7 +329,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                 }
             } catch (Exception e) {
                 log("Cannot resolve path: " + filePathString);
-                failed();
+                error();
             }
         }
         return null;

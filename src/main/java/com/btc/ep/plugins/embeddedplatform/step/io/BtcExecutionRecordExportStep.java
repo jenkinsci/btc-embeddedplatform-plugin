@@ -49,15 +49,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
-        Path exportDir;
-        try {
-        	exportDir = resolvePath(step.getDir());
-        } catch (Exception e) {
-        	log("Error: invalid path: " + step.getDir());
-        	log(e.getMessage());
-        	failed();
-        	return;
-        }
+        Path exportDir = resolvePath(step.getDir());
         List<String> uids = erApi.getExecutionRecords1()
             .stream()
             .filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
@@ -65,8 +57,8 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
             .map(er -> er.getUid())
             .collect(Collectors.toList());
         if (uids.isEmpty()) {
-        	log("Error: no execution records to export found. Did you run any tests yet?");
-        	failed();
+        	log("Warning: no execution records to export found. Did you run any tests yet?");
+        	warning();
         	return;
         }
         
@@ -77,6 +69,9 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         Job job = erApi.exportExecutionRecords(data);
         Object response = HttpRequester.waitForCompletion(job.getJobID());
         // TODO: the callback is always just null. is there a way of checking the status of the job?
+        detailWithLink("Execution Records Export Folder", data.getExportDirectory());
+        // TODO: does linking to a folder work? if not just info the export dir.
+        info("Exported execution records");
 
     }
 
