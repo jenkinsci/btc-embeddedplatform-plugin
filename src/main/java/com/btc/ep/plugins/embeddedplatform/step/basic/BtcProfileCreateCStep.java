@@ -58,12 +58,24 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         /*
          * Create the profile based on the code model
          */
-        profilesApi.createProfile(true);
+        try {
+        	profilesApi.createProfile(true);
+        } catch (Exception e) {
+        	log("ERROR. Failed to create profile:" + e.getMessage());
+        	error();
+        }
         Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
         CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
-        Job job = archApi.importArchitecture(info);
-        log("Importing C-Code architecture...");
-        HttpRequester.waitForCompletion(job.getJobID());
+        Job job = null;
+        try {
+        	job = archApi.importArchitecture(info);
+        	log("Importing C-Code architecture...");
+            HttpRequester.waitForCompletion(job.getJobID());
+        } catch (Exception e) {
+        	log("ERROR. Failed to import provided architecture "
+        			+ info.getModelFile() + ": " + e.getMessage());
+        	error();
+        }
 
         /*
          * Wrapping up, reporting, etc.

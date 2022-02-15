@@ -27,6 +27,7 @@ import org.openapitools.client.api.RequirementBasedTestExecutionReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.api.TestApi;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.model.Profile;
 import org.openapitools.client.model.RBTExecutionDataExtendedNoReport;
 import org.openapitools.client.model.RBTExecutionDataNoReport;
 import org.openapitools.client.model.RBTExecutionReportCreationInfo;
@@ -79,13 +80,19 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
     protected void performAction() throws Exception {
         // Check preconditions
         try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+            Profile p = profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
 
         // Prepare data
-        List<String> tcUids = getRelevantTestCaseUIDs(); // <-- TODO waiting for EP-2537
+        List<String> tcUids = null;
+        try {
+        	tcUids = getRelevantTestCaseUIDs(); // <-- TODO waiting for EP-2537
+        } catch (Exception e) {
+        	log("ERROR. could not find test cases: " + e.getMessage());
+        	error();
+        }
         RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
         RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
         List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
@@ -99,9 +106,16 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         // TODO: this can timeout, giving us an internal server error (500).
         // this DOESNT cause an exception (at least not one that crashes),
         // so figure out how to catch and handle it.
-        Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
-        Object testResults = HttpRequester.waitForCompletion(job.getJobID(), "testResults");
-        Gson gson = new Gson();
+        Object testResults = null;
+        try {
+	        Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
+	        testResults = HttpRequester.waitForCompletion(job.getJobID(), "testResults");
+        } catch (Exception e) {
+        	log("ERROR. could not execute RBTs: " + e.getMessage());
+        	error();
+        	return;
+        }
+	    Gson gson = new Gson();
         Type type = new TypeToken<Map<String, RBTestCaseExecutionResultSetData>>() {
         }.getType();
         JsonElement jsonElement = gson.toJsonTree(testResults);
@@ -110,7 +124,12 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 
         if (testResultData != null) {
 	        analyzeResults(testResultData, tcUids.isEmpty());
-	        generateAndExportReport(testResultData.keySet());
+	        try {
+	        	generateAndExportReport(testResultData.keySet());
+	        } catch (Exception e) {
+	        	log("WARNING. failed to generate and export report: " + e.getMessage());
+	        	warning();
+	        }
         } else { // TODO: this is a problem that we should figure out how to handle.
         	log("ERROR no test result data");
         }

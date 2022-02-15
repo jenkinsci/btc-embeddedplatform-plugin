@@ -65,7 +65,12 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to perform a Back-to-Back Test");
         }
-        List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
+        List<Scope> scopes = null;
+        try {
+        	scopes = scopesApi.getScopesByQuery1(null, true);
+        } catch (Exception e) {
+        	log("ERROR getting scopes: " + e.getMessage());
+        }
         checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
         Scope toplevelScope = scopes.get(0);
 
@@ -95,32 +100,37 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         }
         Map<?,?> resultMap = (Map<?,?>)HttpRequester.waitForCompletion(job.getJobID(), "result");
         String b2bTestUid = (String)resultMap.get("uid");
-        BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
-        String verdictStatus = b2bTest.getVerdictStatus().toString();
-        log("Back-to-Back Test finished with result: " + verdictStatus);
-        // status, etc.
-        String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
-            + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
-        info(info);
-
-        if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.OK).passed().result(verdictStatus);
-            response = 200;
-        } else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.OK).passed().result(verdictStatus);
-            response = 201;
-        } else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.OK).failed().result(verdictStatus);
-            response = 300;
-        } else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
-            status(Status.ERROR).result(verdictStatus);
-            response = 400;
-        } else {
-            status(Status.ERROR).result(verdictStatus);
-            response = 500;
+        try {
+	        BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
+	        String verdictStatus = b2bTest.getVerdictStatus().toString();
+	        log("Back-to-Back Test finished with result: " + verdictStatus);
+	        // status, etc.
+	        String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
+	            + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
+	        info(info);
+	
+	        if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
+	            status(Status.OK).passed().result(verdictStatus);
+	            response = 200;
+	        } else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
+	            status(Status.OK).passed().result(verdictStatus);
+	            response = 201;
+	        } else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
+	            status(Status.OK).failed().result(verdictStatus);
+	            response = 300;
+	        } else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
+	            status(Status.ERROR).result(verdictStatus);
+	            response = 400;
+	        } else {
+	            status(Status.ERROR).result(verdictStatus);
+	            response = 500;
+	        }
+	        // detail with link happens internally in the report func
+	        generateAndExportReport(b2bTestUid);
+        } catch (Exception e) {
+        	log("ERROR executing B2B tests: " + e.getMessage());
+        	error();
         }
-        // detail with link happens internally in the report func
-        generateAndExportReport(b2bTestUid);
 
     }
 
@@ -129,11 +139,24 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
      * @throws ApiException
      */
     private void generateAndExportReport(String b2bTestUid) throws ApiException {
-        Report report = b2bReportingApi.createBackToBackReport(b2bTestUid);
+    	Report report = null;
+    	try {
+    		report = b2bReportingApi.createBackToBackReport(b2bTestUid);
+    	} catch (Exception e) {
+    		log("WARNING, failed to create B2B report: " + e.getMessage());
+    		warning();
+    	}
         ReportExportInfo reportExportInfo = new ReportExportInfo();
         reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_B2B);
-        reportingApi.exportReport(report.getUid(), reportExportInfo);
-        detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
+        if (report != null) {
+        	try {
+		        reportingApi.exportReport(report.getUid(), reportExportInfo);
+		        detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
+        	} catch (Exception e) {
+        		log("WARNING, failed to export report: " + e.getMessage());
+        		warning();
+        	}
+        }
     }
 
 }

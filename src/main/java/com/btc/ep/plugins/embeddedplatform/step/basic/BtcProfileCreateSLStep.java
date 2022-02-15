@@ -65,15 +65,24 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
 
         //TODO: Execute Startup Script (requires EP-2535)
-
-        profilesApi.createProfile(true);
+        try {
+        	profilesApi.createProfile(true);
+        } catch (Exception e) {
+        	log("ERROR. Failed to create profile: " + e.getMessage());
+        	error();
+        }
         SLImportInfo info = new SLImportInfo()
             .slModelFile(slModelPath.toString())
             .slInitScriptFile(slScriptPath.toString());
-        Job job = archApi.importSimulinkArchitecture(info);
-        log("Importing Simulink architecture '" + slModelPath.toFile().getName() + "'...");
-        HttpRequester.waitForCompletion(job.getJobID());
-
+        try {
+	        Job job = archApi.importSimulinkArchitecture(info);
+	        log("Importing Simulink architecture '" + slModelPath.toFile().getName() + "'...");
+	        HttpRequester.waitForCompletion(job.getJobID());
+        } catch (Exception e) {
+        	log("ERROR. Failed to import architecture " + 
+        			info.getSlModelFile() + ": " + e.getMessage());
+        	error();
+        }
         /*
          * Wrapping up, reporting, etc.
          */

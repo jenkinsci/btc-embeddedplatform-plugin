@@ -69,15 +69,30 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         try {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
-        	response = 500;
         	result("ERROR");
+        	error();
+        	status(Status.ERROR);
+        	log("No active profile found. Did you successfuly load one in?");
             throw new IllegalStateException("You need an active profile for the current command");
         }
-        List<Scope> scopesList = scopesApi.getScopesByQuery1(null, true);
+        List<Scope> scopesList = null;
+        try {
+        	scopesList = scopesApi.getScopesByQuery1(null, true);
+        } catch(Exception e) {
+        	log("ERROR: " + e.getMessage());
+        }
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-        int rast = Integer.parseInt(step.getRaster());
+        int rast;
+        try {
+    		rast = Integer.parseInt(step.getRaster());
+    	} catch (Exception e) {
+    		log("ERROR: invalid integer '" + step.getRaster() + "'. Changing to default value of 25 instead");
+    		warning();
+    		rast = 25;
+    		step.setRaster("25");
+    	}
         checkArgument(rast > 0 && rast <= 100,
-        		"ERROR: Domain Check Raster must be between 0 and 100!");
+        		"ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
         
     	// check if we have to iterate over all scopes,
     	// only top level scope, or the given scope
@@ -85,17 +100,32 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		String scope = null;
     		// get top level scope
     		if (step.getScopePath() != null) { // scope given. use it.
-    			List<Scope> scopes = scopesApi.getScopesByQuery1(step.getScopePath(), false);
+    			List<Scope> scopes = null;
+    			try {
+    				scopes = scopesApi.getScopesByQuery1(step.getScopePath(), false);
+    			} catch (Exception e) {
+    				log("ERROR getting scope " + step.getScopePath() + ": "+ e.getMessage());
+    			}
     			checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
     			scope = scopes.get(0).getUid();
     		} else { // no scope given. default is top level scope.
-        		List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
+        		List<Scope> scopes = null;
+        		try {
+        			scopes = scopesApi.getScopesByQuery1(null, true);
+        		} catch (Exception e) {
+    				log("ERROR getting top level scope: " + e.getMessage());
+    			}
         		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
                 scope = scopes.get(0).getUid();
         	}
     		SendPerformAction(scope);
     	} else { // else step.getScopePath() == "*". iterate over all scopes
-    		List<Scope> scopes = scopesApi.getScopesByQuery1(null, false);
+    		List<Scope> scopes = null;
+    		try {
+    			scopes = scopesApi.getScopesByQuery1(null, false);
+    		} catch (Exception e) {
+				log("ERROR getting list of all scopes: " + e.getMessage());
+			}
     		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
     		for(Scope scope: scopes) {
     			SendPerformAction(scope.getUid());
@@ -111,10 +141,10 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     	if (step.getDcXmlPath() != null) {
     		Path DcXmlPath;
     		try {
-        	DcXmlPath = resolvePath(step.getDcXmlPath());
+    			DcXmlPath = resolvePath(step.getDcXmlPath());
     		} catch (Exception e) {
     			log("WARNING: invalid path given: "+step.getDcXmlPath());
-    			warning();
+    			error();
     			result("ERROR");
     			return;
     		}
@@ -128,8 +158,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 			} catch (Exception e) {
 				result("ERROR");
 				error();
-				log("failed DomainChecks API call: " + e.getMessage());
-				response = 500;
+				log("failed DomainChecks API call for UID " + scopeuid + ": " + e.getMessage());
 			}	
         } else { // no config file given-- use our input variables
     		// create API object
@@ -144,8 +173,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		} catch (Exception e) {
     			result("ERROR");
     			error();
-    			log("failed DomainChecks API call: " + e.getMessage());
-    			response = 500;
+    			log("failed DomainChecks API call for UID " + scopeuid + ": " + e.getMessage());
     		}
         }
     }

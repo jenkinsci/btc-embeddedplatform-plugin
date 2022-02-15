@@ -71,7 +71,12 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
          */
         Path tlModelPath = resolvePath(step.getTlModelPath());
         Path tlScriptPath = resolvePath(step.getTlScriptPath());
-        profilesApi.createProfile(true);
+        try {
+            profilesApi.createProfile(true);
+        } catch (Exception e) {
+        	log("ERROR. Failed to create profile: " + e.getMessage());
+        	error();
+        }
         TLImportInfo info = new TLImportInfo()
             .tlModelFile(tlModelPath.toString())
             .tlInitScript(tlScriptPath.toString())
@@ -108,10 +113,15 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         if (step.getCodeFileMatcher() != null) {
         	info.setCfileMatcher(step.getCodeFileMatcher());
         }
-        Job job = archApi.importTargetLinkArchitecture1(info);
-        log("Importing TargetLink architecture '" + tlModelPath.toFile().getName() + "'...");
-        HttpRequester.waitForCompletion(job.getJobID());
-
+        try {
+	        Job job = archApi.importTargetLinkArchitecture1(info);
+	        log("Importing TargetLink architecture '" + tlModelPath.toFile().getName() + "'...");
+	        HttpRequester.waitForCompletion(job.getJobID());
+	    } catch (Exception e) {
+        	log("ERROR. Failed to import architecture " + 
+        			info.getSlModelFile() + ": " + e.getMessage());
+        	error();
+        }
         /*
          * Wrapping up, reporting, etc.
          */

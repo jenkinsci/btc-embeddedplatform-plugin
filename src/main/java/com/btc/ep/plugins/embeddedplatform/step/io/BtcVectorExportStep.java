@@ -22,6 +22,7 @@ import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.Architecture;
 import org.openapitools.client.model.B2BStimuliVector;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.model.Profile;
 import org.openapitools.client.model.RestRBTestCaseExportInfo;
 import org.openapitools.client.model.RestStimuliVectorExportInfo;
 import org.openapitools.client.model.RestVectorExportDetails;
@@ -222,10 +223,11 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
     protected void performAction() throws Exception {
     	// Check preconditions
         try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+            Profile p = profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
         	response = 500;
-        	result("ERROR");
+        	error();
+        	log("ERROR: could not load a profile. Did you call btcProfileLoad? " + e.getMessage());
             throw new IllegalStateException("You need an active profile for the current command");
         }
         // TODO: EP-2735
@@ -271,6 +273,7 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
         info.additionalOptions(r);
         job = stimuliVectorsApi.exportStimuliVectors(info);
         info("Exported Stimuli Vectors.");
+        log("Exported Stimuli Vectors.");
         // TODO: make sure we can detail to directory. if not, only on CSV single-file export.
         // the export linked, i think this is giving a 404 not found
         detailWithLink("Stimuli Vectors Export File", info.getExportDirectory());

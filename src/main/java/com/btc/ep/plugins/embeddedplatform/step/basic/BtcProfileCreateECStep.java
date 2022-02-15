@@ -66,7 +66,12 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         Store.epp = profilePath.toFile();
         Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
 
-        profilesApi.createProfile(true);
+        try {
+        	profilesApi.createProfile(true);
+        } catch (Exception e) {
+        	log("ERROR. Failed to create profile: " + e.getMessage());
+        	error();
+        }
         /*
          * Prepare Matlab
          */
@@ -85,16 +90,17 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         	ECWrapperImportInfo wrapperInfo = new ECWrapperImportInfo();
         	wrapperInfo.setEcModelFile(modelPath);
         	wrapperInfo.setEcInitScript(scriptPath);
-        	Job job = archApi.createEmbeddedCoderCWrapperModel(wrapperInfo);
-        	log("Creating wrapper model for autosar component '" + slModelPath.toFile().getName() + "'...");
-        	Object resultObj = HttpRequester.waitForCompletion(job.getJobID(), "result");
         	try {
-        		modelPath = (String) ((Map<?,?>)resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_MODEL_FILE);
+	        	Job job = archApi.createEmbeddedCoderCWrapperModel(wrapperInfo);
+	        	log("Creating wrapper model for autosar component '" + slModelPath.toFile().getName() + "'...");
+	        	Object resultObj = HttpRequester.waitForCompletion(job.getJobID(), "result");
+	        	modelPath = (String) ((Map<?,?>)resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_MODEL_FILE);
         		scriptPath = (String) ((Map<?,?>)resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_INIT_FILE);
         		log("EmbeddedCoder Autosar wrapper model creation succeeded.");
         	} catch (Exception e) {
-        		throw new ApiException("Wrapper model creation did not return the expected result: " + resultObj);
-        	}
+            	log("ERROR. Failed to create wrapper model: " + e.getMessage());
+            	error();
+            }
         }
 
         /*
@@ -116,10 +122,15 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         }
         configureParameterHandling(info, step.getParameterHandling());
         configureTestMode(info, step.getTestMode());
-        Job job = archApi.importEmbeddedCoderArchitecture(info);
-        log("Importing EmbeddedCoder architecture '" + new File(modelPath).getName() + "'...");
-        HttpRequester.waitForCompletion(job.getJobID());
-
+        try {
+	        Job job = archApi.importEmbeddedCoderArchitecture(info);
+	        log("Importing EmbeddedCoder architecture '" + new File(modelPath).getName() + "'...");
+	        HttpRequester.waitForCompletion(job.getJobID());
+        } catch (Exception e) {
+        	log("ERROR. Failed to import architecture " + 
+        			info.getEcModelFile() + ": " + e.getMessage());
+        	error();
+        }
         /*
          * Wrapping up, reporting, etc.
          */

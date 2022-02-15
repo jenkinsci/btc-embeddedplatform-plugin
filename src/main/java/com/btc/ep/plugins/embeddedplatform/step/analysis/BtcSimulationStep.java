@@ -59,8 +59,13 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
         /*
          * Workaround because there's no pure simulation api
          */
-        List<String> scopeUids =
-            scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid()).collect(Collectors.toList());
+        List<String> scopeUids = null;
+        try {
+            scopeUids = scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid()).collect(Collectors.toList());
+        } catch (Exception e) {
+        	log("ERROR. could not get any scopes: " + e.getMessage());
+        	error();
+        }
         for (String executionConfig : executionConfigNames) {
             BackToBackTestExecutionData data = new BackToBackTestExecutionData();
             data.refMode(executionConfig);
@@ -71,6 +76,8 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
                     HttpRequester.waitForCompletion(job.getJobID());
                 } catch (ApiException ignored) {
                     // see EP-2568
+                	log("WARNING. failed to execute for scope " + scopeUid + ": " + ignored.getMessage());
+                	warning();
                 }
             }
         }

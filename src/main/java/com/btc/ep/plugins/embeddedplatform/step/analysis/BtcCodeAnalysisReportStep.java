@@ -52,11 +52,16 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
         try {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
-        	response = 500;
         	result("ERROR");
+        	error();
             throw new IllegalStateException("You need an active profile for the current command");
         }
-        List<Scope> scopes = scopeApi.getScopesByQuery1(null, true);
+        List<Scope> scopes = null;
+        try {
+        	scopes = scopeApi.getScopesByQuery1(null, true);
+        } catch(Exception e) {
+        	log("ERROR: failed to get scopes. " + e.getMessage());
+        }
         checkArgument(!scopes.isEmpty(), "ERROR: no top-level scope in selected profile");
     	Scope toplevel = scopes.get(0);
     	String usecases = step.getUseCase();
@@ -71,20 +76,24 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 	    		report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
 	    	}
     	} catch (Exception e) {
-    		log("ERROR. Report not generated: " + e.getMessage());
-    		error();
-    		result("ERROR");
+    		log("WARNING. Report not generated: " + e.getMessage());
+    		warning();
     	}
     	if (report != null)
 	    { 
     		ReportExportInfo info = new ReportExportInfo();
 	        info.setNewName(step.getReportName());
 	        info.setExportPath(Store.exportPath);
-	        reportApi.exportReport(report.getUid(), info);
-	        String msg = "Exported the " + usecases + " coverage report.";
-	        detailWithLink("Code Coverage Report", step.getReportName() + ".html");
-	    	info(msg);
-	    	log(msg);
+	        try {
+		        reportApi.exportReport(report.getUid(), info);
+		        String msg = "Exported the " + usecases + " coverage report.";
+		        detailWithLink("Code Coverage Report", step.getReportName() + ".html");
+		    	info(msg);
+		    	log(msg);
+	        } catch (Exception e) {
+	        	log("WARNING: Failed to export report. " + e.getMessage());
+	        	warning();
+	        }
     	}
     }
 

@@ -83,8 +83,15 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
                     createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
                 
                 // start process and save it for future use (e.g. to destroy it)
-                Store.epProcess = spawnManagedProcess(command);
-                log(String.join(" ", command));
+                try {
+	                Store.epProcess = spawnManagedProcess(command);
+	                log(String.join(" ", command));
+                } catch (Exception e) {
+                	log("ERROR. Failed to start BTC! " + e.getMessage());
+                	error();
+                	Store.epProcess.kill();
+                	return;
+                }
             }
 
             // wait for ep rest service to respond

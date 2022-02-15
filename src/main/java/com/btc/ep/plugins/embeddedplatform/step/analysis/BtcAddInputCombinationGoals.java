@@ -54,6 +54,7 @@ class BtcAddInputCombinationGoalsExecution extends AbstractBtcStepExecution {
     	// Check preconditions
     	info("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
     	result("ERROR");
+    	error();
     	log("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
         
     }

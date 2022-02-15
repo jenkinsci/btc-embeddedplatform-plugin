@@ -67,15 +67,24 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
         if (profilePath instanceof String) {
             // save the epp to the designated location
         	System.out.println("Saving to " + profilePath);
-            profileApi.saveProfile(new ProfilePath().path(profilePath));
+        	try {
+        		profileApi.saveProfile(new ProfilePath().path(profilePath));
+        	} catch (Exception e) {
+            	log("WARNING. Profile could not be saved! " + e.getMessage());
+            	warning();
+            }
         }
 
         /*
          * Exit the application (first softly via API)
          */
         if (step.isCloseEp()) {
-            applicationApi.exitApplication(true);
-            if (Store.epProcess != null && Store.epProcess.isAlive()) {
+        	try {
+	            applicationApi.exitApplication(true);
+        	} catch (Exception e) { // doesn't really matter what we do, as long as we dont crash
+            	log("Warning: " + e.getMessage());
+            }
+        	if (Store.epProcess != null && Store.epProcess.isAlive()) {
                 // ... und bist du nicht willig, so brauch ich Gewalt!
                 Store.epProcess.kill();
             }

@@ -71,21 +71,37 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to generate tests");
         }
-        List<Scope> scopesList = scopeApi.getScopesByQuery1(null, true);
+        List<Scope> scopesList = null;
+        try {
+        	scopesList = scopeApi.getScopesByQuery1(null, true);
+        } catch (Exception e) {
+        	log("ERROR. could not get scopes: " + e.getMessage());
+        	error();
+        }
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-        prepareAndExecuteVectorGeneration();
+        try {
+        	prepareAndExecuteVectorGeneration();
+        } catch (Exception e) {
+        	log("ERROR: failed to execute vector generation: " + e.getMessage());
+        	error();
+        }
         String msg = "Successfully executed vectorGeneration";
         // Reporting
         if (step.isCreateReport()) {
-            Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
-            Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
-            ReportExportInfo info = new ReportExportInfo();
-            String reportName = "CodeCoverageReport";
-            info.setNewName(reportName);
-            info.setExportPath(Store.exportPath);
-            reportApi.exportReport(report.getUid(), info);
-            msg += " and exported the coverage report";
-            detailWithLink("Code Coverage Report", reportName + ".html");
+            Scope toplevel = scopesList.get(0);
+            try {
+            	Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+	            ReportExportInfo info = new ReportExportInfo();
+	            String reportName = "CodeCoverageReport";
+	            info.setNewName(reportName);
+	            info.setExportPath(Store.exportPath);
+	            reportApi.exportReport(report.getUid(), info);
+	            msg += " and exported the coverage report";
+	            detailWithLink("Code Coverage Report", reportName + ".html");
+            } catch (Exception e) {
+            	log("WARNING: failed to make and export report: " + e.getMessage());
+            	warning();
+            }
         }
         //FIXME: faking... EP-2581: no coverage info available atm.
         double stmD = 100d;
