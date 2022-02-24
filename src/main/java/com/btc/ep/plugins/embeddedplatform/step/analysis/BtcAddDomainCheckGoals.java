@@ -14,6 +14,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.DomainChecksApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ScopesApi;
@@ -69,24 +70,23 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         try {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
-        	result("ERROR");
+        	log("ERROR: No active profile found. Did you successfuly load one in?");
         	error();
-        	status(Status.ERROR);
-        	log("No active profile found. Did you successfuly load one in?");
             throw new IllegalStateException("You need an active profile for the current command");
         }
         List<Scope> scopesList = null;
         try {
         	scopesList = scopesApi.getScopesByQuery1(null, true);
         } catch(Exception e) {
-        	log("ERROR: " + e.getMessage());
+        	log("ERROR could not query scopes: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         }
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
         int rast;
         try {
     		rast = Integer.parseInt(step.getRaster());
     	} catch (Exception e) {
-    		log("ERROR: invalid integer '" + step.getRaster() + "'. Changing to default value of 25 instead");
+    		log("WARNING: invalid integer '" + step.getRaster() + "'. Changing to default value of 25 instead. This will affect results!");
     		warning();
     		rast = 25;
     		step.setRaster("25");
@@ -105,6 +105,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     				scopes = scopesApi.getScopesByQuery1(step.getScopePath(), false);
     			} catch (Exception e) {
     				log("ERROR getting scope " + step.getScopePath() + ": "+ e.getMessage());
+    				try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
     			}
     			checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
     			scope = scopes.get(0).getUid();
@@ -114,6 +115,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         			scopes = scopesApi.getScopesByQuery1(null, true);
         		} catch (Exception e) {
     				log("ERROR getting top level scope: " + e.getMessage());
+    				try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
     			}
         		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
                 scope = scopes.get(0).getUid();
@@ -125,6 +127,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     			scopes = scopesApi.getScopesByQuery1(null, false);
     		} catch (Exception e) {
 				log("ERROR getting list of all scopes: " + e.getMessage());
+				try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
 			}
     		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
     		for(Scope scope: scopes) {
@@ -143,9 +146,8 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		try {
     			DcXmlPath = resolvePath(step.getDcXmlPath());
     		} catch (Exception e) {
-    			log("WARNING: invalid path given: "+step.getDcXmlPath());
+    			log("ERROR: invalid path given: "+step.getDcXmlPath() + ". " + e.getMessage());
     			error();
-    			result("ERROR");
     			return;
     		}
         	RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
@@ -156,9 +158,9 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         		HttpRequester.waitForCompletion(job.getJobID(), "result");
 	        	log("Successfully imported domain checks for scope " + scopeuid + ": " + response);
 			} catch (Exception e) {
-				result("ERROR");
 				error();
-				log("failed DomainChecks API call for UID " + scopeuid + ": " + e.getMessage());
+				log("ERROR: failed DomainChecks API call for UID " + scopeuid + ": " + e.getMessage());
+				
 			}	
         } else { // no config file given-- use our input variables
     		// create API object
@@ -171,7 +173,6 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     			String response = domainApi.createDomainChecksRanges(r);
     			log("Successfully updated domain checks for scope " + scopeuid + ": " + response);
     		} catch (Exception e) {
-    			result("ERROR");
     			error();
     			log("failed DomainChecks API call for UID " + scopeuid + ": " + e.getMessage());
     		}

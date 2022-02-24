@@ -49,12 +49,12 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- ORIGINAL: START ---------------
      */
-    public AbstractBtcStepExecution(Step step, StepContext context) {
+    /*public AbstractBtcStepExecution(Step step, StepContext context) {
         super(context);
         this.functionName = step.getDescriptor().getFunctionName();
         this.reportingStep = new TestStep(functionName);
         recordStepArguments(step);
-    }
+    }*/
 
     /*
      * -------------- ORIGINAL: END -----------------
@@ -63,7 +63,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- Testing: START -----------------
      */
-	/*@SuppressWarnings("deprecation")
+	@SuppressWarnings("deprecation")
 	public AbstractBtcStepExecution(Step step, StepContext context) {
     	this.context = context;
     	this.functionName = "DUMMY";

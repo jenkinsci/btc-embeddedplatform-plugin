@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -17,6 +18,7 @@ import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.ApiException;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -62,6 +64,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         	profilesApi.createProfile(true);
         } catch (Exception e) {
         	log("ERROR. Failed to create profile:" + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
@@ -74,6 +77,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
         	log("ERROR. Failed to import provided architecture "
         			+ info.getModelFile() + ": " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
 

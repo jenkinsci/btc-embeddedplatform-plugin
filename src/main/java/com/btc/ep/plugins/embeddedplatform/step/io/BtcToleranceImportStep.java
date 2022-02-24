@@ -12,6 +12,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.TolerancesApi;
 import org.openapitools.client.model.TolerancesImportConfig;
 
@@ -75,6 +76,7 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
         	tolerancesApi.setGlobalTolerances(info);
         } catch (Exception e) {
         	log("ERROR: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         info("Imported Tolerances.");

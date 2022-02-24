@@ -76,6 +76,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         	scopesList = scopeApi.getScopesByQuery1(null, true);
         } catch (Exception e) {
         	log("ERROR. could not get scopes: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
@@ -83,6 +84,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         	prepareAndExecuteVectorGeneration();
         } catch (Exception e) {
         	log("ERROR: failed to execute vector generation: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         String msg = "Successfully executed vectorGeneration";
@@ -100,6 +102,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 	            detailWithLink("Code Coverage Report", reportName + ".html");
             } catch (Exception e) {
             	log("WARNING: failed to make and export report: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
             	warning();
             }
         }

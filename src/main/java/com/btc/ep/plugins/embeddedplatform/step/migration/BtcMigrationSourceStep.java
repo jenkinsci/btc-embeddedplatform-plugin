@@ -150,13 +150,25 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
         /*
          * 7. Export/Store Execution Records
          */
-        storeExecutionRecords();
+        try {
+        	storeExecutionRecords();
+        } catch (Exception e) {
+        	log("WARNING saving execution records: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	warning();
+        }
 
         /*
          * 8. Save profile and wrap up
          */
         // save the epp to the designated location
-        saveProfileAndReportData(profilePath.toString());
+        try {
+        	saveProfileAndReportData(profilePath.toString());
+        } catch (Exception e) {
+        	log("WARNING saving profile: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	warning();
+        }
 
         // print success message and return response code
         log("--> [200] Migration Source successfully executed.");

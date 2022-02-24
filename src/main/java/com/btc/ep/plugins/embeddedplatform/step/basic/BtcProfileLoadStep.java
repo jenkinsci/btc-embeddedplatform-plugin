@@ -13,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -67,6 +68,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         }
         catch (Exception e) {
         	log("ERROR: failed to open profile. " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         	msg = "Could not open profile";
         }
@@ -84,6 +86,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 	        }
         } catch (Exception e) {
         	log("WARNING. Failed to get existing architectures: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	warning();
         }
 
@@ -104,6 +107,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 	            response = 201;
         	} catch (Exception e) {
             	log("WARNING. Failed to update architecture: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
             	warning();
             }
         }
@@ -146,7 +150,12 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         if (p != null) {
             updateModelPath.setEnvironment(p.toFile().getCanonicalPath());
         }
-        archApi.updateModelPaths("", updateModelPath);
+        try {
+        	archApi.updateModelPaths("", updateModelPath);
+        } catch(Exception e) {
+        	log("WARNING failed to update master model: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        }
     }
 
 }

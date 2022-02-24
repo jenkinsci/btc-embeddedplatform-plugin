@@ -15,6 +15,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionRecordsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ExecutionRecordImportInfo;
@@ -71,8 +72,14 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         data.setKind(step.getExecutionConfig());
         data.setPaths(paths);
         data.setFolderName(step.getFolderName());
-        Job job = erApi.importExecutionRecord(data);
-        Object response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
+        Job job = null;
+        Object response_obj = null;
+        try {
+        	job = erApi.importExecutionRecord(data);
+        	response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
+        } catch (Exception e) {
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        }
         int response_int = (int) response_obj;
         switch (step.getExecutionConfig()) {
         	case "TL MIL":

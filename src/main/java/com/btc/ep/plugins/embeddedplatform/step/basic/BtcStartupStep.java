@@ -19,6 +19,7 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.Configuration;
 
 import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
@@ -88,6 +89,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 	                log(String.join(" ", command));
                 } catch (Exception e) {
                 	log("ERROR. Failed to start BTC! " + e.getMessage());
+                	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
                 	error();
                 	Store.epProcess.kill();
                 	return;

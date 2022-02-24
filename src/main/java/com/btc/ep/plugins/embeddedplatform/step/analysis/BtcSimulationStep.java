@@ -64,6 +64,7 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
             scopeUids = scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid()).collect(Collectors.toList());
         } catch (Exception e) {
         	log("ERROR. could not get any scopes: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         for (String executionConfig : executionConfigNames) {
@@ -74,9 +75,10 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
                 try {
                     Job job = b2bApi.executeBackToBackTestOnScope(scopeUid, data);
                     HttpRequester.waitForCompletion(job.getJobID());
-                } catch (ApiException ignored) {
+                } catch (ApiException e) {
                     // see EP-2568
-                	log("WARNING. failed to execute for scope " + scopeUid + ": " + ignored.getMessage());
+                	log("WARNING. failed to execute for scope " + scopeUid + ": " + e.getMessage());
+                	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
                 	warning();
                 }
             }

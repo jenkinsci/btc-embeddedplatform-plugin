@@ -160,6 +160,7 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
         } catch (ApiException e) {
         	// TODO: convenience workaround EP-2722
         	log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         info("Finished exporting Input Restrictions");

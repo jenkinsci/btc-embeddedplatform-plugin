@@ -15,6 +15,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
@@ -245,8 +246,9 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
         try {
         	allVectors = vectorApi.getStimuliVectors();
         } catch (Exception e) {
-        	log("ERROR: " + e.getMessage());
-        	error();
+        	log("WARNING could not find stimuli vectors: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	warning();
         }
         List<String> allVectorNames = new ArrayList<String>();
         for (B2BStimuliVector vector : allVectors) {
@@ -255,11 +257,17 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 
         RestVectorExportDetails r = new RestVectorExportDetails();
         if (step.getVectorFormat() == "Excel") {
-        	List<Architecture> architectures = archApi.getArchitectures(null);
-        	r.setArchitectureUid(architectures.get(1).getUid().toString());
-        	r.setSingleFile(false); // TODO once EP-2711 is fixed, make sure 
-        							// that we dont get an error on exporting excel (single-file)
-        	// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
+        	try {
+	        	List<Architecture> architectures = archApi.getArchitectures(null);
+	        	r.setArchitectureUid(architectures.get(1).getUid().toString());
+	        	r.setSingleFile(false); // TODO once EP-2711 is fixed, make sure 
+	        							// that we dont get an error on exporting excel (single-file)
+	        	// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
+        	} catch (Exception e) {
+        		log("ERROR getting architecture: " + e.getMessage());
+        		try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        		error();
+        	}
         } else if (step.getVectorFormat() == "CSV") {
         	r.setCsvDelimiter(step.getCsvDelimiter());
         	r.setSingleFile(step.isSingleFile());

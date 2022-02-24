@@ -70,6 +70,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         	profilesApi.createProfile(true);
         } catch (Exception e) {
         	log("ERROR. Failed to create profile: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         /*
@@ -99,6 +100,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         		log("EmbeddedCoder Autosar wrapper model creation succeeded.");
         	} catch (Exception e) {
             	log("ERROR. Failed to create wrapper model: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
             	error();
             }
         }
@@ -129,6 +131,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
         	log("ERROR. Failed to import architecture " + 
         			info.getEcModelFile() + ": " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         /*

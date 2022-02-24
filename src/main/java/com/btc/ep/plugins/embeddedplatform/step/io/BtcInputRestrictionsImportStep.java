@@ -12,6 +12,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
@@ -155,6 +156,7 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
         	error();
         	log("ERROR on input restrictions import: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         }
         info("Imported input restructions");
 

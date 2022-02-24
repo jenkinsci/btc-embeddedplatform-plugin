@@ -11,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -75,6 +76,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
             profilesApi.createProfile(true);
         } catch (Exception e) {
         	log("ERROR. Failed to create profile: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         TLImportInfo info = new TLImportInfo()
@@ -120,6 +122,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 	    } catch (Exception e) {
         	log("ERROR. Failed to import architecture " + 
         			info.getSlModelFile() + ": " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         /*

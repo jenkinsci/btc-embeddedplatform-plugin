@@ -13,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionRecordsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -60,6 +61,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
             .collect(Collectors.toList());
         } catch (Exception e) {
         	log("ERROR. Failed to process execution records: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         if (uids.isEmpty()) {
@@ -81,6 +83,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 	        info("Exported execution records");
         } catch (Exception e) {
         	log("ERROR. Could not export execution records: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
 

@@ -23,7 +23,9 @@ import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.BackToBackTest;
 import org.openapitools.client.model.BackToBackTest.VerdictStatusEnum;
 import org.openapitools.client.model.BackToBackTestExecutionData;
+import org.openapitools.client.model.BackToBackTestExecutionSourceData;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.model.RBTestCaseExecutionResultData;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
@@ -70,6 +72,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         	scopes = scopesApi.getScopesByQuery1(null, true);
         } catch (Exception e) {
         	log("ERROR getting scopes: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         }
         checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
         Scope toplevelScope = scopes.get(0);
@@ -90,15 +93,16 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         data.setCompMode(step.getComparison());
 
         // Execute B2B test and return result
-        Job job;
+        Job job = null;
         try {
 	        job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
         } catch (Exception e) {
         	log("Error: failed to execute B2B test: " + e.getMessage());
-        	result("ERROR");
-        	return;
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
         }
         Map<?,?> resultMap = (Map<?,?>)HttpRequester.waitForCompletion(job.getJobID(), "result");
+        
         String b2bTestUid = (String)resultMap.get("uid");
         try {
 	        BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
@@ -129,6 +133,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	        generateAndExportReport(b2bTestUid);
         } catch (Exception e) {
         	log("ERROR executing B2B tests: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
 
@@ -143,7 +148,8 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
     	try {
     		report = b2bReportingApi.createBackToBackReport(b2bTestUid);
     	} catch (Exception e) {
-    		log("WARNING, failed to create B2B report: " + e.getMessage());
+    		log("WARNING failed to create B2B report: " + e.getMessage());
+    		try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
     		warning();
     	}
         ReportExportInfo reportExportInfo = new ReportExportInfo();
@@ -153,7 +159,8 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		        reportingApi.exportReport(report.getUid(), reportExportInfo);
 		        detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
         	} catch (Exception e) {
-        		log("WARNING, failed to export report: " + e.getMessage());
+        		log("WARNING failed to export report: " + e.getMessage());
+        		try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         		warning();
         	}
         }
@@ -222,7 +229,7 @@ public class BtcB2BStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setReference(String reference) {
-        this.reference = reference;
+        this.reference = reference.toUpperCase();
 
     }
 
@@ -233,7 +240,7 @@ public class BtcB2BStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setComparison(String comparison) {
-        this.comparison = comparison;
+        this.comparison = comparison.toUpperCase();
 
     }
 

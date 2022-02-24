@@ -12,6 +12,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
 import org.openapitools.client.api.CodeAnalysisReportsRbtApi;
 import org.openapitools.client.api.ProfilesApi;
@@ -61,6 +62,7 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
         	scopes = scopeApi.getScopesByQuery1(null, true);
         } catch(Exception e) {
         	log("ERROR: failed to get scopes. " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         }
         checkArgument(!scopes.isEmpty(), "ERROR: no top-level scope in selected profile");
     	Scope toplevel = scopes.get(0);
@@ -77,6 +79,7 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 	    	}
     	} catch (Exception e) {
     		log("WARNING. Report not generated: " + e.getMessage());
+    		try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
     		warning();
     	}
     	if (report != null)
@@ -92,6 +95,7 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 		    	log(msg);
 	        } catch (Exception e) {
 	        	log("WARNING: Failed to export report. " + e.getMessage());
+	        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
 	        	warning();
 	        }
     	}

@@ -15,6 +15,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.FoldersApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
@@ -85,14 +86,20 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
         for (File vectorFile : vectorFiles) {
             vectorFilePaths.add(vectorFile.getAbsolutePath());
         }
-        Job job;
+        Job job = null;
         if (step.getVectorKind().equals("TC")) {
             // import test cases
             RBTestCaseImportInfo info = new RBTestCaseImportInfo();
             info.setOverwritePolicy(OVERWRITE);
             info.setPaths(vectorFilePaths);
             // no format? http://jira.osc.local:8080/browse/EP-2534 --> format is auto-detected based on file extension
-            job = rbTestCasesApi.importRBTestCase(info);
+            try {
+            	job = rbTestCasesApi.importRBTestCase(info);
+            } catch (Exception e) {
+            	log("ERROR importing RBT: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	error();
+            }
         } else { // excel
             // import stimuli vectors
             StimuliVectorImportInfo info = new StimuliVectorImportInfo();
@@ -103,10 +110,22 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             info.setDelimiter("Semicolon");
             String fUid = foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
             info.setFolderUID(fUid);*/
-            job = stimuliVectorsApi.importStimuliVectors(info);
+            try {
+            	job = stimuliVectorsApi.importStimuliVectors(info);
+            } catch (Exception e) {
+            	log("ERROR importing Stimul Vectors: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	error();
+            }
         }
         ImportResult importResult = HttpRequester.waitForCompletion(job.getJobID(), "result", ImportResult.class);
-        processResult(importResult);
+        try {
+        	processResult(importResult);
+        } catch (Exception e) {
+        	log("WARNING failed to parse import results: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	warning();
+        }
     }
 
     /**

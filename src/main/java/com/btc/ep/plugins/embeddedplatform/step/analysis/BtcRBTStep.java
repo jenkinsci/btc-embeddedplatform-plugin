@@ -91,6 +91,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         	tcUids = getRelevantTestCaseUIDs(); // <-- TODO waiting for EP-2537
         } catch (Exception e) {
         	log("ERROR. could not find test cases: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
@@ -112,6 +113,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	        testResults = HttpRequester.waitForCompletion(job.getJobID(), "testResults");
         } catch (Exception e) {
         	log("ERROR. could not execute RBTs: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         	return;
         }
@@ -128,6 +130,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	        	generateAndExportReport(testResultData.keySet());
 	        } catch (Exception e) {
 	        	log("WARNING. failed to generate and export report: " + e.getMessage());
+	        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
 	        	warning();
 	        }
         } else { // TODO: this is a problem that we should figure out how to handle.
