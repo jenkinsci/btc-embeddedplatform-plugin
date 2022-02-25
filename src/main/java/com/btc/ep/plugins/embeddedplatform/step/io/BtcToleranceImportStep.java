@@ -12,6 +12,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.TolerancesApi;
 import org.openapitools.client.model.TolerancesImportConfig;
 
@@ -65,18 +66,23 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
         if (step.getUseCase().equals("RBT")) {
             // Requirements-based Test
             info.setToleranceUseCase("RBT");
-        } else {
+        } else if (step.getUseCase().equals("B2B")) {
             // Back-to-Back Test
             info.setToleranceUseCase("B2B");
+        } else {
+        	checkArgument(false, "Valid use cases for Tolerance Import are B2B or RBT");
         }
-        tolerancesApi.setGlobalTolerances(info);
+        try {
+        	tolerancesApi.setGlobalTolerances(info);
+        } catch (Exception e) {
+        	log("ERROR: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         info("Imported Tolerances.");
 
         //HttpRequester.waitForCompletion(job.getJobID());
 
-        // Questions
-        // 1. Will most of these steps have jobs that need to be completed?
-        // 2. How do I know that I'm using the right APIs and Classes?
 
     }
 

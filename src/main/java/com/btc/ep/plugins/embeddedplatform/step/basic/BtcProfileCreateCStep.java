@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -17,6 +18,7 @@ import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.ApiException;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -58,12 +60,26 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         /*
          * Create the profile based on the code model
          */
-        profilesApi.createProfile(true);
+        try {
+        	profilesApi.createProfile(true);
+        } catch (Exception e) {
+        	log("ERROR. Failed to create profile:" + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
         CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
-        Job job = archApi.importArchitecture(info);
-        log("Importing C-Code architecture...");
-        HttpRequester.waitForCompletion(job.getJobID());
+        Job job = null;
+        try {
+        	job = archApi.importArchitecture(info);
+        	log("Importing C-Code architecture...");
+            HttpRequester.waitForCompletion(job.getJobID());
+        } catch (Exception e) {
+        	log("ERROR. Failed to import provided architecture "
+        			+ info.getModelFile() + ": " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
 
         /*
          * Wrapping up, reporting, etc.
@@ -84,8 +100,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
      */
     private void preliminaryChecks(Path profilePath, Path codeModelPath) {
         if (step.getLicenseLocationString() != null) {
-            log(
-                "the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
+            log("the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
         checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
         checkArgument(codeModelPath != null, "No valid code model path was provided: " + step.getCodeModelPath());

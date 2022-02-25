@@ -65,26 +65,46 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     @Override
     protected void performAction() throws Exception {
     	// Check preconditions
+    	// TODO: we only need to have a profile for some operations. this is overly strict
         try {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
+            throw new IllegalStateException("You need an active profile to generate tests");
         }
-        List<Scope> scopesList = scopeApi.getScopesByQuery1(null, true);
+        List<Scope> scopesList = null;
+        try {
+        	scopesList = scopeApi.getScopesByQuery1(null, true);
+        } catch (Exception e) {
+        	log("ERROR. could not get scopes: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-        prepareAndExecuteVectorGeneration();
+        try {
+        	prepareAndExecuteVectorGeneration();
+        } catch (Exception e) {
+        	log("ERROR: failed to execute vector generation: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         String msg = "Successfully executed vectorGeneration";
         // Reporting
         if (step.isCreateReport()) {
-            Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
-            Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
-            ReportExportInfo info = new ReportExportInfo();
-            String reportName = "CodeCoverageReport";
-            info.setNewName(reportName);
-            info.setExportPath(Store.exportPath);
-            reportApi.exportReport(report.getUid(), info);
-            msg += " and exported the coverage report";
-            detailWithLink("Code Coverage Report", reportName + ".html");
+            Scope toplevel = scopesList.get(0);
+            try {
+            	Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+	            ReportExportInfo info = new ReportExportInfo();
+	            String reportName = "CodeCoverageReport";
+	            info.setNewName(reportName);
+	            info.setExportPath(Store.exportPath);
+	            reportApi.exportReport(report.getUid(), info);
+	            msg += " and exported the coverage report";
+	            detailWithLink("Code Coverage Report", reportName + ".html");
+            } catch (Exception e) {
+            	log("WARNING: failed to make and export report: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	warning();
+            }
         }
         //FIXME: faking... EP-2581: no coverage info available atm.
         double stmD = 100d;

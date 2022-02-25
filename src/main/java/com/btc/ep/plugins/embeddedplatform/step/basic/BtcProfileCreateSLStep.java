@@ -11,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -65,15 +66,26 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
 
         //TODO: Execute Startup Script (requires EP-2535)
-
-        profilesApi.createProfile(true);
+        try {
+        	profilesApi.createProfile(true);
+        } catch (Exception e) {
+        	log("ERROR. Failed to create profile: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         SLImportInfo info = new SLImportInfo()
             .slModelFile(slModelPath.toString())
             .slInitScriptFile(slScriptPath.toString());
-        Job job = archApi.importSimulinkArchitecture(info);
-        log("Importing Simulink architecture '" + slModelPath.toFile().getName() + "'...");
-        HttpRequester.waitForCompletion(job.getJobID());
-
+        try {
+	        Job job = archApi.importSimulinkArchitecture(info);
+	        log("Importing Simulink architecture '" + slModelPath.toFile().getName() + "'...");
+	        HttpRequester.waitForCompletion(job.getJobID());
+        } catch (Exception e) {
+        	log("ERROR. Failed to import architecture " + 
+        			info.getSlModelFile() + ": " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         /*
          * Wrapping up, reporting, etc.
          */

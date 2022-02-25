@@ -12,6 +12,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
@@ -146,11 +147,18 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
         }
         // Get the path
         Path path = resolvePath(step.getPath());
-        checkArgument(path.toFile().exists(), "Error: Export xml does not exist " + path);
+        checkArgument(path.toFile().exists(), "Error: xml does not exist " + path);
 
         InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
         file.setFilePath(path.toString());
-        inputRestrictionsApi.importFromFile(file);
+        try {
+        	inputRestrictionsApi.importFromFile(file);
+        } catch (Exception e) {
+        	error();
+        	log("ERROR on input restrictions import: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        }
+        info("Imported input restructions");
 
     }
 

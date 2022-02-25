@@ -13,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -20,6 +21,7 @@ import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -57,20 +59,35 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
          * Load the profile
          */
         log("Loading profile '" + profilePath.toFile().getName() + "'"); 
-        profilesApi.openProfile(step.getProfilePath(), true);
-        updateModelPaths();
-        String msg = "Successfully loaded the profile";
-        response = 200;
-
-        boolean hasModelBasedArchitecture = archApi.getArchitectures(null)
-            .stream()
-            .filter(arch -> "Simulink".equals(arch.getArchitectureKind())
-                || "TargetLink".equals(arch.getArchitectureKind()))
-            .findAny()
-            .isPresent();
-        if (hasModelBasedArchitecture || step.getStartupScriptPath() != null) {
-            Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-            //TODO: Execute Startup Script (requires EP-2535)
+        String msg = null;
+        try {
+	        profilesApi.openProfile(step.getProfilePath(), true);
+	        updateModelPaths();
+	        msg = "Successfully loaded the profile";
+	        response = 200;
+        }
+        catch (Exception e) {
+        	log("ERROR: failed to open profile. " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        	msg = "Could not open profile";
+        }
+        
+        try {
+	        boolean hasModelBasedArchitecture = archApi.getArchitectures(null)
+	            .stream()
+	            .filter(arch -> "Simulink".equals(arch.getArchitectureKind())
+	                || "TargetLink".equals(arch.getArchitectureKind()))
+	            .findAny()
+	            .isPresent();
+	        if (hasModelBasedArchitecture || step.getStartupScriptPath() != null) {
+	            Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+	            //TODO: Execute Startup Script (requires EP-2535)
+	        }
+        } catch (Exception e) {
+        	log("WARNING. Failed to get existing architectures: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	warning();
         }
 
         // Compiler Settings
@@ -82,11 +99,17 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
          * Update architecture if required
          */
         if (step.isUpdateRequired()) {
-            Job archUpdate = archApi.architectureUpdate();
-            log("Updating architecture...");
-            HttpRequester.waitForCompletion(archUpdate.getJobID());
-            msg += " (incl. arch-update)";
-            response = 201;
+        	try {
+	            Job archUpdate = archApi.architectureUpdate();
+	            log("Updating architecture...");
+	            HttpRequester.waitForCompletion(archUpdate.getJobID());
+	            msg += " (incl. arch-update)";
+	            response = 201;
+        	} catch (Exception e) {
+            	log("WARNING. Failed to update architecture: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	warning();
+            }
         }
         log(msg + ".");
         detailWithLink(Store.epp.getName(), profilePath.toString());
@@ -127,7 +150,12 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         if (p != null) {
             updateModelPath.setEnvironment(p.toFile().getCanonicalPath());
         }
-        archApi.updateModelPaths("", updateModelPath);
+        try {
+        	archApi.updateModelPaths("", updateModelPath);
+        } catch(Exception e) {
+        	log("WARNING failed to update master model: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        }
     }
 
 }

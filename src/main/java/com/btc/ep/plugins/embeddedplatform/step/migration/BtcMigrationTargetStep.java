@@ -17,6 +17,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionRecordsApi;
 import org.openapitools.client.api.FoldersApi;
 import org.openapitools.client.api.RegressionTestsApi;
@@ -80,7 +81,13 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
      */
     @Override
     protected void performAction() throws Exception {
-        initializeReporting();
+        try {
+        	initializeReporting();
+        } catch (Exception e) {
+        	log("WARNING reporting may not work for this step: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	warning();
+        }
 
         //TODO: Check interfaces on relevant scopes
         //------> detect if outputs are removed
@@ -127,10 +134,16 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
             for (String config : executionConfigs) {
                 FolderTransmisionObject folderKind =
                     new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
-                Folder folder = folderApi.addFolder(folderKind);
-                BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir(), config);
-                importStep.setFolderName(folder.getName());
-                importStep.start(getContext()).start();
+                try {
+	                Folder folder = folderApi.addFolder(folderKind);
+	                BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir(), config);
+	                importStep.setFolderName(folder.getName());
+	                importStep.start(getContext()).start();
+                } catch (Exception e) {
+                	log("ERROR migrating on object '"+config+"': '" + e.getMessage());
+                	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+                	error();
+                }
             }
 
         }
@@ -146,22 +159,51 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 
         for (String config : executionConfigs) {
             RegressionTestsApi regressionTestApi = new RegressionTestsApi();
-            List<Folder> erFolders = folderApi.getFoldersByQuery(null, EXECUTION_RECORD)
-                .stream()
-                .filter(f -> !f.getIsDefault())
-                .collect(Collectors.toList());
+            List<Folder> erFolders = null;
+            try {
+	            erFolders = folderApi.getFoldersByQuery(null, EXECUTION_RECORD)
+	                .stream()
+	                .filter(f -> !f.getIsDefault())
+	                .collect(Collectors.toList());
+            } catch (Exception e) {
+            	log("ERROR querying folderApi: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	error();
+            }
             checkArgument(!erFolders.isEmpty(), "No user-defined Execution Record Folders available.");
             RegressionTestExecutionData data = new RegressionTestExecutionData();
             FolderTransmisionObject folderKind =
                 new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
-            Folder targetFolder = folderApi.addFolder(folderKind);
+            Folder targetFolder = null; 
+            try {
+            	targetFolder = folderApi.addFolder(folderKind);
+            } catch (Exception e) {
+            	log("ERROR adding folder " + folderKind.getFolderName() + e.getMessage());
+            	log("folder will not be processed!");
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	error();
+            }
             data.setCompFolderUID(targetFolder.getUid());
             data.setCompMode(config);
             // TODO: Need naming rule for folders incl. the execution config (EP-2578)
-            Job job = regressionTestApi.executeRegressionTestOnFolder(erFolders.get(0).getUid(), data);
+            Job job = null;
+            try {
+            	job = regressionTestApi.executeRegressionTestOnFolder(erFolders.get(0).getUid(), data);
+            } catch (Exception e) {
+            	log("ERROR executing regression test: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	error();
+            }
             Map<?,?> resultMap = (Map<?,?>)HttpRequester.waitForCompletion(job.getJobID(), "result");
             String regressionTestId = (String)resultMap.get("uid");
-            RegressionTest regressionTest = regressionTestApi.getTestByUID1(regressionTestId);
+            RegressionTest regressionTest = null;
+            try {
+            	regressionTest = regressionTestApi.getTestByUID1(regressionTestId);
+            } catch (Exception e) {
+            	log("ERROR querying folderApi: " + e.getMessage());
+            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+            	error();
+            }
             // status, etc.
             String info =
                 regressionTest.getComparisons().size() + " comparison(s), " + regressionTest.getPassed()
@@ -244,7 +286,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         ExecutionRecordsApi erApi = new ExecutionRecordsApi();
         FoldersApi folderApi = new FoldersApi();
 
-        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords2();
+        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords1();
         //TODO: query all Execution configs if nothing is specified (requires EP-2536)
         for (String config : executionConfigs) {
             if (step.isCreateProfilesFromScratch()) {

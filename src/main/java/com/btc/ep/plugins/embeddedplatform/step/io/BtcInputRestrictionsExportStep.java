@@ -156,11 +156,14 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
         file.setFilePath(step.getPath());
         try {
         	inputRestrictionsApi.exportToFile(file);
+        	detailWithLink("Input Restrictions Export File", file.getFilePath());
         } catch (ApiException e) {
         	// TODO: convenience workaround EP-2722
         	log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
-        	failed();
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
         }
+        info("Finished exporting Input Restrictions");
 
     }
 

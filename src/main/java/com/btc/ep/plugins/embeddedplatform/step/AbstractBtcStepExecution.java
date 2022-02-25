@@ -49,12 +49,12 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- ORIGINAL: START ---------------
      */
-//    public AbstractBtcStepExecution(Step step, StepContext context) {
-//        super(context);
-//        this.functionName = step.getDescriptor().getFunctionName();
-//        this.reportingStep = new TestStep(functionName);
-//        recordStepArguments(step);
-//    }
+    /*public AbstractBtcStepExecution(Step step, StepContext context) {
+        super(context);
+        this.functionName = step.getDescriptor().getFunctionName();
+        this.reportingStep = new TestStep(functionName);
+        recordStepArguments(step);
+    }*/
 
     /*
      * -------------- ORIGINAL: END -----------------
@@ -179,7 +179,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      */
     public AbstractBtcStepExecution status(Status status) {
         // only modify status to worse states
-        if (this.status.compareTo(status) > 0) {
+        if (this.status.compareTo(status) < 0) {
             this.status = status;
         }
         return this;
@@ -253,6 +253,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      */
     public AbstractBtcStepExecution error() {
         this.reportingStep.setStatusOK(false);
+        status(Status.ERROR);
         return this;
     }
     
@@ -261,6 +262,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      */
     public AbstractBtcStepExecution warning() {
         this.reportingStep.setStatusWARNING(true);
+        status(Status.WARNING);
         return this;
     }
 
@@ -329,7 +331,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                 }
             } catch (Exception e) {
                 log("Cannot resolve path: " + filePathString);
-                failed();
+                error();
             }
         }
         return null;

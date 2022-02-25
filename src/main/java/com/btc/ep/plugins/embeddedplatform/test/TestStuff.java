@@ -2,8 +2,11 @@ package com.btc.ep.plugins.embeddedplatform.test;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcB2BStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorExportStep;
 
 public class TestStuff {
 
@@ -20,9 +23,9 @@ public class TestStuff {
         start.setAdditionalJvmArgs("-Xmx2g");
         start.start(DUMMY_CONTEXT).start();
 
-//        BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("C:/workspace/profile.epp");
-//        profileLoad.setUpdateRequired(false);
-//        profileLoad.start(DUMMY_CONTEXT).start();
+        BtcProfileLoadStep profileLoad = new BtcProfileLoadStep("C:/workspace/profile.epp");
+        profileLoad.setUpdateRequired(false);
+        profileLoad.start(DUMMY_CONTEXT).start();
         
         
 //        String slModelPath = BASE_DIR + "/EmbeddedCoder/Autosar/autosar_swc_expfcns.slx";
@@ -63,11 +66,11 @@ public class TestStuff {
         //        profileCreateSL.setSlScriptPath(BASE_DIR + "/Simulink/FromScratch/start.m");
         //        profileCreateSL.start(DUMMY_CONTEXT).start();
 
-//        		System.out.println("Started import");
-//                BtcVectorImportStep vectorImportStep = new BtcVectorImportStep(
-//                    BASE_DIR + "/tests/");
-//                vectorImportStep.start(DUMMY_CONTEXT).start();
-//                System.out.println("Finished import");
+        /*		System.out.println("Started import");
+                BtcVectorExportStep vectorImportStep = new BtcVectorExportStep(
+                    "C:/workspace/tests", "Excel");
+                vectorImportStep.start(DUMMY_CONTEXT).start();
+                System.out.println("Finished import");*/
                 
         //        BtcToleranceImportStep tolImportStep = new BtcToleranceImportStep("E:/tolerances.xml");
         //        tolImportStep.setUseCase("RBT");
@@ -120,10 +123,10 @@ public class TestStuff {
         		tolEx.start(DUMMY_CONTEXT).start();*/
         		
 
-                /*BtcB2BStep b2b = new BtcB2BStep();
-                b2b.setReference("SL MIL");
+                BtcB2BStep b2b = new BtcB2BStep();
+                b2b.setReference("SIL");
                 b2b.setComparison("SIL");
-                b2b.start(DUMMY_CONTEXT).start();*/
+                b2b.start(DUMMY_CONTEXT).start();
                 
                 /*BtcAddDomainCheckGoals domainCheckGoals = new BtcAddDomainCheckGoals();
                 //domainCheckGoals.setDcXmlPath("C:/workspace/domain_checks.xml");

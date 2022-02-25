@@ -13,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionRecordsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -49,24 +50,23 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
-        Path exportDir;
+        Path exportDir = resolvePath(step.getDir());
+        List<String> uids = null;
         try {
-        	exportDir = resolvePath(step.getDir());
-        } catch (Exception e) {
-        	log("Error: invalid path: " + step.getDir());
-        	log(e.getMessage());
-        	failed();
-        	return;
-        }
-        List<String> uids = erApi.getExecutionRecords2()
+        	uids = erApi.getExecutionRecords1()
             .stream()
             .filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
                 && (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
             .map(er -> er.getUid())
             .collect(Collectors.toList());
+        } catch (Exception e) {
+        	log("ERROR. Failed to process execution records: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         if (uids.isEmpty()) {
-        	log("Error: no execution records to export found. Did you run any tests yet?");
-        	failed();
+        	log("Warning: no execution records to export found. Did you run any tests yet?");
+        	warning();
         	return;
         }
         
@@ -74,9 +74,18 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         data.setUiDs(uids);
         data.setExportDirectory(exportDir.toString());
         data.setExportFormat("MDF");
-        Job job = erApi.exportExecutionRecords(data);
-        Object response = HttpRequester.waitForCompletion(job.getJobID());
-        // TODO: the callback is always just null. is there a way of checking the status of the job?
+        try {
+	        Job job = erApi.exportExecutionRecords(data);
+	        Object response = HttpRequester.waitForCompletion(job.getJobID());
+	        // TODO: the callback is always just null. is there a way of checking the status of the job?
+	        detailWithLink("Execution Records Export Folder", data.getExportDirectory());
+	        // TODO: does linking to a folder work? if not just info the export dir.
+	        info("Exported execution records");
+        } catch (Exception e) {
+        	log("ERROR. Could not export execution records: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
 
     }
 

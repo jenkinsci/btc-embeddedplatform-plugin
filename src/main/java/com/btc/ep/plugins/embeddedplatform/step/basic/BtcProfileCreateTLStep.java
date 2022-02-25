@@ -11,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -71,7 +72,13 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
          */
         Path tlModelPath = resolvePath(step.getTlModelPath());
         Path tlScriptPath = resolvePath(step.getTlScriptPath());
-        profilesApi.createProfile(true);
+        try {
+            profilesApi.createProfile(true);
+        } catch (Exception e) {
+        	log("ERROR. Failed to create profile: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         TLImportInfo info = new TLImportInfo()
             .tlModelFile(tlModelPath.toString())
             .tlInitScript(tlScriptPath.toString())
@@ -108,10 +115,16 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         if (step.getCodeFileMatcher() != null) {
         	info.setCfileMatcher(step.getCodeFileMatcher());
         }
-        Job job = archApi.importTargetLinkArchitecture(info);
-        log("Importing TargetLink architecture '" + tlModelPath.toFile().getName() + "'...");
-        HttpRequester.waitForCompletion(job.getJobID());
-
+        try {
+	        Job job = archApi.importTargetLinkArchitecture1(info);
+	        log("Importing TargetLink architecture '" + tlModelPath.toFile().getName() + "'...");
+	        HttpRequester.waitForCompletion(job.getJobID());
+	    } catch (Exception e) {
+        	log("ERROR. Failed to import architecture " + 
+        			info.getSlModelFile() + ": " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
         /*
          * Wrapping up, reporting, etc.
          */
