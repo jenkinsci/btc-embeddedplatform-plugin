@@ -19,6 +19,7 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
+import org.openapitools.client.api.BackToBackTestReportsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
@@ -31,6 +32,7 @@ import org.openapitools.client.model.RBTExecutionDataExtendedNoReport;
 import org.openapitools.client.model.RBTExecutionDataNoReport;
 import org.openapitools.client.model.RBTExecutionReportCreationInfo;
 import org.openapitools.client.model.RBTExecutionReportCreationInfoData;
+import org.openapitools.client.model.RBTestCaseExecutionResultData;
 import org.openapitools.client.model.RBTestCaseExecutionResultSetData;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
@@ -73,6 +75,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
     private ScopesApi scopesApi = new ScopesApi();
     private ProfilesApi profilesApi = new ProfilesApi();
     private ReportsApi reportingApi = new ReportsApi();
+    private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
     private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
 
     @Override
@@ -100,7 +103,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         // this DOESNT cause an exception (at least not one that crashes),
         // so figure out how to catch and handle it.
         Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
-        Object testResults = HttpRequester.waitForCompletion(job.getJobID(), "testResults");
+        Object testResults = HttpRequester.waitForCompletion(job.getJobID(), "testResults", RBTestCaseExecutionResultData.class);
         Gson gson = new Gson();
         Type type = new TypeToken<Map<String, RBTestCaseExecutionResultSetData>>() {
         }.getType();
@@ -264,17 +267,17 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         return tcUids;
     }
 
-    //    /**
-    //     * @param b2bTestUid
-    //     * @throws ApiException
-    //     */
-    //    private void generateAndExportReport(String b2bTestUid) throws ApiException {
-    //        Report report = b2bReportingApi.createBackToBackReport(b2bTestUid);
-    //        ReportExportInfo reportExportInfo = new ReportExportInfo();
-    //        reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_B2B);
-    //        reportingApi.exportReport(report.getUid(), reportExportInfo);
-    //        detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
-    //    }
+        /**
+         * @param b2bTestUid
+         * @throws ApiException
+         */
+        private void generateAndExportReport(String b2bTestUid) throws ApiException {
+            Report report = b2bReportingApi.createBackToBackReport(b2bTestUid);
+            ReportExportInfo reportExportInfo = new ReportExportInfo();
+            reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_RBT);
+            reportingApi.exportReport(report.getUid(), reportExportInfo);
+            detailWithLink(REPORT_LINK_NAME_RBT, REPORT_NAME_RBT + ".html");
+        }
 
 }
 

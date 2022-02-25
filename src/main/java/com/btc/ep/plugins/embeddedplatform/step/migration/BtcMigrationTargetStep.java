@@ -110,7 +110,8 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
             Util.applyMatchingFields(step, ecProfileCreation).start(getContext()).start();
         } else if (step.getCodeModelPath() != null) {
             BtcProfileCreateCStep cProfileCreation =
-                new BtcProfileCreateCStep(profilePath.toString(), step.getCodeModelPath());
+                new BtcProfileCreateCStep(step.getCodeModelPath());
+            cProfileCreation.setProfilePath(profilePath.toString());
             Util.applyMatchingFields(step, cProfileCreation).start(getContext()).start();
         } else {
             throw new IllegalArgumentException(

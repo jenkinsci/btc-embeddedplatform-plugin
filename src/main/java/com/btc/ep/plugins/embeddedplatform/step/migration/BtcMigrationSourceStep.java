@@ -84,6 +84,7 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
          * 1. Load or create the profile
          */
         Path profilePath = resolvePath(step.getProfilePath());
+        //TODO: profile path handling -> profile path shouldn't be mandatory
         if (!step.isCreateProfilesFromScratch() && profilePath.toFile().exists()) {
             BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(profilePath.toString());
             Util.applyMatchingFields(step, profileLoad).start(getContext()).start();
@@ -94,10 +95,12 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
         } else if (step.getSlModelPath() != null) {
             BtcProfileCreateECStep ecProfileCreation =
                 new BtcProfileCreateECStep(step.getSlModelPath());
+            ecProfileCreation.setProfilePath(profilePath.toString());
             Util.applyMatchingFields(step, ecProfileCreation).start(getContext()).start();
         } else if (step.getCodeModelPath() != null) {
             BtcProfileCreateCStep cProfileCreation =
-                new BtcProfileCreateCStep(profilePath.toString(), step.getCodeModelPath());
+                new BtcProfileCreateCStep(step.getCodeModelPath());
+            cProfileCreation.setProfilePath(profilePath.toString());
             Util.applyMatchingFields(step, cProfileCreation).start(getContext()).start();
         } else {
             throw new IllegalArgumentException(

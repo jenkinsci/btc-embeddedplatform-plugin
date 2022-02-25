@@ -47,7 +47,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         /*
          * Preparation
          */
-        Path profilePath = resolvePath(step.getProfilePath());
+        Path profilePath =  getProfilePathOrDefault(step.getProfilePath(), null);
         Path codeModelPath = resolvePath(step.getCodeModelPath());
         preliminaryChecks(profilePath, codeModelPath);
         Store.epp = profilePath.toFile();
@@ -116,9 +116,8 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateCStep(String profilePath, String codeModelPath) {
+    public BtcProfileCreateCStep(String codeModelPath) {
         super();
-        this.profilePath = profilePath;
         this.codeModelPath = codeModelPath;
     }
 
@@ -167,12 +166,6 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
 
     }
 
-    @DataBoundSetter
-    public void setExportPath(String exportPath) {
-        this.exportPath = exportPath;
-
-    }
-
     public String getCodeModelPath() {
         return codeModelPath;
     }
@@ -181,31 +174,39 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
         return startupScriptPath;
     }
 
-    @DataBoundSetter
-    public void setStartupScriptPath(String startupScriptPath) {
-        this.startupScriptPath = startupScriptPath;
-    }
+    public String getLicenseLocationString() {
+	    return licenseLocationString;
+	}
 
-    public String getCompilerShortName() {
+	public String getMatlabVersion() {
+	    return matlabVersion;
+	}
+
+	public String getMatlabInstancePolicy() {
+	    return matlabInstancePolicy;
+	}
+
+	public String getCompilerShortName() {
         return compilerShortName;
     }
 
-    @DataBoundSetter
+    public boolean isSaveProfileAfterEachStep() {
+	    return saveProfileAfterEachStep;
+	}
+
+	@DataBoundSetter
     public void setCompilerShortName(String compilerShortName) {
         this.compilerShortName = compilerShortName;
     }
 
-    public String getMatlabVersion() {
-        return matlabVersion;
-    }
-
     @DataBoundSetter
+	public void setStartupScriptPath(String startupScriptPath) {
+	    this.startupScriptPath = startupScriptPath;
+	}
+
+	@DataBoundSetter
     public void setMatlabVersion(String matlabVersion) {
         this.matlabVersion = matlabVersion;
-    }
-
-    public String getMatlabInstancePolicy() {
-        return matlabInstancePolicy;
     }
 
     @DataBoundSetter
@@ -213,23 +214,26 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
         this.matlabInstancePolicy = matlabInstancePolicy;
     }
 
-    public boolean isSaveProfileAfterEachStep() {
-        return saveProfileAfterEachStep;
-    }
-
     @DataBoundSetter
     public void setSaveProfileAfterEachStep(boolean saveProfileAfterEachStep) {
         this.saveProfileAfterEachStep = saveProfileAfterEachStep;
-    }
-
-    public String getLicenseLocationString() {
-        return licenseLocationString;
     }
 
     @DataBoundSetter
     public void setLicenseLocationString(String licenseLocationString) {
         this.licenseLocationString = licenseLocationString;
     }
+
+    @DataBoundSetter
+	public void setProfilePath(String profilePath) {
+		this.profilePath = profilePath;
+	}
+
+	@DataBoundSetter
+	public void setExportPath(String exportPath) {
+	    this.exportPath = exportPath;
+	
+	}
 
     /*
      * End of getter/setter section

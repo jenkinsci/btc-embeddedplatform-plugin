@@ -1,9 +1,12 @@
 package com.btc.ep.plugins.embeddedplatform.test;
 
+import java.util.Date;
+
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcRBTStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateCStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
@@ -22,12 +25,39 @@ public class TestStuff_Thabo {
     public static void main(String[] args) throws Exception {
         
     	startEP();
-        loadEcProfile(WS + "/" + EC_EPP_FILE);
-        importTestCases(BASE_DIR + "/EmbeddedCoder/Autosar/testcases");
-        runRBT("SIL");
+    	
+    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel.xml");
+    	
+    	Date d1 = new Date();
+    	
+//    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel.xml");
+    	
+    	Date d2 = new Date();
+    	
+//    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel_reduced.xml");
+    	
+    	Date d3 = new Date();
+    	
+//    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel_lib.xml");
+    	
+    	Date d4 = new Date();
+    	
+    	System.out.println("CodeModel: " + (d2.getTime() - d1.getTime()) + "ms");
+    	System.out.println("CodeModel: " + (d3.getTime() - d2.getTime()) + "ms");
+    	System.out.println("CodeModel: " + (d4.getTime() - d3.getTime()) + "ms");
+    	
+//        loadEcProfile(WS + "/" + EC_EPP_FILE);
+//        importTestCases(BASE_DIR + "/EmbeddedCoder/Autosar/testcases");
+//        runRBT("SIL");
         wrapUp();
         
     }
+
+
+	private static void createCProfile(String codeModelPath) throws Exception {
+		BtcProfileCreateCStep step = new BtcProfileCreateCStep(codeModelPath);
+		step.start(DUMMY_CONTEXT).start();
+	}
 
 
 	protected static void runRBT(String ecs) throws Exception {
