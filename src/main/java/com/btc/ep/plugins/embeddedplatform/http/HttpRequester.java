@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -50,7 +51,7 @@ public class HttpRequester {
                 r.setStatus(response.getStatusLine());
                 return r;
             }
-        } catch (HttpHostConnectException endpointNotAvailable) {
+        } catch (HttpHostConnectException | NoHttpResponseException ignored) {
         	// ignore, this is bound to happend when we check for EP availability
     	} catch (IOException e) {
         	e.printStackTrace();
@@ -299,7 +300,7 @@ public class HttpRequester {
                 return true;
             }
             // try again after 2 seconds
-            Thread.sleep(delayInSeconds);
+            Thread.sleep(delayInSeconds * 1000);
             if ((System.currentTimeMillis() - startingTime) > (timeoutInSeconds * 1000)) {
                 System.out
                     .println("Connection attempt to " + getBasePath() + route + " timed out after " + timeoutInSeconds

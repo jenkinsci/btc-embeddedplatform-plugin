@@ -43,12 +43,12 @@ public class ReportService {
     private static Logger logger = LoggerFactory.getLogger(ReportService.class);
 
     public File generateProjectReport(JenkinsAutomationReport reportData) {
-        File templates;
+        File templateFile;
         try {
-            templates = Util.getResourceAsFile(getClass(), REL_PATH_JENKINS_REPORT_TEMPLATES);
+            templateFile = Util.getResourceAsFile(getClass(), REL_PATH_JENKINS_REPORT_TEMPLATES + "/" + reportData.getTemplateFile());
 
             Map<String, Object> reportModel = reportData.getReportModel();
-            Path mainReportPath = Paths.get(templates.getAbsolutePath(), reportData.getTemplateFile());
+            Path mainReportPath = templateFile.toPath();
 
             reportModel.put("page_title", reportData.getSectionName());
             reportModel.put("creator", System.getProperty("user.name"));
@@ -60,7 +60,8 @@ public class ReportService {
                 .name(reportData.getName());
 
             for (JenkinsAutomationReportSection section : reportData.getAllSections()) {
-                config.addTemplateForMainData(Paths.get(templates.getAbsolutePath(), section.getTemplateFile()));
+            	File sectionFile = Util.getResourceAsFile(getClass(), REL_PATH_JENKINS_REPORT_TEMPLATES + "/" + section.getTemplateFile());
+                config.addTemplateForMainData(sectionFile.toPath());
             }
             File report = config.create();
             return report;

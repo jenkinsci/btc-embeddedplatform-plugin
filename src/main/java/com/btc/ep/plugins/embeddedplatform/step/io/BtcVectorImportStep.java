@@ -1,13 +1,11 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import java.io.File;
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -30,6 +28,7 @@ import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /**
@@ -62,30 +61,26 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             throw new IllegalStateException("You need an active profile for the current command");
         }
         // TODO: EP-2735
-        String kind = step.getVectorKind();
-        String format = step.getVectorFormat();
-        checkArgument(kind == "TC" || kind == "Excel",
-        		"Error: valid vectorKind is TC or Excel, not " + kind);
-        checkArgument(format == "csv" || format == "excel", 
-        		"Error: valid vectorFormat is csv or excel, not " + format);
-        
         String fileSuffix = deriveSuffix(step.getVectorFormat());
-        Path importDir = resolvePath(step.getImportDir());
     	// vectorFiles will be an array of files or null
-        File[] vectorFiles = importDir.toFile().exists() ? importDir.toFile().listFiles((f) -> f.getName().toLowerCase().endsWith(fileSuffix.toLowerCase())) : null;
-
+        FilePath importDir = resolveInAgentWorkspace(step.getImportDir());
+        List<FilePath> vectorFiles = new ArrayList<>();
+        List<FilePath> files = importDir.list();
+        for (FilePath file : files) {
+        	if (file != null && file.getName() != null && file.getName().toLowerCase().endsWith(fileSuffix)) {
+        		vectorFiles.add(file);
+        	}
+        }
         // we shouldn't throw an error if the directory doesn't exist 
-        if (vectorFiles == null || vectorFiles.length == 0) {
+        if (vectorFiles.isEmpty()) {
         	String msg = "Nothing to import.";
         	log(msg);
         	info(msg);
         	skipped();
         	return;
         }
-        List<String> vectorFilePaths = new ArrayList<>();
-        for (File vectorFile : vectorFiles) {
-            vectorFilePaths.add(vectorFile.getAbsolutePath());
-        }
+        // convert FilePaths to list of strings that represent valid paths on the remote file system
+        List<String> vectorFilePaths = vectorFiles.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
         Job job = null;
         if (step.getVectorKind().equals("TC")) {
             // import test cases

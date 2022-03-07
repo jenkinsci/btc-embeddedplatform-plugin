@@ -18,10 +18,12 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
+import org.openapitools.client.api.CodeCoverageRobustnessCheckB2BApi;
 import org.openapitools.client.api.CoverageGenerationApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
+import org.openapitools.client.model.CodeCoverageResult;
 import org.openapitools.client.model.Config;
 import org.openapitools.client.model.CoreEngine;
 import org.openapitools.client.model.EngineAtg;
@@ -61,6 +63,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     private ReportsApi reportApi = new ReportsApi();
     private CodeAnalysisReportsB2BApi b2bCodeAnalysisReportApi = new CodeAnalysisReportsB2BApi();
     private ProfilesApi profilesApi = new ProfilesApi();
+    private CodeCoverageRobustnessCheckB2BApi coverageApi = new CodeCoverageRobustnessCheckB2BApi();
     
     @Override
     protected void performAction() throws Exception {
@@ -89,8 +92,8 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         }
         String msg = "Successfully executed vectorGeneration";
         // Reporting
+        Scope toplevel = scopesList.get(0);
         if (step.isCreateReport()) {
-            Scope toplevel = scopesList.get(0);
             try {
             	Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
 	            ReportExportInfo info = new ReportExportInfo();
@@ -106,9 +109,9 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
             	warning();
             }
         }
-        //FIXME: faking... EP-2581: no coverage info available atm.
-        double stmD = 100d;
-        double mcdcD = 100d; // 
+        CodeCoverageResult codeCoverageResult = coverageApi.getCodeCoverageResultByScope(toplevel.getUid(), "MCDC|STM");
+        double stmD = codeCoverageResult.getStatementCoverage().getCoveredCompletelyPercentage().doubleValue();
+        double mcdcD = codeCoverageResult.getMcDCCoverage().getCoveredCompletelyPercentage().doubleValue(); 
         String info = stmD + "% Statement, " + mcdcD + "% MC/DC";
         log(msg + ": " + info);
         info(info);

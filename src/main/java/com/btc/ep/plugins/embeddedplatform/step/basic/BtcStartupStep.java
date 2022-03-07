@@ -43,6 +43,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 
     private static final long serialVersionUID = 1L;
     private BtcStartupStep step;
+    private String epVersion = "";
 
     public BtcStartupStepExecution(BtcStartupStep step, StepContext context) {
         super(step, context);
@@ -55,38 +56,22 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
         noReporting();
 
         // Prepare http connection
-        ApiClient apiClient =
-            new EPApiClient().setBasePath("http://localhost:" + step.getPort());
+        ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
         Configuration.setDefaultApiClient(apiClient);
         HttpRequester.port = step.getPort();
         Store.startDate = new Date();
         boolean connected = HttpRequester.checkConnection("/test", 200);
-        String epVersion = "";
         if (connected) {
             response = 201;
         } else {
             // start command call can be skipped if we only connect to a starting instance (e.g. in docker)
             if (!step.isSimplyConnect()) {
-            	// prepare data for process call
-            	epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
-            	String jreDirectory = getJreDir();
-            	String licensingPackage = step.getLicensingPackage();
-            	
-            	// Check preconditions
-                checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
-                    "Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
-                File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
-                checkArgument(epExecutable.exists(),
-                    "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
-
                 // prepare ep start command
-                List<String> command =
-                    createStartCommand(epExecutable, epVersion, jreDirectory, licensingPackage, step.getPort());
+                List<String> command = createStartCommand();
                 
                 // start process and save it for future use (e.g. to destroy it)
                 try {
 	                Store.epProcess = spawnManagedProcess(command);
-	                log(String.join(" ", command));
                 } catch (Exception e) {
                 	log("ERROR. Failed to start BTC! " + e.getMessage());
                 	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
@@ -105,9 +90,6 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
             } else {
                 log("Connection timed out after " + step.getTimeout() + " seconds.");
                 failed();
-                // Kill EmbeddedPlatform process to prevent zombies!
-                // Hmm, is this important? Jenkins does this eventually using the process killer...
-                Store.epProcess.kill();
                 response = 400;
                 return;
             }
@@ -129,9 +111,35 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
     }
 
     /**
-     * Creates the ep start command
+	 * Creates the ep start command
+	 *
+	 * @return the ep start command
+	 * @throws IOException path issues...
+	 */
+	private List<String> createStartCommand() throws Exception {
+		String licensingPackage = step.getLicensingPackage();
+		int port = step.getPort();
+		/*
+		 * IMPORTANT: Don't use something like System.getProperty("os.name"), it
+		 * 			  will return the operating system of the Jenkins controller
+		 */
+		if (isUnix()) {
+			return createStartCommand_LINUX(licensingPackage);
+		} else {
+			// prepare data for process call
+			epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
+			String jreDirectory = getJreDir();
+			
+			// Check preconditions
+			checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
+					"Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
+			return createStartCommand_WINDOWS(epVersion, jreDirectory, licensingPackage, port);
+		}
+	}
+
+	/**
+     * Creates the ep start command for windows
      *
-     * @param epExecutable ep.exe (File)
      * @param epVersion ep version string
      * @param jreDirectory jreDirectory
      * @param licensingPackage license package
@@ -139,8 +147,13 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
      * @return the ep start command
      * @throws IOException path issues...
      */
-    private List<String> createStartCommand(File epExecutable, String epVersion, String jreDirectory,
+    private List<String> createStartCommand_WINDOWS(String epVersion, String jreDirectory,
         String licensingPackage, int port) throws IOException {
+    	
+    	File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
+        checkArgument(epExecutable.exists(),
+            "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
+    	
         List<String> command = new ArrayList<>();
         command.add("\"" + epExecutable.getCanonicalPath() + "\"");
         command.add("-clearPersistedState");
@@ -160,9 +173,32 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
         command.add("-Dep.runtime.workdir=BTC/ep/" + epVersion + "/" + port);
         command.add("-Dep.licensing.package=" + licensingPackage);
         command.add("-Dep.rest.port=" + port);
-        command.add("-Djna.nosys=true");
-        command.add("-Dprism.order=sw");
-        command.add("-XX:+UseParallelGC");
+        if (step.getAdditionalJvmArgs() != null) {
+            command.add(step.getAdditionalJvmArgs());
+        }
+        return command;
+    }
+    
+    /**
+     * Creates the ep start command for linux (docker)
+     *
+     * @param licensingPackage license package
+     * @return the ep start command
+     * @throws IOException path issues...
+     * 
+     * ["/opt/Export/ep", "-clearPersistedState", "-application", "ep.application.headless", "-nosplash", "-console", "-consoleLog", "-vmargs", "-Dep.linux.config=/opt/.eplinuxregistry", "-Dep.licensing.package=EP_FULL"]
+     */
+    private List<String> createStartCommand_LINUX(String licensingPackage) throws IOException {
+        List<String> command = new ArrayList<>();
+        command.add("/opt/Export/ep"); // fixed based on docker image
+        command.add("-clearPersistedState");
+        command.add("-application");
+        command.add("ep.application.headless");
+        command.add("-nosplash");
+        command.add("-vmargs");
+        command.add("-Dep.runtime.batch=ep");
+        command.add("-Dep.linux.config=/opt/.eplinuxregistry");
+        command.add("-Dep.licensing.package=" + licensingPackage);
         if (step.getAdditionalJvmArgs() != null) {
             command.add(step.getAdditionalJvmArgs());
         }

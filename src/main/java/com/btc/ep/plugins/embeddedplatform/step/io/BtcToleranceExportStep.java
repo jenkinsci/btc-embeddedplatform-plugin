@@ -2,9 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.File;
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
@@ -21,6 +19,60 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+
+    private BtcToleranceExportStep step;
+
+    /*
+     * This field can be used to indicate what's happening during the execution
+     */
+    private TolerancesApi tolerancesApi = new TolerancesApi();
+    private ScopesApi scopesApi = new ScopesApi();
+
+    /**
+     * Constructor
+     *
+     * @param step
+     * @param context
+     */
+    public BtcToleranceExportStepExecution(BtcToleranceExportStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    private ProfilesApi profilesApi = new ProfilesApi();
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set response code (field: response)
+     */
+    @Override
+    protected void performAction() throws Exception {
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
+        // Get the path
+        String path = toRemoteAbsolutePathString(step.getPath());
+        String kind = step.getUseCase();
+        checkArgument(kind == "RBT" || kind == "B2B", "Error: invalid use case '" + kind + 
+        		"'. Supported cases are 'RBT' and 'B2B'.");
+        
+        // TODO: ep-2723. this is a temporary workaround in the meantime.
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -132,67 +184,3 @@ public class BtcToleranceExportStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-
-    private BtcToleranceExportStep step;
-
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private TolerancesApi tolerancesApi = new TolerancesApi();
-    private ScopesApi scopesApi = new ScopesApi();
-
-    /**
-     * Constructor
-     *
-     * @param step
-     * @param context
-     */
-    public BtcToleranceExportStepExecution(BtcToleranceExportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    private ProfilesApi profilesApi = new ProfilesApi();
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
-        // Get the path
-    	File fileio = new File(step.getPath());
-        String parentPath = fileio.getAbsoluteFile().getParent();
-        Path path = resolvePath(parentPath);
-        checkArgument(path.toFile().exists(), "Error: Export directory does not exist " + path);
-
-        String kind = step.getUseCase();
-        checkArgument(kind == "RBT" || kind == "B2B", "Error: invalid use case '" + kind + 
-        		"'. Supported cases are 'RBT' and 'B2B'.");
-        
-        // // // 
-        // if this below code fails do the following integration steps:
-        // 1) add MATLABROOT\R2021b\bin\win64 to PATH
-        // 2) point eclipse to MATLABROOT\R2021b\extern\engines\java\jar\engine.jar as an external library
-        // // //
-        // TODO: ep-2723. this is a temporary workaround in the meantime.
-        // FIXME: implement!
-    }
-
-}

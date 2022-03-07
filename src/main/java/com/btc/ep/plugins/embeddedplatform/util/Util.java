@@ -6,12 +6,20 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,7 +57,7 @@ public class Util {
     private static final int ONE_HOUR_IN_MILLIS = 1000 * 60 * 60;
     private static final int ONE_MINUTE_IN_MILLIS = 1000 * 60;
     private static final int ONE_SECOND_IN_MILLIS = 1000;
-
+    
     public static final DateFormat DATE_FORMAT =
         DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM, Locale.getDefault());
 
@@ -134,8 +142,39 @@ public class Util {
     }
 
     public static File getResourceAsFile(Class<?> referenceClass, String resourcePath) {
-        ClassLoader classLoader = referenceClass.getClassLoader();
-        return new File(classLoader.getResource(resourcePath).getFile().replace("%20", " "));
+    	File file = null;
+    	ClassLoader classLoader = referenceClass.getClassLoader();
+    	URL res = classLoader.getResource(resourcePath);
+    	if (res.toString().startsWith("jar:")) {
+    	    try {
+    	    	String fileName = resourcePath.substring(resourcePath.lastIndexOf("/") + 1, resourcePath.lastIndexOf("."));
+    	    	String extension = resourcePath.substring(resourcePath.lastIndexOf("."));
+    	        InputStream input = classLoader.getResourceAsStream(resourcePath);
+    	        file = File.createTempFile(fileName, extension);
+    	        OutputStream out = new FileOutputStream(file);
+    	        int read;
+    	        byte[] bytes = new byte[1024];
+
+    	        while ((read = input.read(bytes)) != -1) {
+    	            out.write(bytes, 0, read);
+    	        }
+    	        out.flush();
+    	        out.close();
+    	        input.close();
+    	        Path renamed = Files.move(file.toPath(), Paths.get(file.getParent(), fileName + extension), StandardCopyOption.REPLACE_EXISTING);
+    	        file = renamed.toFile();
+    	        file.deleteOnExit();
+    	    } catch (IOException ex) {
+    	        ex.printStackTrace();
+    	    }
+    	} else {
+    	    //this will probably work in your IDE, but not from a JAR
+    	    file = new File(res.getFile());
+    	}
+    	
+    	return file;
+//        ClassLoader classLoader = referenceClass.getClassLoader();
+//        return new File(classLoader.getResource(resourcePath).getFile().replace("%20", " ").replace("file:/", ""));
     }
 
     public static String getCompilerPreferenceValue(String compilerShortName) {
@@ -501,5 +540,6 @@ public class Util {
             e.printStackTrace();
         }
     }
+    
 
 }

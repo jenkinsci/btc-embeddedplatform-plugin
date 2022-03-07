@@ -1,7 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
@@ -53,12 +52,12 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
         /*
          * Preparation
          */
-        Path profilePath = resolvePath(step.getProfilePath());
-        Path slModelPath = resolvePath(step.getSlModelPath());
-        Path slScriptPath = resolvePath(step.getSlScriptPath());
+        String profilePath = getProfilePathOrDefault(step.getProfilePath());
+        String slModelPath = toRemoteAbsolutePathString(step.getSlModelPath());
+        String slScriptPath = toRemoteAbsolutePathString(step.getSlScriptPath());
         preliminaryChecks();
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+        Store.epp = resolveInAgentWorkspace(profilePath);
+        Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
 
         /*
          * Prepare Matlab
@@ -78,7 +77,7 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
             .slInitScriptFile(slScriptPath.toString());
         try {
 	        Job job = archApi.importSimulinkArchitecture(info);
-	        log("Importing Simulink architecture '" + slModelPath.toFile().getName() + "'...");
+	        log("Importing Simulink architecture...");
 	        HttpRequester.waitForCompletion(job.getJobID());
         } catch (Exception e) {
         	log("ERROR. Failed to import architecture " + 

@@ -2,9 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
@@ -14,11 +12,11 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.ApiException;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -49,11 +47,11 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         /*
          * Preparation
          */
-        Path profilePath =  getProfilePathOrDefault(step.getProfilePath(), null);
-        Path codeModelPath = resolvePath(step.getCodeModelPath());
-        preliminaryChecks(profilePath, codeModelPath);
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+        String profilePath =  getProfilePathOrDefault(step.getProfilePath());
+        String codeModelPath = toRemoteAbsolutePathString(step.getCodeModelPath());
+        preliminaryChecks(codeModelPath);
+        Store.epp = resolveInAgentWorkspace(profilePath);
+        Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
 
         //TODO: Configure ML connection and execute ML Startup Script if needed (requires EP-2535)
 
@@ -70,39 +68,39 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
         CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
         Job job = null;
+        String msg;
         try {
         	job = archApi.importArchitecture(info);
         	log("Importing C-Code architecture...");
-            HttpRequester.waitForCompletion(job.getJobID());
+            HttpRequester.waitForCompletion(job.getJobID(), "result");
+            /*
+             * Wrapping up, reporting, etc.
+             */
+            msg = "Successfully created the profile.";
+            detailWithLink(Store.epp.getName(), profilePath);
+            response = 200;
         } catch (Exception e) {
-        	log("ERROR. Failed to import provided architecture "
-        			+ info.getModelFile() + ": " + e.getMessage());
+        	msg = "ERROR. Failed to import provided architecture "
+        			+ info.getModelFile() + ": " + e.getMessage();
         	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
+        	
         }
-
-        /*
-         * Wrapping up, reporting, etc.
-         */
-        String msg = "Successfully created the profile.";
-        detailWithLink(Store.epp.getName(), profilePath.toString());
-        response = 200;
         log(msg);
         info(msg);
+
     }
 
     /**
      * Checks if the profilePath and codeModelPath are valid (!= null), discards any loaded
      * profile and warns in case the obsolete option "licenseLocationString" is used.
      *
-     * @param profilePath the profile path
      * @param codeModelPath the code model path
      */
-    private void preliminaryChecks(Path profilePath, Path codeModelPath) {
+    private void preliminaryChecks(String codeModelPath) {
         if (step.getLicenseLocationString() != null) {
             log("the option 'licenseLocationString' of the btcProfileCreate / btcProfileLoad steps has no effect and will be ignored. Please specify this option with the btcStartup step.");
         }
-        checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
         checkArgument(codeModelPath != null, "No valid code model path was provided: " + step.getCodeModelPath());
     }
 

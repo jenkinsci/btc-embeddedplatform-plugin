@@ -1,7 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -50,10 +49,10 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
-        Path exportDir = resolvePath(step.getDir());
+        String exportDir = toRemoteAbsolutePathString(step.getDir());
         List<String> uids = null;
         try {
-        	uids = erApi.getExecutionRecords1()
+        	uids = erApi.getExecutionRecords2()
             .stream()
             .filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
                 && (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
@@ -72,7 +71,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         
         RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
         data.setUiDs(uids);
-        data.setExportDirectory(exportDir.toString());
+        data.setExportDirectory(exportDir);
         data.setExportFormat("MDF");
         try {
 	        Job job = erApi.exportExecutionRecords(data);

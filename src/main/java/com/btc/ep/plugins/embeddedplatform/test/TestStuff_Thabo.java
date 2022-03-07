@@ -15,7 +15,7 @@ import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
 
 public class TestStuff_Thabo {
 
-	private static final String WS = "E:/workspace/";
+	private static final String WS = "/home/jenkins/agent/workspace/pw-ccode-docker";
     private static final String BASE_DIR = "E:/EP2/SupportPlugins/EPJenkinsAutomation/TestSuite/Architectures";
     private static final String EC_EPP_FILE = "autosar_swc_expfcns.epp";
 
@@ -24,32 +24,26 @@ public class TestStuff_Thabo {
 
     public static void main(String[] args) throws Exception {
         
-    	startEP();
-    	
-    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel.xml");
-    	
     	Date d1 = new Date();
+    	ProcessBuilder pb = new ProcessBuilder("docker", "run", "--rm", "-d", "-p", "29267:8080", "-v", "\"C:/appdata:/root/AppData/Roaming/BTC/ep/22.1p0\"", "harbor.btc-es.local/ep/ep-snapshot");
+    	pb.start();
+    	startEP();
+    	Date d2 = new Date();
+    	System.out.println("Startup: " + ((d2.getTime() - d1.getTime())/1000d) + "s");
+    	
+//    	createCProfile("CodeModel.xml");
+    	
     	
 //    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel.xml");
-    	
-    	Date d2 = new Date();
-    	
 //    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel_reduced.xml");
-    	
-    	Date d3 = new Date();
-    	
 //    	createCProfile(BASE_DIR + "/C-Code/FromScratch/CodeModel_lib.xml");
     	
-    	Date d4 = new Date();
     	
-    	System.out.println("CodeModel: " + (d2.getTime() - d1.getTime()) + "ms");
-    	System.out.println("CodeModel: " + (d3.getTime() - d2.getTime()) + "ms");
-    	System.out.println("CodeModel: " + (d4.getTime() - d3.getTime()) + "ms");
     	
 //        loadEcProfile(WS + "/" + EC_EPP_FILE);
 //        importTestCases(BASE_DIR + "/EmbeddedCoder/Autosar/testcases");
 //        runRBT("SIL");
-        wrapUp();
+//        wrapUp();
         
     }
 
@@ -91,8 +85,9 @@ public class TestStuff_Thabo {
 	protected static void startEP() throws Exception {
 		// startup
     	BtcStartupStep start = new BtcStartupStep();
-        start.setInstallPath("E:/Program Files/BTC/ep22.1p0");
-        start.setAdditionalJvmArgs("-Xmx2g");
+//        start.setInstallPath("E:/Program Files/BTC/ep22.1p0");
+//        start.setAdditionalJvmArgs("-Xmx2g");
+    	start.setSimplyConnect(true);
         start.start(DUMMY_CONTEXT).start();
 	}
 

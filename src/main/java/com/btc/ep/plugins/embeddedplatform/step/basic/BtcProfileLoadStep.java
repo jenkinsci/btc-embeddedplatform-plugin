@@ -3,7 +3,6 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
@@ -21,7 +20,6 @@ import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
-import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -49,16 +47,14 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         /*
          * Preliminary checks
          */
-        Path profilePath = resolvePath(step.getProfilePath());
+        String profilePath = getProfilePathOrDefault(step.getProfilePath());
         checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
-        checkArgument(profilePath.toFile().exists(),
-            "Error: Profile does not exist! " + step.getProfilePath());
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+        Store.epp = resolveInAgentWorkspace(profilePath);
+        Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
         /*
          * Load the profile
          */
-        log("Loading profile '" + profilePath.toFile().getName() + "'"); 
+        log("Loading profile '" + Store.epp.getName() + "'"); 
         String msg = null;
         try {
 	        profilesApi.openProfile(step.getProfilePath(), true);
@@ -125,30 +121,30 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
     private void updateModelPaths() throws Exception {
         UpdateModelPath updateModelPath = new UpdateModelPath();
         // resolve paths from pipeline
-        Path p;
-        p = resolvePath(step.getTlModelPath());
-        if (p != null) {
-            updateModelPath.setTlModelFile(p.toFile().getCanonicalPath());
+        String path;
+        path = toRemoteAbsolutePathString(step.getTlModelPath());
+        if (path != null) {
+            updateModelPath.setTlModelFile(path);
         }
-        p = resolvePath(step.getTlScriptPath());
-        if (p != null) {
-            updateModelPath.setTlInitScript(p.toFile().getCanonicalPath());
+        path = toRemoteAbsolutePathString(step.getTlScriptPath());
+        if (path != null) {
+            updateModelPath.setTlInitScript(path);
         }
-        p = resolvePath(step.getSlModelPath());
-        if (p != null) {
-            updateModelPath.setSlModelFile(p.toFile().getCanonicalPath());
+        path = toRemoteAbsolutePathString(step.getSlModelPath());
+        if (path != null) {
+            updateModelPath.setSlModelFile(path);
         }
-        p = resolvePath(step.getSlScriptPath());
-        if (p != null) {
-            updateModelPath.setSlInitScript(p.toFile().getCanonicalPath());
+        path = toRemoteAbsolutePathString(step.getSlScriptPath());
+        if (path != null) {
+            updateModelPath.setSlInitScript(path);
         }
-        p = resolvePath(step.getAddInfoModelPath());
-        if (p != null) {
-            updateModelPath.setAddModelInfo(p.toFile().getCanonicalPath());
+        path = toRemoteAbsolutePathString(step.getAddInfoModelPath());
+        if (path != null) {
+            updateModelPath.setAddModelInfo(path);
         }
-        p = resolvePath(step.getCodeModelPath());
-        if (p != null) {
-            updateModelPath.setEnvironment(p.toFile().getCanonicalPath());
+        path = toRemoteAbsolutePathString(step.getCodeModelPath());
+        if (path != null) {
+            updateModelPath.setEnvironment(path);
         }
         try {
         	archApi.updateModelPaths("", updateModelPath);

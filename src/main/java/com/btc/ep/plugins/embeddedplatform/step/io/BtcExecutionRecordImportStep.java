@@ -1,13 +1,10 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
-import java.io.File;
-import java.io.FileFilter;
 import java.io.Serializable;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -26,6 +23,7 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /**
@@ -52,20 +50,10 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
-        Path exportDir = resolvePath(step.getDir());
+        FilePath exportDir = resolveInAgentWorkspace(step.getDir());
         
-        File[] files = exportDir.toFile().listFiles(new FileFilter() {
-
-            @Override
-            public boolean accept(File file) {
-                return file.getName().endsWith(".mdf");
-
-            }
-        });
-        List<String> paths = new ArrayList<>(files.length);
-        for (File file : files) {
-            paths.add(file.getPath());
-        }
+        List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
+        List<String> paths = files.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
         ExecutionRecordImportInfo data = new ExecutionRecordImportInfo();
         data.setFormat("MDF");
         // execution config can be user-defined, so there's no check to make

@@ -1,7 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
@@ -55,10 +54,10 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         /*
          * Preparation
          */
-        Path profilePath = resolvePath(step.getProfilePath());
+        String profilePath = getProfilePathOrDefault(step.getProfilePath());
         preliminaryChecks();
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+        Store.epp = resolveInAgentWorkspace(profilePath);
+        Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
 
         /*
          * Prepare Matlab
@@ -70,8 +69,8 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         /*
          * Create the profile based on the code model
          */
-        Path tlModelPath = resolvePath(step.getTlModelPath());
-        Path tlScriptPath = resolvePath(step.getTlScriptPath());
+        String tlModelPath = toRemoteAbsolutePathString(step.getTlModelPath());
+        String tlScriptPath = toRemoteAbsolutePathString(step.getTlScriptPath());
         try {
             profilesApi.createProfile(true);
         } catch (Exception e) {
@@ -99,7 +98,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         info.setTestMode(testMode);
         // Legacy Code XML (Environment)
         if (step.getEnvironmentXmlPath() != null) {
-            info.setEnvironment(resolvePath(step.getEnvironmentXmlPath()).toString());
+            info.setEnvironment(toRemoteAbsolutePathString(step.getEnvironmentXmlPath()).toString());
         }
         info.setUseExistingCode(step.isReuseExistingCode());
         // TL Subsystem
@@ -117,11 +116,11 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
         }
         try {
 	        Job job = archApi.importTargetLinkArchitecture1(info);
-	        log("Importing TargetLink architecture '" + tlModelPath.toFile().getName() + "'...");
+	        log("Importing TargetLink architecture...");
 	        HttpRequester.waitForCompletion(job.getJobID());
 	    } catch (Exception e) {
         	log("ERROR. Failed to import architecture " + 
-        			info.getSlModelFile() + ": " + e.getMessage());
+        			info.getTlModelFile() + ": " + e.getMessage());
         	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }

@@ -1,10 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import java.io.File;
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
@@ -22,6 +18,69 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+
+    private BtcInputRestrictionsExportStep step;
+
+    /*
+     * This field can be used to indicate what's happening during the execution
+     */
+    private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
+
+    /**
+     * Constructor
+     *
+     * @param step
+     * @param context
+     */
+    public BtcInputRestrictionsExportStepExecution(BtcInputRestrictionsExportStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+    
+    private ProfilesApi profilesApi = new ProfilesApi();
+
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set response code (field: response)
+     */
+    @Override
+    protected void performAction() throws Exception {
+    	// Check preconditions
+        try {
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+            throw new IllegalStateException("You need an active profile to run tests");
+        }
+        // Get the path
+        String path = toRemoteAbsolutePathString(step.getPath());
+
+        InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
+        file.setFilePath(path);
+        try {
+        	inputRestrictionsApi.exportToFile(file);
+        	detailWithLink("Input Restrictions Export File", file.getFilePath());
+        } catch (ApiException e) {
+        	// TODO: convenience workaround EP-2722
+        	log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	error();
+        }
+        info("Finished exporting Input Restrictions");
+
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -102,69 +161,3 @@ public class BtcInputRestrictionsExportStep extends Step implements Serializable
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-
-    private BtcInputRestrictionsExportStep step;
-
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
-
-    /**
-     * Constructor
-     *
-     * @param step
-     * @param context
-     */
-    public BtcInputRestrictionsExportStepExecution(BtcInputRestrictionsExportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-    
-    private ProfilesApi profilesApi = new ProfilesApi();
-
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
-        // Get the path
-        File fileio = new File(step.getPath());
-        String parentPath = fileio.getAbsoluteFile().getParent();
-        Path path = resolvePath(parentPath);
-        checkArgument(path.toFile().exists(), "Error: Export directory does not exist " + path);
-
-        InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
-        file.setFilePath(step.getPath());
-        try {
-        	inputRestrictionsApi.exportToFile(file);
-        	detailWithLink("Input Restrictions Export File", file.getFilePath());
-        } catch (ApiException e) {
-        	// TODO: convenience workaround EP-2722
-        	log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	error();
-        }
-        info("Finished exporting Input Restrictions");
-
-    }
-
-}

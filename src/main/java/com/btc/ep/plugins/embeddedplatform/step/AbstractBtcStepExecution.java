@@ -2,13 +2,10 @@ package com.btc.ep.plugins.embeddedplatform.step;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +28,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Proc;
+import hudson.model.Computer;
 import hudson.model.TaskListener;
 
 public abstract class AbstractBtcStepExecution extends StepExecution {
@@ -49,12 +47,12 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- ORIGINAL: START ---------------
      */
-    /*public AbstractBtcStepExecution(Step step, StepContext context) {
+    public AbstractBtcStepExecution(Step step, StepContext context) {
         super(context);
         this.functionName = step.getDescriptor().getFunctionName();
         this.reportingStep = new TestStep(functionName);
         recordStepArguments(step);
-    }*/
+    }
 
     /*
      * -------------- ORIGINAL: END -----------------
@@ -63,18 +61,18 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     /*
      * --------------- Testing: START -----------------
      */
-	@SuppressWarnings("deprecation")
-	public AbstractBtcStepExecution(Step step, StepContext context) {
-    	this.context = context;
-    	this.functionName = "DUMMY";
-    	this.reportingStep = new TestStep(functionName);
-    	recordStepArguments(step);
-    }
-    private StepContext context;
-    @Override
-    public StepContext getContext() {
-    	return this.context;
-    }
+//    @SuppressWarnings("deprecation")
+//	public AbstractBtcStepExecution(Step step, StepContext context) {
+//    	this.context = context;
+//    	this.functionName = "DUMMY";
+//    	this.reportingStep = new TestStep(functionName);
+//    	recordStepArguments(step);
+//    }
+//    private StepContext context;
+//    @Override
+//    public StepContext getContext() {
+//    	return this.context;
+//    }
     /*
      * --------------- Testing: END -----------------
      */
@@ -292,6 +290,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      */
     protected Proc spawnManagedProcess(List<String> command) throws IOException, InterruptedException {
     	// Shortcut for testing outside of the Jenkins context 
+    	// FIXME: consider removing when going to production
     	if ("DUMMY".equals(this.functionName)) {
     		return new TestStuff_FakeProc(command);
     	}
@@ -317,17 +316,14 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      * @return the path object
      * @throws Exception 
      */
-    protected Path resolvePath(String filePathString) throws Exception {
+    protected String toRemoteAbsolutePathString(String filePathString) throws Exception {
         if (filePathString != null) {
             try {
-                Path path = Paths.get(filePathString);
-                if (path.isAbsolute()) {
-                    return path;
+                if (isPathAbsolute(filePathString)) {
+                    return filePathString;
                 } else {
                     FilePath workspace = getContext().get(FilePath.class);
-                    String baseDir = Paths.get(workspace.toURI()).toString();
-                    path = new File(baseDir, path.toString()).toPath();
-                    return path;
+                    return workspace.getRemote() + "/" + filePathString;
                 }
             } catch (Exception e) {
                 log("Cannot resolve path: " + filePathString);
@@ -335,6 +331,25 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
             }
         }
         return null;
+    }
+    
+    protected FilePath resolveInAgentWorkspace(String relOrAbsPathInWorkspace) throws Exception {
+    	return getContext().get(FilePath.class).child(relOrAbsPathInWorkspace);
+    }
+    
+    /**
+     * Returns true if the string counts as an absolute path on the executor (os dependend)
+     * 
+     * @param filePathString must not be null
+     * @return true if absolute path
+     * @throws Exception 
+     */
+    protected boolean isPathAbsolute(String filePathString) throws Exception {
+		return (isUnix() && filePathString.startsWith("/")) || (!isUnix() && filePathString.contains(":"));
+    }
+
+	protected Boolean isUnix() throws Exception {
+    	return getContext().get(Computer.class).isUnix();
     }
     
     /**
@@ -347,24 +362,12 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      * @return a resolved profile path
      * @throws Exception 
      */
-    protected Path getProfilePathOrDefault(String stepProfilePath, Path modelPath) throws Exception {
+    protected String getProfilePathOrDefault(String stepProfilePath) throws Exception {
 		if (stepProfilePath != null) {
-			// resolve selected string to a path
-			return resolvePath(stepProfilePath);
+			// resolve selected string
+			return toRemoteAbsolutePathString(stepProfilePath);
 		} else {
-			// no profilePath specified, use model name or fallback value
-			if (modelPath == null) {
-				// fallback
-				return resolvePath("profile.epp");
-			} else {
-				// derive epp name from model file name
-				String modelFileName = modelPath.toFile().getName();
-				if (modelFileName.contains(".")) {
-					modelFileName = modelFileName.substring(0, modelFileName.lastIndexOf("."));
-				}
-				String eppName = modelFileName + ".epp";
-				return resolvePath(eppName);
-			}
+			return toRemoteAbsolutePathString("profile.epp");
 		}
 	}
 

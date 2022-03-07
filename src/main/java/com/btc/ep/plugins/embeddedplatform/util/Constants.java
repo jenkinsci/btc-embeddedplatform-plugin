@@ -6,6 +6,7 @@ import java.util.List;
 public class Constants {
 
     public static final String PREF_COMPILER_KEY = "GENERAL_COMPILER_SETTING";
+    public static final String PREF_COMPILER_GCC_VALUE = "GCC64 (64bit)";
     public static final String PREF_COMPILER_MINGW_VALUE = "MinGW64 (64bit)";
     public static final String PREF_COMPILER_MSSDK71_VALUE = "MSSDK71 (64bit)";
     public static final String PREF_COMPILER_MSVC120_VALUE = "MSVC120 (64bit)";
@@ -19,6 +20,7 @@ public class Constants {
 
     public static List<String> getKnownCompilerPreferenceValues() {
         return Arrays.asList(
+    		PREF_COMPILER_GCC_VALUE,
             PREF_COMPILER_MINGW_VALUE,
             PREF_COMPILER_MSVC170_VALUE,
             PREF_COMPILER_MSVCPP170_VALUE,

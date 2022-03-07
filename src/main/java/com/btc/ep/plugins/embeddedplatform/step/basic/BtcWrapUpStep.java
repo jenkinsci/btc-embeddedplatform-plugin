@@ -58,14 +58,14 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
         	assembleProjectReport();
         } catch (Exception e) {
         	info("Failed to generate project report. See Log file for more details: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	e.printStackTrace();
         }
 
         /*
          * Save the profile
          */
         String profilePath =
-            step.getProfilePath() == null ? Store.epp.getPath() : resolvePath(step.getProfilePath()).toString();
+            step.getProfilePath() == null ? Store.epp.getRemote() : toRemoteAbsolutePathString(step.getProfilePath()).toString();
         if (profilePath instanceof String) {
             // save the epp to the designated location
         	System.out.println("Saving to " + profilePath);

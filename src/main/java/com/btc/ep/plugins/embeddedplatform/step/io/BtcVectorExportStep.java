@@ -3,7 +3,6 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +23,6 @@ import org.openapitools.client.model.Architecture;
 import org.openapitools.client.model.B2BStimuliVector;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Profile;
-import org.openapitools.client.model.RestRBTestCaseExportInfo;
 import org.openapitools.client.model.RestStimuliVectorExportInfo;
 import org.openapitools.client.model.RestVectorExportDetails;
 
@@ -41,6 +39,135 @@ import hudson.model.TaskListener;
  * #                                                                                              # 
  * ################################################################################################
  */
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
+
+    private static final long serialVersionUID = 1L;
+
+    private BtcVectorExportStep step;
+
+    /*
+     * This field can be used to indicate what's happening during the execution
+     */
+    private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
+    private RequirementBasedTestCasesApi rbTestCaseApi = new RequirementBasedTestCasesApi();
+
+    /**
+     * Constructor
+     *
+     * @param step
+     * @param context
+     */
+    public BtcVectorExportStepExecution(BtcVectorExportStep step, StepContext context) {
+        super(step, context);
+        this.step = step;
+    }
+
+    /*
+     * Put the desired action here:
+     * - checking preconditions
+     * - access step parameters (field step: step.getFoo())
+     * - calling EP Rest API
+     * - print text to the Jenkins console (field: jenkinsConsole)
+     * - set response code (field: response)
+     */
+    private ProfilesApi profilesApi = new ProfilesApi();
+    private StimuliVectorsApi vectorApi = new StimuliVectorsApi();
+    private ArchitecturesApi archApi = new ArchitecturesApi();
+    
+    @Override
+    protected void performAction() throws Exception {
+    	// Check preconditions
+        try {
+            Profile p = profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+        } catch (Exception e) {
+        	response = 500;
+        	error();
+        	log("ERROR: could not load a profile. Did you call btcProfileLoad? " + e.getMessage());
+            throw new IllegalStateException("You need an active profile for the current command");
+        }
+        // TODO: EP-2735
+        String format = step.getVectorFormat();
+        checkArgument(format == "CSV" || format == "Excel", 
+        		"Error: valid vectorFormat is csv or excel, not " + format);
+        
+        //Get all vectors
+        String exportDir = toRemoteAbsolutePathString(step.getExportDir());
+
+        // Stimuli Vector  -- Default info.setVectorKind("TC");
+        Job job;
+        List<B2BStimuliVector> allVectors = null;
+        try {
+        	allVectors = vectorApi.getStimuliVectors();
+        } catch (Exception e) {
+        	log("WARNING could not find stimuli vectors: " + e.getMessage());
+        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        	warning();
+        }
+        List<String> allVectorNames = new ArrayList<String>();
+        for (B2BStimuliVector vector : allVectors) {
+        	allVectorNames.add(vector.getUid());
+        }
+
+        RestVectorExportDetails r = new RestVectorExportDetails();
+        if (step.getVectorFormat() == "Excel") {
+        	try {
+	        	List<Architecture> architectures = archApi.getArchitectures(null);
+	        	r.setArchitectureUid(architectures.get(1).getUid().toString());
+	        	r.setSingleFile(false); // TODO once EP-2711 is fixed, make sure 
+	        							// that we dont get an error on exporting excel (single-file)
+	        	// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
+        	} catch (Exception e) {
+        		log("ERROR getting architecture: " + e.getMessage());
+        		try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+        		error();
+        	}
+        } else if (step.getVectorFormat() == "CSV") {
+        	r.setCsvDelimiter(step.getCsvDelimiter());
+        	r.setSingleFile(step.isSingleFile());
+        }
+        
+        // Stimuli Vector
+        RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
+        info.setExportFormat(step.getVectorFormat());
+        info.setExportDirectory(exportDir.toString());
+        info.setUiDs(allVectorNames);
+        info.additionalOptions(r);
+        job = stimuliVectorsApi.exportStimuliVectors(info);
+        info("Exported Stimuli Vectors.");
+        log("Exported Stimuli Vectors.");
+        // TODO: make sure we can detail to directory. if not, only on CSV single-file export.
+        // the export linked, i think this is giving a 404 not found
+        detailWithLink("Stimuli Vectors Export File", info.getExportDirectory());
+
+        HttpRequester.waitForCompletion(job.getJobID());
+
+        // TODO Questions
+        // 1. How should I handle the job from the stimuliVectorsApi.importStimuliVectors(info)?
+        // 2. For the Stimuli Vector, do I just need to switch the setVectorKind, or do I need to use another Api?
+        // I couldn't find an api for Test Cases
+
+    }
+
+    private String findFileExtension(String format) {
+        String fileExtension;
+        if (format.equals("TC")) {
+            fileExtension = ".tc";
+        } else if (format.equals("CSV")) {
+            fileExtension = ".csv";
+        } else if (format.equals("EXCEL")) {
+            fileExtension = ".xlsx";
+        } else {
+            // Error, format not recognized
+            fileExtension = ".tc";
+        }
+        return fileExtension;
+    }
+
+}
 
 /**
  * This class defines a step for Jenkins Pipeline including its parameters.
@@ -181,133 +308,3 @@ public class BtcVectorExportStep extends Step implements Serializable {
      */
 
 } // end of step class
-
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
-
-    private static final long serialVersionUID = 1L;
-
-    private BtcVectorExportStep step;
-
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
-    private RequirementBasedTestCasesApi rbTestCaseApi = new RequirementBasedTestCasesApi();
-
-    /**
-     * Constructor
-     *
-     * @param step
-     * @param context
-     */
-    public BtcVectorExportStepExecution(BtcVectorExportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private StimuliVectorsApi vectorApi = new StimuliVectorsApi();
-    private ArchitecturesApi archApi = new ArchitecturesApi();
-    
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            Profile p = profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-        	response = 500;
-        	error();
-        	log("ERROR: could not load a profile. Did you call btcProfileLoad? " + e.getMessage());
-            throw new IllegalStateException("You need an active profile for the current command");
-        }
-        // TODO: EP-2735
-        String format = step.getVectorFormat();
-        checkArgument(format == "CSV" || format == "Excel", 
-        		"Error: valid vectorFormat is csv or excel, not " + format);
-        
-        //Get all vectors
-        Path exportDir = resolvePath(step.getExportDir());
-        checkArgument(exportDir.toFile().exists(), "Error: Export directory does not exist " + exportDir);
-
-        // Stimuli Vector  -- Default info.setVectorKind("TC");
-        Job job;
-        List<B2BStimuliVector> allVectors = null;
-        try {
-        	allVectors = vectorApi.getStimuliVectors();
-        } catch (Exception e) {
-        	log("WARNING could not find stimuli vectors: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	warning();
-        }
-        List<String> allVectorNames = new ArrayList<String>();
-        for (B2BStimuliVector vector : allVectors) {
-        	allVectorNames.add(vector.getUid());
-        }
-
-        RestVectorExportDetails r = new RestVectorExportDetails();
-        if (step.getVectorFormat() == "Excel") {
-        	try {
-	        	List<Architecture> architectures = archApi.getArchitectures(null);
-	        	r.setArchitectureUid(architectures.get(1).getUid().toString());
-	        	r.setSingleFile(false); // TODO once EP-2711 is fixed, make sure 
-	        							// that we dont get an error on exporting excel (single-file)
-	        	// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
-        	} catch (Exception e) {
-        		log("ERROR getting architecture: " + e.getMessage());
-        		try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        		error();
-        	}
-        } else if (step.getVectorFormat() == "CSV") {
-        	r.setCsvDelimiter(step.getCsvDelimiter());
-        	r.setSingleFile(step.isSingleFile());
-        }
-        
-        // Stimuli Vector
-        RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
-        info.setExportFormat(step.getVectorFormat());
-        info.setExportDirectory(exportDir.toString());
-        info.setUiDs(allVectorNames);
-        info.additionalOptions(r);
-        job = stimuliVectorsApi.exportStimuliVectors(info);
-        info("Exported Stimuli Vectors.");
-        log("Exported Stimuli Vectors.");
-        // TODO: make sure we can detail to directory. if not, only on CSV single-file export.
-        // the export linked, i think this is giving a 404 not found
-        detailWithLink("Stimuli Vectors Export File", info.getExportDirectory());
-
-        HttpRequester.waitForCompletion(job.getJobID());
-
-        // TODO Questions
-        // 1. How should I handle the job from the stimuliVectorsApi.importStimuliVectors(info)?
-        // 2. For the Stimuli Vector, do I just need to switch the setVectorKind, or do I need to use another Api?
-        // I couldn't find an api for Test Cases
-
-    }
-
-    private String findFileExtension(String format) {
-        String fileExtension;
-        if (format.equals("TC")) {
-            fileExtension = ".tc";
-        } else if (format.equals("CSV")) {
-            fileExtension = ".csv";
-        } else if (format.equals("EXCEL")) {
-            fileExtension = ".xlsx";
-        } else {
-            // Error, format not recognized
-            fileExtension = ".tc";
-        }
-        return fileExtension;
-    }
-
-}

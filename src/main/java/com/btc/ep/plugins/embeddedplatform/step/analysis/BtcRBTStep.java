@@ -3,12 +3,10 @@ package com.btc.ep.plugins.embeddedplatform.step.analysis;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,20 +18,20 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.BackToBackTestReportsApi;
+import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.RequirementBasedTestExecutionApi;
 import org.openapitools.client.api.RequirementBasedTestExecutionReportsApi;
 import org.openapitools.client.api.ScopesApi;
-import org.openapitools.client.api.TestApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Profile;
 import org.openapitools.client.model.RBTExecutionDataExtendedNoReport;
 import org.openapitools.client.model.RBTExecutionDataNoReport;
 import org.openapitools.client.model.RBTExecutionReportCreationInfo;
 import org.openapitools.client.model.RBTExecutionReportCreationInfoData;
-import org.openapitools.client.model.RBTestCaseExecutionResultData;
+import org.openapitools.client.model.RBTestCaseExecutionResultMapData;
 import org.openapitools.client.model.RBTestCaseExecutionResultSetData;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
@@ -42,15 +40,11 @@ import org.openapitools.client.model.RequirementBasedTestCase;
 import org.openapitools.client.model.RequirementSource;
 import org.openapitools.client.model.Scope;
 
-import com.btc.ep.plugins.embeddedplatform.http.GenericResponse;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.reflect.TypeToken;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -78,6 +72,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
     private ReportsApi reportingApi = new ReportsApi();
     private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
     private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
+    private ExecutionConfigsApi erApi = new ExecutionConfigsApi();
 
     @Override
     protected void performAction() throws Exception {
@@ -100,29 +95,20 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
         RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
         List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
+        if (executionConfigNames.isEmpty()) {
+        	executionConfigNames = erApi.getExecutionRecords().getExecConfigNames();
+        }
         data.setForceExecute(false);
         data.setExecConfigNames(executionConfigNames);
         //TODO: the fallback should be: execution config list empty? -> execute on all configs (requires EP-2536)
         info.setUiDs(tcUids);
         info.setData(data);
-
-        // Execute test and return result. 
-        // TODO: this can timeout, giving us an internal server error (500).
-        // this DOESNT cause an exception (at least not one that crashes),
-        // so figure out how to catch and handle it.
         Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
-        Object testResults = HttpRequester.waitForCompletion(job.getJobID(), "testResults", RBTestCaseExecutionResultData.class);
-        Gson gson = new Gson();
-        Type type = new TypeToken<Map<String, RBTestCaseExecutionResultSetData>>() {
-        }.getType();
-        JsonElement jsonElement = gson.toJsonTree(testResults);
-        // map: result data by execution config
-        Map<String, RBTestCaseExecutionResultSetData> testResultData = gson.fromJson(jsonElement, type);
-
-        if (testResultData != null) {
-	        analyzeResults(testResultData, tcUids.isEmpty());
+        RBTestCaseExecutionResultMapData testResults = HttpRequester.waitForCompletion(job.getJobID(), "result", RBTestCaseExecutionResultMapData.class);
+        if (testResults != null) {
+	        analyzeResults(testResults, tcUids.isEmpty());
 	        try {
-	        	generateAndExportReport(testResultData.keySet());
+	        	generateAndExportReport(testResults);
 	        } catch (Exception e) {
 	        	log("WARNING. failed to generate and export report: " + e.getMessage());
 	        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
@@ -141,14 +127,14 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
      * @param executionConfigs the execution configs
      * @throws ApiException
      */
-    private void generateAndExportReport(Collection<String> executionConfigs) throws ApiException {
+    private void generateAndExportReport(RBTestCaseExecutionResultMapData result) throws ApiException {
         if (step.isCreateReport()) {
             if (step.getReportSource().equalsIgnoreCase("REQUIREMENT")) {
                 List<RequirementSource> requirementSources = Util.getRequirementSources();
                 if (!requirementSources.isEmpty()) {
                     List<String> reqSourceUids =
                         requirementSources.stream().map(reqSource -> reqSource.getUid()).collect(Collectors.toList());
-                    for (String executionConfig : executionConfigs) {
+                    for (String executionConfig : result.getTestResults().keySet()) {
                         RBTExecutionReportCreationInfo data = new RBTExecutionReportCreationInfo();
                         data.setExecConfigName(executionConfig);
                         data.setUiDs(reqSourceUids);
@@ -163,7 +149,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
                 }
             } else {
                 Scope toplevel = Util.getToplevelScope();
-                for (String executionConfig : executionConfigs) {
+                for (String executionConfig : result.getTestResults().keySet()) {
                     RBTExecutionReportCreationInfoData data = new RBTExecutionReportCreationInfoData();
                     data.setExecConfigName(executionConfig);
                     Report report = testExecutionReportApi.createRBTExecutionReportOnScope(toplevel.getUid(), data);
@@ -186,11 +172,12 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
      * @param testResultData the test result data
      * @param zeroTestCases a flag indicating whether any test cases matched the filter (false if no tests were run)
      */
-    private void analyzeResults(Map<String, RBTestCaseExecutionResultSetData> testResultData, boolean zeroTestCases) {
+    private void analyzeResults(RBTestCaseExecutionResultMapData testResultData, boolean zeroTestCases) {
         String overallResult = "PASSED";
         String infoText = "";
-        for (String executionConfig : testResultData.keySet()) {
-            RBTestCaseExecutionResultSetData resultData = testResultData.get(executionConfig);
+        for (Entry<String, RBTestCaseExecutionResultSetData> entry : testResultData.getTestResults().entrySet()) {
+            String executionConfig = entry.getKey();
+        	RBTestCaseExecutionResultSetData resultData = entry.getValue();
             int noVerdict = Integer.parseInt(resultData.getNoVerdictTests());
             int errors = Integer.parseInt(resultData.getErrorneousTests());
             int total = Integer.parseInt(resultData.getTotalTests());

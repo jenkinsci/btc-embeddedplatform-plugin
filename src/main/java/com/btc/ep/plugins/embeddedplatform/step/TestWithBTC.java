@@ -42,11 +42,11 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
     protected void performAction() throws Exception {
         log("Applying specified test config file " + step.getTestConfigPath());
         
-        Path testconfigPath = resolvePath(step.getTestConfigPath());
-    	Map<String, Object> testConfig = new Yaml().load(new FileInputStream(testconfigPath.toFile()));
-    	System.out.println(testConfig);
+//        String testconfigPath = toRemoteAbsolutePathString(step.getTestConfigPath());
+//    	Map<String, Object> testConfig = new Yaml().load(new FileInputStream(testconfigPath.toFile()));
+//    	System.out.println(testConfig);
         
-    	startupOrConnect((Map<String, Object>) testConfig.get("general"));
+//    	startupOrConnect((Map<String, Object>) testConfig.get("general"));
     	
         // print success message and return response code
         log("--> [200] Example step successfully executed.");

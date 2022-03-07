@@ -2,7 +2,6 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import java.io.File;
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -59,12 +58,12 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         /*
          * Preparation
          */
-    	Path slModelPath = resolvePath(step.getSlModelPath());
-    	Path slScriptPath = resolvePath(step.getSlScriptPath());
-        Path profilePath = getProfilePathOrDefault(step.getProfilePath(), slModelPath);
+    	String slModelPath = toRemoteAbsolutePathString(step.getSlModelPath());
+    	String slScriptPath = toRemoteAbsolutePathString(step.getSlScriptPath());
+    	String profilePath = getProfilePathOrDefault(step.getProfilePath());
         preliminaryChecks();
-        Store.epp = profilePath.toFile();
-        Store.exportPath = resolvePath(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+        Store.epp = resolveInAgentWorkspace(profilePath);
+        Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports");
 
         try {
         	profilesApi.createProfile(true);
@@ -80,8 +79,6 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
 
         
-        //TODO: check if files exist?
-        
         //TODO: Execute Startup Script (requires EP-2535)
 
         //TODO: Create Wrapper Model (requires EP-2538)
@@ -93,7 +90,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         	wrapperInfo.setEcInitScript(scriptPath);
         	try {
 	        	Job job = archApi.createEmbeddedCoderCWrapperModel(wrapperInfo);
-	        	log("Creating wrapper model for autosar component '" + slModelPath.toFile().getName() + "'...");
+	        	log("Creating wrapper model for autosar component...");
 	        	Object resultObj = HttpRequester.waitForCompletion(job.getJobID(), "result");
 	        	modelPath = (String) ((Map<?,?>)resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_MODEL_FILE);
         		scriptPath = (String) ((Map<?,?>)resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_INIT_FILE);

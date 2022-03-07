@@ -3,7 +3,6 @@ package com.btc.ep.plugins.embeddedplatform.step.analysis;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -25,7 +24,6 @@ import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
-import com.btc.ep.plugins.embeddedplatform.util.Status;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -142,9 +140,9 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     	// if we are given a config file, import the XML settings
     	// as our domain check goals.
     	if (step.getDcXmlPath() != null) {
-    		Path DcXmlPath;
+    		String dcXmlPath;
     		try {
-    			DcXmlPath = resolvePath(step.getDcXmlPath());
+    			dcXmlPath = toRemoteAbsolutePathString(step.getDcXmlPath());
     		} catch (Exception e) {
     			log("ERROR: invalid path given: "+step.getDcXmlPath() + ". " + e.getMessage());
     			error();
@@ -152,7 +150,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		}
         	RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
         	r.setScopeUid(scopeuid);
-        	r.setFilePath(DcXmlPath.toString());
+        	r.setFilePath(dcXmlPath);
         	try {
         		Job job = domainApi.importDomainChecksGoals(r);
         		HttpRequester.waitForCompletion(job.getJobID(), "result");

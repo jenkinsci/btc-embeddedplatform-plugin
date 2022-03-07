@@ -1,6 +1,5 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
-import java.io.File;
 import java.util.Date;
 
 import com.btc.ep.plugins.embeddedplatform.reporting.project.JenkinsAutomationReport;
@@ -9,13 +8,14 @@ import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
 
+import hudson.FilePath;
 import hudson.Proc;
 
 public class Store {
 
     // General
     public static Proc epProcess;
-    public static File epp;
+    public static FilePath epp;
     public static String exportPath;
     public static String globalSuffix;
 

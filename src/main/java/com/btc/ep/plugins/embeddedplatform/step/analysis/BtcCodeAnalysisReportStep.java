@@ -115,7 +115,7 @@ public class BtcCodeAnalysisReportStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private boolean includeSourceCode;
-	private String reportName = "report.html";
+	private String reportName = "report";
     private String useCase = "B2B";
 
     @DataBoundConstructor
@@ -170,6 +170,9 @@ public class BtcCodeAnalysisReportStep extends Step implements Serializable {
 	@DataBoundSetter
 	public void setReportName(String reportName) {
 		this.reportName = reportName;
+		if (this.reportName != null && this.reportName.endsWith(".html")) {
+			this.reportName = this.reportName.substring(0, this.reportName.length() - 5);
+		}
 	}
 	public String getUseCase() {
 		return useCase;

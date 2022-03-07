@@ -3,7 +3,6 @@ package com.btc.ep.plugins.embeddedplatform.step.migration;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -53,6 +52,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 import com.google.gson.Gson;
 
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /**
@@ -103,8 +103,9 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         /*
          * 1. Load or create the profile
          */
-        Path profilePath = resolvePath(step.getProfilePath());
-        if (!step.isCreateProfilesFromScratch() && profilePath.toFile().exists()) {
+        String profilePath = getProfilePathOrDefault(step.getProfilePath());
+        FilePath profileFilePath = resolveInAgentWorkspace(profilePath);
+        if (!step.isCreateProfilesFromScratch() && profileFilePath.exists()) {
             BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(profilePath.toString());
             Util.applyMatchingFields(step, profileLoad).start(getContext()).start();
         } else if (step.getTlModelPath() != null) {
@@ -286,7 +287,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         ExecutionRecordsApi erApi = new ExecutionRecordsApi();
         FoldersApi folderApi = new FoldersApi();
 
-        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords1();
+        List<ExecutionRecord> executionRecords = erApi.getExecutionRecords2();
         //TODO: query all Execution configs if nothing is specified (requires EP-2536)
         for (String config : executionConfigs) {
             if (step.isCreateProfilesFromScratch()) {

@@ -3,7 +3,6 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
@@ -58,11 +57,9 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
     protected void performAction() throws Exception {
 
         // Get the path
-        Path path = resolvePath(step.getPath());
-        checkArgument(path.toFile().exists(), "Error: Import xml does not exist " + path);
-
+        String path = toRemoteAbsolutePathString(step.getPath());
         TolerancesImportConfig info = new TolerancesImportConfig();
-        info.setPath(path.toString());
+        info.setPath(path);
         if (step.getUseCase().equals("RBT")) {
             // Requirements-based Test
             info.setToleranceUseCase("RBT");
