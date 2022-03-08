@@ -97,7 +97,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
         response = 200;
     }
 
-    private void assembleProjectReport() throws IOException {
+    private void assembleProjectReport() throws Exception {
         //TODO: generate and export profile messages report and add it to the main report EP-2539
         Store.reportData.addSection(Store.testStepSection);
         Store.testStepArgumentSection.setSteps(Store.testStepSection.getSteps());
@@ -113,6 +113,8 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
         } catch (IOException e) {
             throw new IOException("Failed to export project report to " + Store.exportPath + ": " + e.getMessage());
         }
+    	// Report file name must match report value of JenkinsAutomationReport constructor
+    	publishHtml("Test Automation Report", "TestAutomationReport.html");
     }
 
 }

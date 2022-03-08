@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -25,10 +26,13 @@ import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
+import htmlpublisher.HtmlPublisher;
+import htmlpublisher.HtmlPublisherTarget;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Proc;
 import hudson.model.Computer;
+import hudson.model.Run;
 import hudson.model.TaskListener;
 
 public abstract class AbstractBtcStepExecution extends StepExecution {
@@ -370,6 +374,31 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 			return toRemoteAbsolutePathString("profile.epp");
 		}
 	}
+    
+    
+    /**
+     * Uses the HTML Publisher Plugin to publish an HTML file in Jenkins.
+     * This makes it available on the Job page for easy access.
+     * 
+     * @param reportTitle the report's title
+     * @param fileName name of the file to publish
+     */
+    protected void publishHtml(String reportTitle, String fileName) throws Exception {
+    	String reportDir = Store.exportPath.replace("\\", "/");
+    	HtmlPublisherTarget target = new HtmlPublisherTarget(
+    			reportTitle,
+    			reportDir,
+				fileName,
+				true,  // <-- store all for builds, not just latest
+				true,  // <-- link should reference last build, not last successful
+				true); // <-- build should not fail if the html file is not present
+		HtmlPublisher.publishReports(
+					getContext().get(Run.class),
+                    getContext().get(FilePath.class),
+                    getContext().get(TaskListener.class),
+                    Collections.singletonList(target),
+                    HtmlPublisher.class);
+    }
 
     /**
      * Implemented by the individual btc step executors.

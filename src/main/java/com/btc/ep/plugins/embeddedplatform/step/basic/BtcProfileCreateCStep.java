@@ -51,7 +51,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         String codeModelPath = toRemoteAbsolutePathString(step.getCodeModelPath());
         preliminaryChecks(codeModelPath);
         Store.epp = resolveInAgentWorkspace(profilePath);
-        Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports").toString();
+        Store.exportPath = toRemoteAbsolutePathString(step.getExportPath());
 
         //TODO: Configure ML connection and execute ML Startup Script if needed (requires EP-2535)
 
@@ -118,7 +118,7 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String profilePath;
-    private String exportPath;
+    private String exportPath = "reports";
 
     private String codeModelPath;
     private String startupScriptPath;
