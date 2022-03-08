@@ -13,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
+import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ExecutionRecordsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ExecutionRecordImportInfo;
@@ -41,6 +42,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
 
     private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
     private ProfilesApi profilesApi = new ProfilesApi();
+    private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
 
     @Override
     protected void performAction() throws Exception {
@@ -57,7 +59,8 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
         ExecutionRecordImportInfo data = new ExecutionRecordImportInfo();
         data.setFormat("MDF");
         // execution config can be user-defined, so there's no check to make
-        data.setKind(step.getExecutionConfig());
+        String kind = step.getExecutionConfig() != null ? step.getExecutionConfig() : ecApi.getExecutionRecords().getExecConfigNames().get(0);
+        data.setKind(kind);
         data.setPaths(paths);
         data.setFolderName(step.getFolderName());
         Job job = null;
@@ -120,14 +123,9 @@ public class BtcExecutionRecordImportStep extends Step implements Serializable {
     private String folderName;
 
     @DataBoundConstructor
-    public BtcExecutionRecordImportStep(String dir, String executionConfig) {
+    public BtcExecutionRecordImportStep(String dir) {
         super();
-        if (dir != null) {
-            this.dir = dir;
-        } else {
-            this.dir = Store.exportPath;
-        }
-        this.executionConfig = executionConfig;
+        this.dir = dir;
     }
 
     @Override

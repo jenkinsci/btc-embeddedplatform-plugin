@@ -11,11 +11,13 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.api.TolerancesApi;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -64,7 +66,7 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
             throw new IllegalStateException("You need an active profile to run tests");
         }
         // Get the path
-        String path = toRemoteAbsolutePathString(step.getPath());
+        String path = step.getPath() != null ? toRemoteAbsolutePathString(step.getPath()) : Store.exportPath;
         String kind = step.getUseCase();
         checkArgument(kind == "RBT" || kind == "B2B", "Error: invalid use case '" + kind + 
         		"'. Supported cases are 'RBT' and 'B2B'.");
@@ -86,14 +88,11 @@ public class BtcToleranceExportStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String path;
-    private String profilePath;
     private String useCase = "B2B";
 
     @DataBoundConstructor
-    public BtcToleranceExportStep(String profilePath, String path) {
+    public BtcToleranceExportStep() {
         super();
-        this.setPath(path);
-        this.setProfilePath(profilePath);
     }
 
     @Override
@@ -116,18 +115,12 @@ public class BtcToleranceExportStep extends Step implements Serializable {
      * 
      * @param path the path to set
      */
+    @DataBoundSetter
     public void setPath(String path) {
         this.path = path;
 
     }
     
-    public String getProfilePath() {
-    	return profilePath;
-    }
-    
-    public void setProfilePath(String profilePath) {
-    	this.profilePath = profilePath;
-    }
 
     /**
      * Get useCase.
@@ -144,6 +137,7 @@ public class BtcToleranceExportStep extends Step implements Serializable {
      * 
      * @param useCase the useCase to set
      */
+    @DataBoundSetter
     public void setUseCase(String useCase) {
         this.useCase = useCase;
 

@@ -1,13 +1,14 @@
 package com.btc.ep.plugins.embeddedplatform.step;
 
-import java.io.File;
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.io.FileInputStream;
 import java.io.Serializable;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -16,8 +17,26 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
 
+import com.btc.ep.plugins.embeddedplatform.model.TestConfig;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcB2BStep;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcCodeAnalysisReportStep;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcRBTStep;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateCStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateTLStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordImportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsExportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsImportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
@@ -37,38 +56,172 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
         this.step = step;
     }
 
-    @SuppressWarnings("unchecked")
 	@Override
     protected void performAction() throws Exception {
+		// Load test config
         log("Applying specified test config file " + step.getTestConfigPath());
+        FilePath testConfigFilePath = resolveInAgentWorkspace(step.getTestConfigPath());
+        Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
+    	TestConfig testConfig = yaml.loadAs(new FileInputStream(testConfigFilePath.getRemote()), TestConfig.class);
         
-//        String testconfigPath = toRemoteAbsolutePathString(step.getTestConfigPath());
-//    	Map<String, Object> testConfig = new Yaml().load(new FileInputStream(testconfigPath.toFile()));
-//    	System.out.println(testConfig);
-        
-//    	startupOrConnect((Map<String, Object>) testConfig.get("general"));
+    	// Initial sanity checks
+    	checkTestConfig(testConfig);
     	
-        // print success message and return response code
-        log("--> [200] Example step successfully executed.");
-        response = 200;
+    	// Startup / Connect
+		run(testConfig.generalOptions, new BtcStartupStep());
+		
+		// Run test steps
+		runSteps(testConfig.testSteps);
+		
+		// Wrap up
+		new BtcWrapUpStep().start(getContext()).start();
     }
-
-	private void startupOrConnect(Map<String, Object> generalOptions) throws Exception {
-		if (generalOptions == null) {
-			new BtcStartupStep().start(getContext()).start();
-		} else {
-			BtcStartupStep start = new BtcStartupStep();
-//			setValueIfPresent(generalOptions, "installPath", ());
-			//TODO: create generic way to extract properties from the options and apply them to the step
-	        start.setInstallPath("E:/Program Files/BTC/ep2.11p0");
-	        start.setPort(29268);
-	        start.setAdditionalJvmArgs("-Xmx2g");
-	        start.start(getContext()).start();
+	
+	private void runSteps(List<Map<String, Object>> testSteps) {
+		boolean skipRemainingStepsDueToFailure = false;
+		for (Map<String, Object> testStep : testSteps) {
+			if (!skipRemainingStepsDueToFailure) {
+				try {
+					runStep(testStep);
+				} catch (Exception e) {
+					log("Skipping remaining steps due to failure.");
+					skipRemainingStepsDueToFailure = true;
+				}
+			} else {
+				// TODO: error handling, add steps to report, etc.
+			}
 		}
 	}
 
-	private void setValueIfPresent(Map<String, Object> generalOptions, String string, Object object) {
-		// TODO Auto-generated method stub
+	/**
+	 * Grabs the value from the testStep objects, applies them to the target step and starts it.
+	 * Ensures that mandatory values are present.
+	 * 
+	 * @param testStep the input data
+	 */
+	private void runStep(Map<String, Object> testStep) throws Exception {
+		String stepName = (String) testStep.get("name");
+		switch (stepName) {
+		/*
+		 * Initial Steps
+		 */
+		case "loadProfile":
+			String profilePath = (String) testStep.get("profilePath");
+			checkArgument(profilePath != null, "No profilePath was provided for the Profile Load step.");
+			run(testStep, new BtcProfileLoadStep(profilePath));
+			break;
+		case "cCode":
+			String codeModelPath = (String) testStep.get("codeModelPath");
+			checkArgument(codeModelPath != null, "No codeModelPath was provided for the C-Code Profile Creation step.");
+			run(testStep, new BtcProfileCreateCStep(codeModelPath));
+			break;
+		case "targetLink":
+			String tlModelPath = (String) testStep.get("tlModelPath");
+			checkArgument(tlModelPath != null, "No tlModelPath was provided for the TargetLink Profile Creation step.");
+			run(testStep, new BtcProfileCreateTLStep(tlModelPath));
+			break;
+		case "embeddedCoder":
+			String slModelPath1 = (String) testStep.get("slModelPath");
+			checkArgument(slModelPath1 != null, "No slModelPath was provided for the EmbeddedCoder Profile Creation step.");
+			run(testStep, new BtcProfileCreateTLStep(slModelPath1));
+			break;
+		case "simulink":
+			String slModelPath2 = (String) testStep.get("slModelPath");
+			checkArgument(slModelPath2 != null, "No slModelPath was provided for the Simulink Profile Creation step.");
+			run(testStep, new BtcProfileCreateTLStep(slModelPath2));
+			break;
+		case "simulinkToplevel":
+			String slModelPath3 = (String) testStep.get("slModelPath");
+			checkArgument(slModelPath3 != null, "No slModelPath was provided for the Simulink Profile Creation step.");
+			run(testStep, new BtcProfileCreateTLStep(slModelPath3));
+			break;
+
+		/*
+		 * Analysis Steps
+		 */
+		case "requirementsBasedTest":
+			run(testStep, new BtcRBTStep());
+			break;
+		case "backToBackTest":
+			run(testStep, new BtcB2BStep());
+			break;
+		case "vectorGeneration":
+			run(testStep, new BtcVectorGenerationStep());
+			break;
+		case "codeAnalysisReport":
+			run(testStep, new BtcCodeAnalysisReportStep());
+			break;
+		case "domainCheckGoals":
+			run(testStep, new BtcAddDomainCheckGoals());
+			break;
+
+		/*
+		 * Import & Export
+		 */
+		case "executionRecordImport":
+			String erImportDir = (String) testStep.get("dir");
+			checkArgument(erImportDir != null, "No directory was provided for the Execution Record Import step");
+			run(testStep, new BtcExecutionRecordImportStep(erImportDir));
+			break;
+		case "executionRecordExport":
+			run(testStep, new BtcExecutionRecordExportStep());
+			break;
+		case "inputRestrictionsImport":
+			String irImportDir = (String) testStep.get("path");
+			checkArgument(irImportDir != null, "No path was provided for the Input Restrictions Import step");
+			run(testStep, new BtcInputRestrictionsImportStep(irImportDir));
+			break;
+		case "inputRestrictionsExport":
+			run(testStep, new BtcInputRestrictionsExportStep());
+			break;
+		case "toleranceImport":
+			String tolImportDir = (String) testStep.get("path");
+			checkArgument(tolImportDir != null, "No path was provided for the Tolerance Import step");
+			run(testStep, new BtcToleranceImportStep(tolImportDir));
+			break;
+		case "toleranceExport":
+			run(testStep, new BtcToleranceExportStep());
+			break;
+		case "vectorImport":
+			String vectorImportDir = (String) testStep.get("importDir");
+			checkArgument(vectorImportDir != null, "No directory was provided for the Vector Import step");
+			run(testStep, new BtcVectorImportStep(vectorImportDir));
+			break;
+//		case "vectorExport":
+//			run(testStep, new BtcVectorExportStep());
+//			break;
+		
+		default:
+			break;
+		}
+		
+	}
+
+	/**
+	 * Applies the sourceObjects values to the target step and runs it.
+	 * 
+	 * @param sourceObject the source object with matching attributes / getter/setters
+	 * @param targetStep the step to be executed
+	 */
+	private void run(Object sourceObject, Step targetStep) throws Exception {
+		Util.applyMatchingFields(sourceObject, targetStep).start(getContext()).start();
+	}
+	
+	private void checkTestConfig(TestConfig testConfig) {
+		// check if config is available and has steps
+		checkArgument(testConfig != null, "No valid TestConfig was provided.");
+		checkArgument(testConfig.testSteps != null && !testConfig.testSteps.isEmpty(),
+				"Provided TestConfig " + step.getTestConfigPath() + " does not contain any test steps.");
+		
+		// check if the config has exactly 1 init step
+		List<Object> initSteps = testConfig.testSteps.stream()
+				.filter(step -> TestConfig.INIT_STEPS.contains(step.get("name")))
+				.map(step -> step.get("name")).collect(Collectors.toList());
+		int numberOfInitSteps = initSteps.size();
+		checkArgument(numberOfInitSteps != 0, "TestConfig " + step.getTestConfigPath() +
+				" must include one of the available initial steps: " + TestConfig.INIT_STEPS);
+		checkArgument(numberOfInitSteps == 1, "TestConfig " + step.getTestConfigPath() +
+				" must not include more than initial steps. Found: " + initSteps);
 		
 	}
 

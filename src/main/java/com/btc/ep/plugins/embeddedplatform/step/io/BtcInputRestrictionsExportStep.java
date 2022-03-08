@@ -9,6 +9,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
 import org.openapitools.client.api.ProfilesApi;
@@ -96,9 +97,8 @@ public class BtcInputRestrictionsExportStep extends Step implements Serializable
     private String path;
 
     @DataBoundConstructor
-    public BtcInputRestrictionsExportStep(String path) {
+    public BtcInputRestrictionsExportStep() {
         super();
-        this.setPath(path);
     }
 
     @Override
@@ -121,6 +121,7 @@ public class BtcInputRestrictionsExportStep extends Step implements Serializable
      * 
      * @param path the path to set
      */
+    @DataBoundSetter
     public void setPath(String path) {
         this.path = path;
 

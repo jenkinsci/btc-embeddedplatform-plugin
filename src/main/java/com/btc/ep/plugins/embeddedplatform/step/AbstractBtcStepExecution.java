@@ -104,8 +104,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                 } catch (Exception e) {
                     if (e instanceof ApiException && jenkinsConsole != null) {
                         String responseBody = ((ApiException)e).getResponseBody();
-                        log(
-                            "Error during call of " + functionName + "(): " + responseBody);
+                        log("Error during call of " + functionName + "(): " + responseBody);
                     }
                     status(Status.ERROR);
                     getContext().onFailure(e); // return to context

@@ -110,7 +110,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
             Util.applyMatchingFields(step, profileLoad).start(getContext()).start();
         } else if (step.getTlModelPath() != null) {
             BtcProfileCreateTLStep tlProfileCreation =
-                new BtcProfileCreateTLStep(profilePath.toString(), step.getTlModelPath());
+                new BtcProfileCreateTLStep(step.getTlModelPath());
             Util.applyMatchingFields(step, tlProfileCreation).start(getContext()).start();
         } else if (step.getSlModelPath() != null) {
             BtcProfileCreateECStep ecProfileCreation =
@@ -119,7 +119,6 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
         } else if (step.getCodeModelPath() != null) {
             BtcProfileCreateCStep cProfileCreation =
                 new BtcProfileCreateCStep(step.getCodeModelPath());
-            cProfileCreation.setProfilePath(profilePath.toString());
             Util.applyMatchingFields(step, cProfileCreation).start(getContext()).start();
         } else {
             throw new IllegalArgumentException(
@@ -137,7 +136,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
                     new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
                 try {
 	                Folder folder = folderApi.addFolder(folderKind);
-	                BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir(), config);
+	                BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir());
 	                importStep.setFolderName(folder.getName());
 	                importStep.start(getContext()).start();
                 } catch (Exception e) {
@@ -293,8 +292,8 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
             if (step.isCreateProfilesFromScratch()) {
                 // Export Execution Records to be imported in the target profile
                 String exportPath = step.getExportPath(); // + executionConfig.replace(" ", "_");
-                BtcExecutionRecordExportStep erExportStep = new BtcExecutionRecordExportStep(exportPath, config);
-                erExportStep.setFolderName(config);
+                BtcExecutionRecordExportStep erExportStep = new BtcExecutionRecordExportStep();
+                erExportStep.setFolderName(exportPath);
                 erExportStep.start(getContext()).start();
             } else {
                 // Move Execution Records to user-defined folder for the regression test

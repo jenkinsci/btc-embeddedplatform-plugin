@@ -17,15 +17,15 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.BackToBackTestReportsApi;
 import org.openapitools.client.api.BackToBackTestsApi;
+import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.BackToBackTest;
 import org.openapitools.client.model.BackToBackTest.VerdictStatusEnum;
 import org.openapitools.client.model.BackToBackTestExecutionData;
-import org.openapitools.client.model.BackToBackTestExecutionSourceData;
+import org.openapitools.client.model.ExecutionConfigs;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.RBTestCaseExecutionResultData;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
@@ -58,6 +58,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
     private ScopesApi scopesApi = new ScopesApi();
     private ProfilesApi profilesApi = new ProfilesApi();
     private ReportsApi reportingApi = new ReportsApi();
+    private ExecutionConfigsApi execConfigApi = new ExecutionConfigsApi();
 
     @Override
     protected void performAction() throws Exception {
@@ -79,18 +80,13 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 
         // Prepare data for B2B test
         BackToBackTestExecutionData data = new BackToBackTestExecutionData();
-        String ref = step.getReference();
-        String comp = step.getComparison();
-        checkArgument(ref == "TL MIL" || ref == "SIL" || 
-        		ref == "PIL" || ref == "SL MIL", "Error: supported "
-        				+ "reference values for back-to-back tests are "
-        				+ "TL MIL, SIL, PIL, SL MIL");
-        checkArgument(comp == "TL MIL" || comp == "SIL" || 
-        		comp == "PIL" || comp == "SL MIL", "Error: supported "
-        				+ "comparison values for back-to-back tests are "
-        				+ "TL MIL, SIL, PIL, SL MIL");
-        data.setRefMode(step.getReference());
-        data.setCompMode(step.getComparison());
+        List<String> executionConfigs = execConfigApi.getExecutionRecords().getExecConfigNames();
+        if (step.getReference() != null && step.getComparison() != null) {
+        	data.refMode(step.getReference()).compMode(step.getComparison());
+        } else if (executionConfigs.size() >= 2) {
+        	// fallback: first config vs. second config
+        	data.refMode(executionConfigs.get(0)).compMode(executionConfigs.get(1));
+        }
 
         // Execute B2B test and return result
         Job job = null;
@@ -179,8 +175,8 @@ public class BtcB2BStep extends Step implements Serializable {
     /*
      * Each parameter of the step needs to be listed here as a field
      */
-    private String reference = "TL MIL";
-    private String comparison = "TL MIL";
+    private String reference;
+    private String comparison;
 
     @DataBoundConstructor
     public BtcB2BStep() {

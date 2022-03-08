@@ -28,6 +28,7 @@ import org.openapitools.client.model.RestVectorExportDetails;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -95,7 +96,7 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
         		"Error: valid vectorFormat is csv or excel, not " + format);
         
         //Get all vectors
-        String exportDir = toRemoteAbsolutePathString(step.getExportDir());
+        String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
 
         // Stimuli Vector  -- Default info.setVectorKind("TC");
         Job job;
@@ -187,9 +188,8 @@ public class BtcVectorExportStep extends Step implements Serializable {
     private boolean singleFile = true;
     
     @DataBoundConstructor
-    public BtcVectorExportStep(String exportDir, String vectorFormat) {
+    public BtcVectorExportStep(String vectorFormat) {
         super();
-        this.dir = exportDir;
         this.setVectorFormat(vectorFormat);
     }
 
@@ -229,7 +229,7 @@ public class BtcVectorExportStep extends Step implements Serializable {
      * 
      * @return the exportDir
      */
-    public String getExportDir() {
+    public String getDir() {
         return dir;
     }
 
@@ -239,8 +239,8 @@ public class BtcVectorExportStep extends Step implements Serializable {
      * @param exportDir the exportDir to set
      */
     @DataBoundSetter
-    public void setExportDir(String exportDir) {
-        this.dir = exportDir;
+    public void setDir(String dir) {
+        this.dir = dir;
     }
 
     /**

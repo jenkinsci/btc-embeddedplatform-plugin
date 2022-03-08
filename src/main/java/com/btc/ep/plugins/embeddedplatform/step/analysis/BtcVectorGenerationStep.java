@@ -224,6 +224,7 @@ public class BtcVectorGenerationStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String pll = "::";
+    private List<String> goals;
     private String engine = "ATG+CV";
     private String executionModeAtg = ExecutionModeEnum.TOP_DOWN.name();
     private int globalTimeout = 600;
@@ -461,6 +462,15 @@ public class BtcVectorGenerationStep extends Step implements Serializable {
         this.showProgress = showProgress;
 
     }
+
+	public List<String> getGoals() {
+		return goals;
+	}
+
+	@DataBoundSetter
+	public void setGoals(List<String> goals) {
+		this.goals = goals;
+	}
 
     /*
      * End of getter/setter section

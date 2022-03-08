@@ -182,9 +182,8 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
     private String licenseLocationString; // mark as deprecated?
 
     @DataBoundConstructor
-    public BtcProfileCreateTLStep(String profilePath, String tlModelPath) {
+    public BtcProfileCreateTLStep(String tlModelPath) {
         super();
-        this.profilePath = profilePath;
         this.tlModelPath = tlModelPath;
     }
 
@@ -370,6 +369,11 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
     public void setMatlabVersion(String matlabVersion) {
         this.matlabVersion = matlabVersion;
     }
+
+    @DataBoundSetter
+	public void setProfilePath(String profilePath) {
+		this.profilePath = profilePath;
+	}
 
     /*
      * End of getter/setter section

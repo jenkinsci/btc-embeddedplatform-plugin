@@ -294,6 +294,7 @@ public class BtcRBTStep extends Step implements Serializable {
      * Each parameter of the step needs to be listed here as a field
      */
     private String executionConfigString;
+    private List<String> executionConfigs;
     private String reportSource = "SCOPE";
     private boolean createReport = false;
     private String scopesWhitelist;
@@ -385,6 +386,10 @@ public class BtcRBTStep extends Step implements Serializable {
         return testCasesBlacklist;
     }
 
+    public List<String> getExecutionConfigs() {
+    	return executionConfigs;
+    }
+
     @DataBoundSetter
     public void setExecutionConfigString(String executionConfigString) {
         this.executionConfigString = executionConfigString;
@@ -439,6 +444,12 @@ public class BtcRBTStep extends Step implements Serializable {
     public void setTestCasesBlacklist(String testCasesBlacklist) {
         this.testCasesBlacklist = testCasesBlacklist;
     }
+
+	
+	@DataBoundSetter
+	public void setExecutionConfigs(List<String> executionConfigs) {
+		this.executionConfigs = executionConfigs;
+	}
 
     /*
      * End of getter/setter section

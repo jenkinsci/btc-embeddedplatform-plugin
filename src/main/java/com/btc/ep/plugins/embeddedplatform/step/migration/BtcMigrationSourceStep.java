@@ -86,21 +86,22 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
         String profilePath = getProfilePathOrDefault(step.getProfilePath());
         FilePath profileFilePath = resolveInAgentWorkspace(profilePath);
         if (!step.isCreateProfilesFromScratch() && profileFilePath.exists()) {
-            BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(profilePath.toString());
+            BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(profilePath);
             Util.applyMatchingFields(step, profileLoad).start(getContext()).start();
         } else if (step.getTlModelPath() != null) {
             BtcProfileCreateTLStep tlProfileCreation =
-                new BtcProfileCreateTLStep(profilePath.toString(), step.getTlModelPath());
+                new BtcProfileCreateTLStep(step.getTlModelPath());
+            tlProfileCreation.setProfilePath(profilePath);
             Util.applyMatchingFields(step, tlProfileCreation).start(getContext()).start();
         } else if (step.getSlModelPath() != null) {
             BtcProfileCreateECStep ecProfileCreation =
                 new BtcProfileCreateECStep(step.getSlModelPath());
-            ecProfileCreation.setProfilePath(profilePath.toString());
+            ecProfileCreation.setProfilePath(profilePath);
             Util.applyMatchingFields(step, ecProfileCreation).start(getContext()).start();
         } else if (step.getCodeModelPath() != null) {
             BtcProfileCreateCStep cProfileCreation =
                 new BtcProfileCreateCStep(step.getCodeModelPath());
-            cProfileCreation.setProfilePath(profilePath.toString());
+            cProfileCreation.setProfilePath(profilePath);
             Util.applyMatchingFields(step, cProfileCreation).start(getContext()).start();
         } else {
             throw new IllegalArgumentException(
@@ -230,7 +231,8 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
             if (step.isCreateProfilesFromScratch()) {
                 // Export Execution Records to be imported in the target profile
                 String exportPath = step.getExportPath(); // + executionConfig.replace(" ", "_");
-                BtcExecutionRecordExportStep erExportStep = new BtcExecutionRecordExportStep(exportPath, config);
+                BtcExecutionRecordExportStep erExportStep = new BtcExecutionRecordExportStep();
+                erExportStep.setDir(exportPath);
                 erExportStep.setFolderName(config);
                 erExportStep.start(getContext()).start();
             } else {

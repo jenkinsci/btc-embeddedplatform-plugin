@@ -49,7 +49,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
-        String exportDir = toRemoteAbsolutePathString(step.getDir());
+        String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
         List<String> uids = null;
         try {
         	uids = erApi.getExecutionRecords2()
@@ -106,14 +106,8 @@ public class BtcExecutionRecordExportStep extends Step implements Serializable {
     private String folderName;
 
     @DataBoundConstructor
-    public BtcExecutionRecordExportStep(String dir, String executionConfig) {
+    public BtcExecutionRecordExportStep() {
         super();
-        if (dir != null) {
-            this.dir = dir;
-        } else {
-            this.dir = Store.exportPath;
-        }
-        this.executionConfig = executionConfig;
     }
 
     @Override
@@ -164,8 +158,15 @@ public class BtcExecutionRecordExportStep extends Step implements Serializable {
         this.folderName = folderName;
 
     }
+    
+    @DataBoundSetter
+    public void setDir(String dir) {
+    	this.dir = dir;
+    }
+
     /*
      * End of getter/setter section
      */
+
 
 } // end of step class

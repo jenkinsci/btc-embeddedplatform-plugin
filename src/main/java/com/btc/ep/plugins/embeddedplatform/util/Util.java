@@ -15,7 +15,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -437,33 +436,60 @@ public class Util {
      * <b>IMPORTANT</b>: Source step should not use primitive types to prevent unless it defines a meaningful default
      * value.
      *
-     * @param sourceStep
+     * @param source source object, may be null (then this is a noop)
      * @param targetStep
      */
-    public static Step applyMatchingFields(Step sourceStep, Step targetStep) {
-        for (Field sourceField : sourceStep.getClass().getDeclaredFields()) {
-            for (Field targetField : targetStep.getClass().getDeclaredFields()) {
-                // if name and type of the fields match:
-                if (sourceField.getName().equals(targetField.getName())
-                    && typesMatch(sourceField.getType(), targetField.getType())) {
-                    try {
-                        String capitalizedFieldName = StringUtils.capitalize(targetField.getName());
-                        String setterName = "set" + capitalizedFieldName;
-                        String getterPart =
-                            (targetField.getType().getName().equalsIgnoreCase("boolean") ? "is" : "get");
-                        String getterName = capitalizedFieldName.startsWith("Is") ? targetField.getName()
-                            : getterPart + capitalizedFieldName;
-                        Method setter = targetStep.getClass().getMethod(setterName, targetField.getType());
-                        Method getter = sourceStep.getClass().getMethod(getterName);
-                        Object value = getter.invoke(sourceStep);
-                        if (value != null) {
-                            setter.invoke(targetStep, value);
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-            }
-        }
+    @SuppressWarnings("unchecked")
+	public static Step applyMatchingFields(Object source, Step targetStep) {
+    	if (source != null) {
+    		if (source instanceof Map) {
+    			// approach using the source object's map entries
+    			for (Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
+    				for (Field targetField : targetStep.getClass().getDeclaredFields()) {
+    					// matching can only happen based on names
+    					if (entry.getKey().equals(targetField.getName())) {
+    						try {
+    							String capitalizedFieldName = StringUtils.capitalize(targetField.getName());
+    							String setterName = "set" + capitalizedFieldName;
+    							Method setter = targetStep.getClass().getMethod(setterName, targetField.getType());
+    							if (entry.getValue() != null) {
+    								setter.invoke(targetStep, entry.getValue());
+    							}
+    						} catch (Exception ignored) {
+    							ignored.printStackTrace();
+    						}
+    					}
+    				}
+    			}
+    		} else {
+    			// approach using the source object's getters
+    			for (Field sourceField : source.getClass().getDeclaredFields()) {
+    				for (Field targetField : targetStep.getClass().getDeclaredFields()) {
+    					// if name and type of the fields match:
+    					if (sourceField.getName().equals(targetField.getName())
+    							&& typesMatch(sourceField.getType(), targetField.getType())) {
+    						try {
+    							String capitalizedFieldName = StringUtils.capitalize(targetField.getName());
+    							String setterName = "set" + capitalizedFieldName;
+    							String getterPart =
+    									(targetField.getType().getName().equalsIgnoreCase("boolean") ? "is" : "get");
+    							String getterName = capitalizedFieldName.startsWith("Is") ? targetField.getName()
+    									: getterPart + capitalizedFieldName;
+    							Method setter = targetStep.getClass().getMethod(setterName, targetField.getType());
+    							Method getter = source.getClass().getMethod(getterName);
+    							Object value = getter.invoke(source);
+    							if (value != null) {
+    								setter.invoke(targetStep, value);
+    							}
+    						} catch (Exception ignored) {
+    							ignored.printStackTrace();
+    						}
+    					}
+    				}
+    			}    			
+    		}
+    		
+    	}
         return targetStep;
     }
 
