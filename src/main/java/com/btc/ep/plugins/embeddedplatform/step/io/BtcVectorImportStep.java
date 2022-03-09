@@ -65,10 +65,12 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
     	// vectorFiles will be an array of files or null
         FilePath importDir = resolveInAgentWorkspace(step.getImportDir());
         List<FilePath> vectorFiles = new ArrayList<>();
-        List<FilePath> files = importDir.list();
-        for (FilePath file : files) {
-        	if (file != null && file.getName() != null && file.getName().toLowerCase().endsWith(fileSuffix)) {
-        		vectorFiles.add(file);
+        if (importDir.exists()) {
+        	List<FilePath> files = importDir.list();
+        	for (FilePath file : files) {
+        		if (file.getName() != null && file.getName().toLowerCase().endsWith(fileSuffix)) {
+        			vectorFiles.add(file);
+        		}
         	}
         }
         // we shouldn't throw an error if the directory doesn't exist 

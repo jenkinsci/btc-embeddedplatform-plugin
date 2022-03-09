@@ -28,13 +28,6 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-/*
- * ################################################################################################
- * #                                                                                              #
- * #  THIS IS A TEMPLATE: YOU MAY COPY THIS FILE AS A STARTING POINT TO IMPLEMENT FURTHER STEPS.  #
- * #                                                                                              # 
- * ################################################################################################
- */
 
 /**
  * This class defines what happens when the above step is executed
@@ -45,7 +38,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     private BtcAddDomainCheckGoals step;
 
     public BtcAddDomainCheckGoalsStepExecution(BtcAddDomainCheckGoals step, StepContext context) {
-        super(step, context);
+        super(step, context); //
         this.step = step;
     }
 
@@ -197,6 +190,10 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
     private String raster = "25";
     private boolean activateRangeViolationCheck = false;
     private boolean activateBoundaryCheck = false;
+    
+    private static final String PIPELINE_FUNCTION_NAME = "btcaddDomainCheckGoals";
+    private static final String JENKINS_DISPLAY_NAME = "BTC Domain Check Goals";
+    private static final String BTC_REPORTING_NAME = "Domain Check Goals";
 
     @DataBoundConstructor
     public BtcAddDomainCheckGoals() {
@@ -222,7 +219,7 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
          */
         @Override
         public String getFunctionName() {
-            return "btcaddDomainCheckGoals";
+            return PIPELINE_FUNCTION_NAME;
         }
 
         /*
@@ -230,7 +227,7 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
          */
         @Override
         public String getDisplayName() {
-            return "BTC Add Domain Check Goals";
+            return JENKINS_DISPLAY_NAME;
         }
     }
 

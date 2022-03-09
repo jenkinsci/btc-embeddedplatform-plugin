@@ -31,6 +31,7 @@ import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Proc;
 import hudson.model.Computer;
+import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 
@@ -47,9 +48,6 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     private String functionName;
     private BasicStep reportingStep;
 
-    /*
-     * --------------- ORIGINAL: START ---------------
-     */
     public AbstractBtcStepExecution(Step step, StepContext context) {
         super(context);
         this.functionName = step.getDescriptor().getFunctionName();
@@ -57,30 +55,6 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
         recordStepArguments(step);
     }
 
-    /*
-     * -------------- ORIGINAL: END -----------------
-     */
-
-    /*
-     * --------------- Testing: START -----------------
-     */
-//    @SuppressWarnings("deprecation")
-//	public AbstractBtcStepExecution(Step step, StepContext context) {
-//    	this.context = context;
-//    	this.functionName = "DUMMY";
-//    	this.reportingStep = new TestStep(functionName);
-//    	recordStepArguments(step);
-//    }
-//    private StepContext context;
-//    @Override
-//    public StepContext getContext() {
-//    	return this.context;
-//    }
-    /*
-     * --------------- Testing: END -----------------
-     */
-    
-    
     private boolean reportingDisabled = false;
     public TimerTask t;
 
@@ -101,9 +75,6 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 
                     getContext().onSuccess(response); // return to context
                 } catch (Exception e) {
-                	
-                	e.printStackTrace(jenkinsConsole);
-                	
                     if (e instanceof ApiException && jenkinsConsole != null) {
                         String responseBody = ((ApiException)e).getResponseBody();
                         String msg = "Error during call of " + functionName + "(): " + responseBody;
@@ -111,8 +82,9 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                         info(msg);
                     } else {
                     	info("Error: " + e.getMessage());
+                    	e.printStackTrace(jenkinsConsole); // print stack trace to Jenkins Console
                     }
-                    status(Status.ERROR);
+                    error();
                     getContext().onFailure(e); // return to context
                 } finally {
                     if (!reportingDisabled) {
@@ -263,6 +235,8 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     public AbstractBtcStepExecution error() {
         this.reportingStep.setStatusOK(false);
         status(Status.ERROR);
+        // also set the build result to failure
+        try {getContext().get(Run.class).setResult(Result.FAILURE);}catch (Exception e) {}
         return this;
     }
     

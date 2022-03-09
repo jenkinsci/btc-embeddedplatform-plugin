@@ -67,13 +67,13 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
         checkArgument(!scopes.isEmpty(), "ERROR: no top-level scope in selected profile");
     	Scope toplevel = scopes.get(0);
     	String useCase = step.getUseCase();
-    	checkArgument(useCase == "B2B" || useCase == "RBT",
+    	checkArgument("B2B".equals(useCase) || "RBT".equals(useCase),
     			"ERROR: valid useCase for CodeAnalysisReport is RBT or B2B, not " + useCase);
     	
     	Report report = null;
     	try {
     		log("Creating Code Analysis Report (%s)...", useCase);
-	    	if (useCase == "RBT") {
+	    	if ("RBT".equals(useCase)) {
 	    		report = rbtReportApi.createCodeAnalysisReportOnScope1(toplevel.getUid());
 	    	} else { // B2B testing
 	    		report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());

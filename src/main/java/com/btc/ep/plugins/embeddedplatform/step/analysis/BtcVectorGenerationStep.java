@@ -2,9 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.File;
 import java.io.Serializable;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +40,6 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /**
