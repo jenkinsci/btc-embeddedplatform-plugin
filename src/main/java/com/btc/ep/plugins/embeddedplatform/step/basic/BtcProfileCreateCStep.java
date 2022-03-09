@@ -54,6 +54,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
         Store.exportPath = toRemoteAbsolutePathString(step.getExportPath());
 
         //TODO: Configure ML connection and execute ML Startup Script if needed (requires EP-2535)
+        //log("Preparing Matlab...");
 
         /*
          * Create the profile based on the code model
@@ -76,15 +77,13 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
             /*
              * Wrapping up, reporting, etc.
              */
-            msg = "Successfully created the profile.";
+            msg = "Architecture Import successful.";
             detailWithLink(Store.epp.getName(), profilePath);
             response = 200;
         } catch (Exception e) {
-        	msg = "ERROR. Failed to import provided architecture "
-        			+ info.getModelFile() + ": " + e.getMessage();
+        	msg = "ERROR: Failed to import C-Code architecture: " + e.getMessage();
         	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
-        	
         }
         log(msg);
         info(msg);

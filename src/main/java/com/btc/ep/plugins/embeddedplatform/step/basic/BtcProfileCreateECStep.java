@@ -64,22 +64,15 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
         preliminaryChecks();
         Store.epp = resolveInAgentWorkspace(profilePath);
         Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports");
+    	profilesApi.createProfile(true);
 
-        try {
-        	profilesApi.createProfile(true);
-        } catch (Exception e) {
-        	log("ERROR. Failed to create profile: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	error();
-        }
-        /*
+    	/*
          * Prepare Matlab
          */
-        log("Connecting to Matlab...");
+        log("Preparing Matlab...");
         Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-
-        
         //TODO: Execute Startup Script (requires EP-2535)
+
 
         //TODO: Create Wrapper Model (requires EP-2538)
         String modelPath = slModelPath.toString();
@@ -126,15 +119,14 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 	        log("Importing EmbeddedCoder architecture '" + new File(modelPath).getName() + "'...");
 	        HttpRequester.waitForCompletion(job.getJobID());
         } catch (Exception e) {
-        	log("ERROR. Failed to import architecture " + 
-        			info.getEcModelFile() + ": " + e.getMessage());
+        	log("ERROR: Failed to import architecture: " + e.getMessage());
         	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         /*
          * Wrapping up, reporting, etc.
          */
-        String msg = "Successfully created the profile.";
+        String msg = "Architecture Import successful.";
         detailWithLink(Store.epp.getName(), profilePath.toString());
         response = 200;
         log(msg);

@@ -66,13 +66,14 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
         }
         checkArgument(!scopes.isEmpty(), "ERROR: no top-level scope in selected profile");
     	Scope toplevel = scopes.get(0);
-    	String usecases = step.getUseCase();
-    	checkArgument(usecases == "B2B" || usecases == "RBT",
-    			"ERROR: valid useCase for CodeAnalysisReport is RBT or B2B, not " + usecases);
+    	String useCase = step.getUseCase();
+    	checkArgument(useCase == "B2B" || useCase == "RBT",
+    			"ERROR: valid useCase for CodeAnalysisReport is RBT or B2B, not " + useCase);
     	
     	Report report = null;
     	try {
-	    	if (usecases == "RBT") {
+    		log("Creating Code Analysis Report (%s)...", useCase);
+	    	if (useCase == "RBT") {
 	    		report = rbtReportApi.createCodeAnalysisReportOnScope1(toplevel.getUid());
 	    	} else { // B2B testing
 	    		report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
@@ -89,7 +90,7 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 	        info.setExportPath(Store.exportPath);
 	        try {
 		        reportApi.exportReport(report.getUid(), info);
-		        String msg = "Exported the " + usecases + " coverage report.";
+		        String msg = "Exported the " + useCase + " coverage report.";
 		        detailWithLink("Code Coverage Report", step.getReportName() + ".html");
 		    	info(msg);
 		    	log(msg);

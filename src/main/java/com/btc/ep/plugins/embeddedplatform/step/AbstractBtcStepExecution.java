@@ -21,7 +21,6 @@ import org.openapitools.client.ApiException;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.BasicStep;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStep;
-import com.btc.ep.plugins.embeddedplatform.test.TestStuff_FakeProc;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
@@ -83,9 +82,9 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     
     
     private boolean reportingDisabled = false;
+    public TimerTask t;
 
-
-    public boolean start() throws Exception {
+    public boolean start() {
         TimerTask t = new TimerTask() {
 
             @Override
@@ -104,7 +103,11 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
                 } catch (Exception e) {
                     if (e instanceof ApiException && jenkinsConsole != null) {
                         String responseBody = ((ApiException)e).getResponseBody();
-                        log("Error during call of " + functionName + "(): " + responseBody);
+                        String msg = "Error during call of " + functionName + "(): " + responseBody;
+                        log(msg);
+                        info(msg);
+                    } else {
+                    	info("Error: " + e.getMessage());
                     }
                     status(Status.ERROR);
                     getContext().onFailure(e); // return to context
@@ -226,9 +229,11 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     }
 
     /**
-     * Sets the result to SKIPPED
+     * Sets the result to SKIPPED. Also sets StatusOK and StatusWarning to false (required for correct reporting)
      */
     public AbstractBtcStepExecution skipped() {
+    	this.reportingStep.setStatusOK(false);
+    	this.reportingStep.setStatusWARNING(false);
         this.reportingStep.setSkipped(true);
         return this;
     }
@@ -283,6 +288,16 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     }
     
     /**
+     * Writes the given message to the jenkins console output.
+     * The message is formatted with the given args: String.format(message, args)
+     * All messages are prefixed with "[BTC] "
+     * @param message
+     */
+    protected void log(String message, Object ... formatArgs) {
+    	log(String.format(message, formatArgs));
+    }
+    
+    /**
      * Launches a process with the given command using hudson.Launcher.class, starts it and returns the process.
      * The process inherits the environment from Jenkins which allows Jenkins to kill processes when the run finishes/aborts/exits prematurely, etc.
      * 
@@ -292,12 +307,6 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
      * @throws InterruptedException
      */
     protected Proc spawnManagedProcess(List<String> command) throws IOException, InterruptedException {
-    	// Shortcut for testing outside of the Jenkins context 
-    	// FIXME: consider removing when going to production
-    	if ("DUMMY".equals(this.functionName)) {
-    		return new TestStuff_FakeProc(command);
-    	}
-    	
     	// Use magical "get(...)" command from context to get the Launcher
     	Launcher launcher = getContext().get(Launcher.class);
     	
@@ -308,7 +317,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     	taskHandle.put(JENKINS_NODE_COOKIE, cookie);
     	
     	// Start external process with the identifying cookie and return the process object
-    	Proc process = launcher.launch().cmds(command).envs(taskHandle).start();
+    	Proc process = launcher.launch().cmds(command).envs(taskHandle).quiet(true).start();
 		return process;
 	}
     

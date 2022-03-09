@@ -89,6 +89,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             info.setPaths(vectorFilePaths);
             // no format? http://jira.osc.local:8080/browse/EP-2534 --> format is auto-detected based on file extension
             try {
+            	log("Importing testcases from '%s'...", importDir.getRemote());
             	job = rbTestCasesApi.importRBTestCase(info);
             } catch (Exception e) {
             	log("ERROR importing RBT: " + e.getMessage());
@@ -106,6 +107,7 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
             String fUid = foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
             info.setFolderUID(fUid);*/
             try {
+            	log("Importing stimuli vectors from '%s'...", importDir.getRemote());
             	job = stimuliVectorsApi.importStimuliVectors(info);
             } catch (Exception e) {
             	log("ERROR importing Stimul Vectors: " + e.getMessage());

@@ -3,7 +3,7 @@ package com.btc.ep.plugins.embeddedplatform.step.analysis;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
@@ -17,7 +17,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
-import org.openapitools.client.api.BackToBackTestReportsApi;
 import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
@@ -26,7 +25,6 @@ import org.openapitools.client.api.RequirementBasedTestExecutionApi;
 import org.openapitools.client.api.RequirementBasedTestExecutionReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.Profile;
 import org.openapitools.client.model.RBTExecutionDataExtendedNoReport;
 import org.openapitools.client.model.RBTExecutionDataNoReport;
 import org.openapitools.client.model.RBTExecutionReportCreationInfo;
@@ -70,7 +68,6 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
     private ScopesApi scopesApi = new ScopesApi();
     private ProfilesApi profilesApi = new ProfilesApi();
     private ReportsApi reportingApi = new ReportsApi();
-    private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
     private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
     private ExecutionConfigsApi erApi = new ExecutionConfigsApi();
 
@@ -78,46 +75,47 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
     protected void performAction() throws Exception {
         // Check preconditions
         try {
-            Profile p = profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
             throw new IllegalStateException("You need an active profile to run tests");
         }
 
         // Prepare data
-        List<String> tcUids = null;
-        try {
-        	tcUids = getRelevantTestCaseUIDs(); // <-- TODO waiting for EP-2537
-        } catch (Exception e) {
-        	log("ERROR. could not find test cases: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	error();
+        List<String> tcUids = getRelevantTestCaseUIDs();
+        
+        // skip rbt execution if there are no test cases
+        if (tcUids.isEmpty()) {
+        	log("Skipping Requirements-based Test execution. No test cases are matching the filters");
+        	info("No test cases are matching the filters");
+        	skipped();
+        	return;
         }
-        RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
-        RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
-        List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
-        if (executionConfigNames.isEmpty()) {
-        	executionConfigNames = erApi.getExecutionRecords().getExecConfigNames();
-        }
-        data.setForceExecute(false);
-        data.setExecConfigNames(executionConfigNames);
-        //TODO: the fallback should be: execution config list empty? -> execute on all configs (requires EP-2536)
-        info.setUiDs(tcUids);
-        info.setData(data);
-        Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
-        RBTestCaseExecutionResultMapData testResults = HttpRequester.waitForCompletion(job.getJobID(), "result", RBTestCaseExecutionResultMapData.class);
-        if (testResults != null) {
-	        analyzeResults(testResults, tcUids.isEmpty());
-	        try {
-	        	generateAndExportReport(testResults);
-	        } catch (Exception e) {
-	        	log("WARNING. failed to generate and export report: " + e.getMessage());
-	        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-	        	warning();
-	        }
-        } else { // TODO: this is a problem that we should figure out how to handle.
-        	log("ERROR no test result data");
-        }
-
+        
+        // Continue with RBT Execution
+    	RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
+    	RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
+    	List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
+    	if (executionConfigNames.isEmpty()) {
+    		executionConfigNames = erApi.getExecutionRecords().getExecConfigNames();
+    	}
+    	data.setForceExecute(false);
+    	data.setExecConfigNames(executionConfigNames);
+    	info.setUiDs(tcUids);
+    	info.setData(data);
+    	
+    	log("Executing Requirements-based Tests on %s...", executionConfigNames);
+    	Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
+    	RBTestCaseExecutionResultMapData testResults = HttpRequester.waitForCompletion(job.getJobID(), "result", RBTestCaseExecutionResultMapData.class);
+    	if (testResults != null) {
+    		analyzeResults(testResults, tcUids.isEmpty());
+    		try {
+    			generateAndExportReport(testResults);
+    		} catch (Exception e) {
+    			log("WARNING. failed to generate and export report: " + e.getMessage());
+    			try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+    			warning();
+    		}
+    	}
     }
 
     /**
@@ -249,18 +247,20 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 
         checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
 
-        List<RequirementBasedTestCase> filteredTestCases = null;
+        List<RequirementBasedTestCase> filteredTestCases = new ArrayList<>();
         for (Scope scope : scopes) {
             if (Util.matchesScopeFilter(scope.getName(), blacklistedScopes, whitelistedScopes)) {
                 try {
-                filteredTestCases =
-                    Util.filterTestCases(testCasesApi.getRBTestCasesByScope(scope.getUid()), filteredRequirements,
-                        blacklistedTestCases, whitelistedTestCases);
+                	List<RequirementBasedTestCase> testCasesByScope = testCasesApi.getRBTestCasesByScope(scope.getUid());
+                	filteredTestCases = Util.filterTestCases(testCasesByScope, filteredRequirements,
+                			blacklistedTestCases, whitelistedTestCases);
                 } catch (ApiException e) {
+                	// TODO: can be removed once the GET request return an empty list instead of an error
                 	if (e.getMessage().contains("Not Found")) {
-                			continue; // no tests for this scope, so we just pass over it.
+            			continue; // no tests for this scope, so we just pass over it.
                 	}
-                	else throw e;
+                	// else:
+                	throw e;
                 }
             }
         }
@@ -268,17 +268,6 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
         return tcUids;
     }
 
-        /**
-         * @param b2bTestUid
-         * @throws ApiException
-         */
-        private void generateAndExportReport(String b2bTestUid) throws ApiException {
-            Report report = b2bReportingApi.createBackToBackReport(b2bTestUid);
-            ReportExportInfo reportExportInfo = new ReportExportInfo();
-            reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_RBT);
-            reportingApi.exportReport(report.getUid(), reportExportInfo);
-            detailWithLink(REPORT_LINK_NAME_RBT, REPORT_NAME_RBT + ".html");
-        }
 
 }
 

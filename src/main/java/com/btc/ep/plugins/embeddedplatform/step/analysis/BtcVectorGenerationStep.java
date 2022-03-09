@@ -68,7 +68,6 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
     @Override
     protected void performAction() throws Exception {
     	// Check preconditions
-    	// TODO: we only need to have a profile for some operations. this is overly strict
         try {
             profilesApi.getCurrentProfile(); // throws Exception if no profile is active
         } catch (Exception e) {
@@ -84,6 +83,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
         }
         checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
         try {
+        	log("Generating Vectors...");
         	prepareAndExecuteVectorGeneration();
         } catch (Exception e) {
         	log("ERROR: failed to execute vector generation: " + e.getMessage());

@@ -54,7 +54,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
         /*
          * Load the profile
          */
-        log("Loading profile '" + Store.epp.getName() + "'"); 
+        log("Loading profile '" + Store.epp.getName() + "'");
         String msg = null;
         try {
 	        profilesApi.openProfile(step.getProfilePath(), true);

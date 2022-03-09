@@ -1,7 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
 import java.io.Serializable;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Set;
 
@@ -16,16 +15,8 @@ import org.openapitools.client.api.ProfilesApi;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
 
-/*
- * ################################################################################################
- * #                                                                                              #
- * #  THIS IS A TEMPLATE: YOU MAY COPY THIS FILE AS A STARTING POINT TO IMPLEMENT FURTHER STEPS.  #
- * #                                                                                              # 
- * ################################################################################################
- */
 
 /**
  * This class defines what happens when the above step is executed

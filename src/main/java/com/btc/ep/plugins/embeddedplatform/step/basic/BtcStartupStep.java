@@ -71,6 +71,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
                 
                 // start process and save it for future use (e.g. to destroy it)
                 try {
+                	log("Starting BTC EmbeddedPlatform: " + String.join(" ", command));
 	                Store.epProcess = spawnManagedProcess(command);
                 } catch (Exception e) {
                 	log("ERROR. Failed to start BTC! " + e.getMessage());

@@ -119,15 +119,14 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 	        log("Importing TargetLink architecture...");
 	        HttpRequester.waitForCompletion(job.getJobID());
 	    } catch (Exception e) {
-        	log("ERROR. Failed to import architecture " + 
-        			info.getTlModelFile() + ": " + e.getMessage());
+        	log("ERROR. Failed to import architecture: " + e.getMessage());
         	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
         	error();
         }
         /*
          * Wrapping up, reporting, etc.
          */
-        String msg = "Successfully created the profile.";
+        String msg = "Architecture Import successful.";
         detailWithLink(Store.epp.getName(), profilePath.toString());
         response = 200;
         log(msg);

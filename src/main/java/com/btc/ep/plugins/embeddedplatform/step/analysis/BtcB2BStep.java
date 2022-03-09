@@ -24,7 +24,6 @@ import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.BackToBackTest;
 import org.openapitools.client.model.BackToBackTest.VerdictStatusEnum;
 import org.openapitools.client.model.BackToBackTestExecutionData;
-import org.openapitools.client.model.ExecutionConfigs;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
@@ -91,6 +90,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         // Execute B2B test and return result
         Job job = null;
         try {
+        	log("Executing Back-to-Back Test %s vs. %s...", data.getRefMode(), data.getCompMode());
 	        job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
         } catch (Exception e) {
         	log("Error: failed to execute B2B test: " + e.getMessage());
@@ -102,29 +102,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         String b2bTestUid = (String)resultMap.get("uid");
         try {
 	        BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
-	        String verdictStatus = b2bTest.getVerdictStatus().toString();
-	        log("Back-to-Back Test finished with result: " + verdictStatus);
-	        // status, etc.
-	        String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
-	            + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
-	        info(info);
-	
-	        if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
-	            status(Status.OK).passed().result(verdictStatus);
-	            response = 200;
-	        } else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
-	            status(Status.OK).passed().result(verdictStatus);
-	            response = 201;
-	        } else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
-	            status(Status.OK).failed().result(verdictStatus);
-	            response = 300;
-	        } else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
-	            status(Status.ERROR).result(verdictStatus);
-	            response = 400;
-	        } else {
-	            status(Status.ERROR).result(verdictStatus);
-	            response = 500;
-	        }
+	        parseResult(b2bTest);
 	        // detail with link happens internally in the report func
 	        generateAndExportReport(b2bTestUid);
         } catch (Exception e) {
@@ -134,6 +112,32 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
         }
 
     }
+
+	private void parseResult(BackToBackTest b2bTest) {
+		String verdictStatus = b2bTest.getVerdictStatus().toString();
+		log("Back-to-Back Test finished with result: " + verdictStatus);
+		// status, etc.
+		String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
+		    + b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
+		info(info);
+
+		if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
+		    status(Status.OK).passed().result(verdictStatus);
+		    response = 200;
+		} else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
+		    status(Status.OK).passed().result(verdictStatus);
+		    response = 201;
+		} else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
+		    status(Status.OK).failed().result(verdictStatus);
+		    response = 300;
+		} else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
+		    status(Status.ERROR).result(verdictStatus);
+		    response = 400;
+		} else {
+		    status(Status.ERROR).result(verdictStatus);
+		    response = 500;
+		}
+	}
 
     /**
      * @param b2bTestUid

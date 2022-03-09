@@ -65,18 +65,10 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
          * Save the profile
          */
         String profilePath =
-            step.getProfilePath() == null ? Store.epp.getRemote() : toRemoteAbsolutePathString(step.getProfilePath()).toString();
-        if (profilePath instanceof String) {
-            // save the epp to the designated location
-        	System.out.println("Saving to " + profilePath);
-        	try {
-        		profileApi.saveProfile(new ProfilePath().path(profilePath));
-        	} catch (Exception e) {
-            	log("WARNING. Profile could not be saved! " + e.getMessage());
-            	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-            	warning();
-            }
-        }
+        step.getProfilePath() == null ? Store.epp.getRemote() : toRemoteAbsolutePathString(step.getProfilePath()).toString();
+        // save the epp to the designated location
+    	System.out.println("Saving to " + profilePath);
+		profileApi.saveProfile(new ProfilePath().path(profilePath));
 
         /*
          * Exit the application (first softly via API)

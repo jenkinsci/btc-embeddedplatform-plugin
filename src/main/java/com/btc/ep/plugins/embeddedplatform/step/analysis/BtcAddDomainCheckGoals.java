@@ -118,7 +118,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
                 scope = scopes.get(0).getUid();
         	}
-    		SendPerformAction(scope);
+    		sendPerformAction(scope);
     	} else { // else step.getScopePath() == "*". iterate over all scopes
     		List<Scope> scopes = null;
     		try {
@@ -129,14 +129,14 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 			}
     		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
     		for(Scope scope: scopes) {
-    			SendPerformAction(scope.getUid());
+    			sendPerformAction(scope.getUid());
     		}
     	}
     	result("PASSED");
     	info("Finished adding domain checks");
     	
     }
-    final private void SendPerformAction(String scopeuid) {
+    final private void sendPerformAction(String scopeuid) {
     	// if we are given a config file, import the XML settings
     	// as our domain check goals.
     	if (step.getDcXmlPath() != null) {
@@ -152,12 +152,13 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
         	r.setScopeUid(scopeuid);
         	r.setFilePath(dcXmlPath);
         	try {
+        		log("Importing Domain Check Goals from XML...");
         		Job job = domainApi.importDomainChecksGoals(r);
         		HttpRequester.waitForCompletion(job.getJobID(), "result");
-	        	log("Successfully imported domain checks for scope " + scopeuid + ": " + response);
+	        	log("Successfully imported domain checks");
 			} catch (Exception e) {
 				error();
-				log("ERROR: failed DomainChecks API call for UID " + scopeuid + ": " + e.getMessage());
+				log("ERROR: Failed to import Domain Checks goals: " + e.getMessage());
 				
 			}	
         } else { // no config file given-- use our input variables
@@ -168,11 +169,12 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
     		r.setApplyInvalidRangesChecks(step.isActivateRangeViolationCheck());
     		r.setPercentage(Integer.parseInt(step.getRaster()));
     		try { //send API object
-    			String response = domainApi.createDomainChecksRanges(r);
-    			log("Successfully updated domain checks for scope " + scopeuid + ": " + response);
+    			log("Creating Domain Check Goals...");
+    			domainApi.createDomainChecksRanges(r);
+    			log("Successfully created Domain Check Goals");
     		} catch (Exception e) {
     			error();
-    			log("failed DomainChecks API call for UID " + scopeuid + ": " + e.getMessage());
+    			log("Failed to create DomainChecks goals: " + e.getMessage());
     		}
         }
     }

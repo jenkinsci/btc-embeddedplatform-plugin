@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -20,6 +21,8 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
 
 import com.btc.ep.plugins.embeddedplatform.model.TestConfig;
+import com.btc.ep.plugins.embeddedplatform.reporting.project.BasicStep;
+import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcB2BStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcCodeAnalysisReportStep;
@@ -37,6 +40,9 @@ import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsImportSte
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
+import com.btc.ep.plugins.embeddedplatform.util.ErrorOccurredException;
+import com.btc.ep.plugins.embeddedplatform.util.Status;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
@@ -88,9 +94,19 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 					skipRemainingStepsDueToFailure = true;
 				}
 			} else {
-				// TODO: error handling, add steps to report, etc.
+				markStepAsSkipped(testStep);
 			}
 		}
+	}
+
+	protected void markStepAsSkipped(Map<String, Object> testStep) {
+		String capitalizedStepName = StringUtils.capitalize(testStep.get("name").toString());
+		BasicStep reportingStep = new TestStep(capitalizedStepName);
+		reportingStep.setInfo("Skipped due to earlier failure");
+		reportingStep.setStatusOK(false);
+		reportingStep.setStatusWARNING(false);
+		reportingStep.setSkipped(true);
+		Store.testStepSection.addStep(reportingStep);
 	}
 
 	/**
@@ -204,7 +220,13 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 	 * @param targetStep the step to be executed
 	 */
 	private void run(Object sourceObject, Step targetStep) throws Exception {
-		Util.applyMatchingFields(sourceObject, targetStep).start(getContext()).start();
+		StepExecution stepExecution = Util.applyMatchingFields(sourceObject, targetStep).start(getContext());
+		stepExecution.start();
+		// stepExecution.start() will not throw any exception from the step execution
+		// parse step execution's status
+		if (Status.ERROR.toString().equals(stepExecution.getStatus())) {
+			throw new ErrorOccurredException();			
+		}
 	}
 	
 	private void checkTestConfig(TestConfig testConfig) {
