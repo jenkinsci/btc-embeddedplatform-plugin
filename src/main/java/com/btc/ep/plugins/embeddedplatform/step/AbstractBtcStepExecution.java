@@ -53,7 +53,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
     public AbstractBtcStepExecution(Step step, StepContext context) {
         super(context);
         this.functionName = step.getDescriptor().getFunctionName();
-        this.reportingStep = new TestStep(functionName);
+        this.reportingStep = new TestStep(functionName.replace("btc", "")); //TODO: make this more user friendly
         recordStepArguments(step);
     }
 
@@ -101,6 +101,9 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 
                     getContext().onSuccess(response); // return to context
                 } catch (Exception e) {
+                	
+                	e.printStackTrace(jenkinsConsole);
+                	
                     if (e instanceof ApiException && jenkinsConsole != null) {
                         String responseBody = ((ApiException)e).getResponseBody();
                         String msg = "Error during call of " + functionName + "(): " + responseBody;

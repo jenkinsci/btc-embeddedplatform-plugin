@@ -208,6 +208,7 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 //			break;
 		
 		default:
+			log("Test Step '%s' is not a supported step. Please refer to the docs and verify the spelling.", stepName);
 			break;
 		}
 		
