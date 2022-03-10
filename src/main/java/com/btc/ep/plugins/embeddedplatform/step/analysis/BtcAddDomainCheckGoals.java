@@ -13,9 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.DomainChecksApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestDomainChecksIOInfo;
@@ -35,99 +33,64 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcAddDomainCheckGoals step;
+	private DomainChecksApi domainApi = new DomainChecksApi();
+	private ScopesApi scopesApi = new ScopesApi();
 
 	public BtcAddDomainCheckGoalsStepExecution(BtcAddDomainCheckGoals step, StepContext context) {
 		super(step, context); //
 		this.step = step;
 	}
 
-	private DomainChecksApi domainApi = new DomainChecksApi();
-	private ScopesApi scopesApi = new ScopesApi();
-	private ProfilesApi profilesApi = new ProfilesApi();
-
 	@Override
 	protected void performAction() throws Exception {
 
 		// Check preconditions
+		int raster;
 		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+			raster = Integer.parseInt(step.getRaster());
 		} catch (Exception e) {
-			log("ERROR: No active profile found. Did you successfuly load one in?");
-			error();
-			throw new IllegalStateException("You need an active profile for the current command");
+			error("Invalid integer value for 'raster': " + step.getRaster() + "");
+			return;
 		}
-		List<Scope> scopesList = null;
-		try {
-			scopesList = scopesApi.getScopesByQuery1(null, true);
-		} catch (Exception e) {
-			log("ERROR could not query scopes: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-		}
-		checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-		int rast;
-		try {
-			rast = Integer.parseInt(step.getRaster());
-		} catch (Exception e) {
-			log("WARNING: invalid integer '" + step.getRaster()
-					+ "'. Changing to default value of 25 instead. This will affect results!");
-			warning();
-			rast = 25;
-			step.setRaster("25");
-		}
-		checkArgument(rast > 0 && rast <= 100, "ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
+		checkArgument(raster > 0 && raster <= 100, "ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
 
 		// check if we have to iterate over all scopes,
 		// only top level scope, or the given scope
 		if (step.getScopePath() != "*") { // find a specific scope
-			String scope = null;
+			List<Scope> scopesList = null;
+			try {
+				scopesList = scopesApi.getScopesByQuery1(null, true);
+			} catch (Exception e) {
+				error("Could not query scopes.", e);
+				return;
+			}
+			checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
+			String scopeUid = null;
 			// get top level scope
 			if (step.getScopePath() != null) { // scope given. use it.
 				List<Scope> scopes = null;
 				try {
 					scopes = scopesApi.getScopesByQuery1(step.getScopePath(), false);
 				} catch (Exception e) {
-					log("ERROR getting scope " + step.getScopePath() + ": " + e.getMessage());
-					try {
-						log(((ApiException) e).getResponseBody());
-					} catch (Exception idc) {
-					}
+					error("Failed to retrieve scope " + step.getScopePath(), e);
+					return;
 				}
 				checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-				scope = scopes.get(0).getUid();
+				scopeUid = scopes.get(0).getUid();
 			} else { // no scope given. default is top level scope.
-				List<Scope> scopes = null;
-				try {
-					scopes = scopesApi.getScopesByQuery1(null, true);
-				} catch (Exception e) {
-					log("ERROR getting top level scope: " + e.getMessage());
-					try {
-						log(((ApiException) e).getResponseBody());
-					} catch (Exception idc) {
-					}
-					;
-				}
-				checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-				scope = scopes.get(0).getUid();
+				scopeUid = scopesList.get(0).getUid();
 			}
-			sendPerformAction(scope);
+			sendPerformAction(scopeUid);
 		} else { // else step.getScopePath() == "*". iterate over all scopes
-			List<Scope> scopes = null;
+			List<Scope> allScopes = null;
 			try {
-				scopes = scopesApi.getScopesByQuery1(null, false);
+				allScopes = scopesApi.getScopesByQuery1(null, false);
 			} catch (Exception e) {
-				log("ERROR getting list of all scopes: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
+				error("Failed to retrieve all scopes", e);
+				return;
 			}
-			checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-			for (Scope scope : scopes) {
+			checkArgument(!allScopes.isEmpty(), "The profile contains no scopes.");
+			for (Scope scope : allScopes) {
 				sendPerformAction(scope.getUid());
 			}
 		}
@@ -201,7 +164,6 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
 
 	private static final String PIPELINE_FUNCTION_NAME = "btcaddDomainCheckGoals";
 	private static final String JENKINS_DISPLAY_NAME = "BTC Domain Check Goals";
-	private static final String BTC_REPORTING_NAME = "Domain Check Goals";
 
 	@DataBoundConstructor
 	public BtcAddDomainCheckGoals() {
@@ -221,11 +183,6 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
 			return Collections.singleton(TaskListener.class);
 		}
 
-		/*
-		 * This specifies the step name that the the user can use in his Jenkins
-		 * Pipeline - for example: btcStartup installPath: 'C:/Program
-		 * Files/BTC/ep2.9p0', port: 29267
-		 */
 		@Override
 		public String getFunctionName() {
 			return PIPELINE_FUNCTION_NAME;

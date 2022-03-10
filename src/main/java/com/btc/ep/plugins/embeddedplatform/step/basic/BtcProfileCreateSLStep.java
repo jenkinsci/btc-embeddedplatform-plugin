@@ -10,7 +10,6 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -18,8 +17,8 @@ import org.openapitools.client.model.SLImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -39,12 +38,6 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
 		this.step = step;
 	}
 
-	/*
-	 * Put the desired action here: - checking preconditions - access step
-	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
-	 * the Jenkins console (field: jenkinsConsole) - set resonse code (field:
-	 * response)
-	 */
 	@Override
 	protected void performAction() throws Exception {
 		/*
@@ -57,38 +50,25 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
 		Store.epp = resolveInAgentWorkspace(profilePath);
 		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports")
 				.toString();
-
+		profilesApi.createProfile(true);
+		
 		/*
 		 * Prepare Matlab
 		 */
-		Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-
-		// TODO: Execute Startup Script (requires EP-2535)
+		prepareMatlab(step);
+		
+		/*
+		 * SL Architecture Import
+		 */
 		try {
-			profilesApi.createProfile(true);
-		} catch (Exception e) {
-			log("ERROR. Failed to create profile: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
-		SLImportInfo info = new SLImportInfo().slModelFile(slModelPath.toString())
-				.slInitScriptFile(slScriptPath.toString());
-		try {
+			SLImportInfo info = new SLImportInfo().slModelFile(slModelPath.toString())
+					.slInitScriptFile(slScriptPath.toString());
 			Job job = archApi.importSimulinkArchitecture(info);
 			log("Importing Simulink architecture...");
 			HttpRequester.waitForCompletion(job.getJobID());
 		} catch (Exception e) {
-			log("ERROR: Failed to import architecture: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
+			error("Failed to import architecture.", e);
+			return;
 		}
 		/*
 		 * Wrapping up, reporting, etc.
@@ -121,7 +101,7 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
  * the step is called the related StepExecution is triggered (see the class
  * below this one)
  */
-public class BtcProfileCreateSLStep extends Step implements Serializable {
+public class BtcProfileCreateSLStep extends Step implements Serializable, MatlabAwareStep {
 
 	private static final long serialVersionUID = 1L;
 
@@ -159,11 +139,6 @@ public class BtcProfileCreateSLStep extends Step implements Serializable {
 			return Collections.singleton(TaskListener.class);
 		}
 
-		/*
-		 * This specifies the step name that the the user can use in his Jenkins
-		 * Pipeline - for example: btcStartup installPath: 'C:/Program
-		 * Files/BTC/ep2.9p0', port: 29267
-		 */
 		@Override
 		public String getFunctionName() {
 			return "btcProfileCreateSL";

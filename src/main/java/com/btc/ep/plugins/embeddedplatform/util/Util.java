@@ -31,6 +31,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
@@ -570,6 +572,32 @@ public class Util {
 			logger.error(e.getMessage(), e);
 			e.printStackTrace();
 		}
+	}
+	
+	/**
+	 * Extracts parts from a space separated string while ignoring quoted spaces.
+	 * This input:  "C:/Program Files/BTC something else 'another thing'
+	 *     yields: [ "C:/Program Files/BTC", "something", "else", "another thing" ]
+	 * @param startupScriptPath
+	 * @return the individual parts
+	 */
+	public static List<String> extractSpaceSeparatedParts(String quoteSensitiveSpaceSeparatedString) {
+		List<String> matchList2 = new ArrayList<String>();
+		Pattern regex2 = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
+		Matcher regexMatcher2 = regex2.matcher(quoteSensitiveSpaceSeparatedString);
+		while (regexMatcher2.find()) {
+		    if (regexMatcher2.group(1) != null) {
+		        // Add double-quoted string without the quotes
+		        matchList2.add(regexMatcher2.group(1));
+		    } else if (regexMatcher2.group(2) != null) {
+		        // Add single-quoted string without the quotes
+		        matchList2.add(regexMatcher2.group(2));
+		    } else {
+		        // Add unquoted word
+		        matchList2.add(regexMatcher2.group());
+		    }
+		}
+		return matchList2;
 	}
 
 }

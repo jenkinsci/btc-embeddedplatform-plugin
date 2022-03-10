@@ -18,7 +18,6 @@ import org.openapitools.client.ApiException;
 import org.openapitools.client.api.BackToBackTestReportsApi;
 import org.openapitools.client.api.BackToBackTestsApi;
 import org.openapitools.client.api.ExecutionConfigsApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.BackToBackTest;
@@ -46,42 +45,75 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	private static final String REPORT_NAME_B2B = "BackToBackTestReport";
 	private static final long serialVersionUID = 1L;
 	private BtcB2BStep step;
+	private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
+	private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
+	private ScopesApi scopesApi = new ScopesApi();
+	private ReportsApi reportingApi = new ReportsApi();
+	private ExecutionConfigsApi execConfigApi = new ExecutionConfigsApi();
 
 	public BtcB2BStepExecution(BtcB2BStep step, StepContext context) {
 		super(step, context);
 		this.step = step;
 	}
 
-	private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
-	private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
-	private ScopesApi scopesApi = new ScopesApi();
-	private ProfilesApi profilesApi = new ProfilesApi();
-	private ReportsApi reportingApi = new ReportsApi();
-	private ExecutionConfigsApi execConfigApi = new ExecutionConfigsApi();
-
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
+		// Check preconditions, retrieve scopes
+		Scope toplevelScope;
 		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+			List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
+			checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
+			toplevelScope = scopes.get(0);
 		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to perform a Back-to-Back Test");
+			error("Failed to retrieve scopes.", e);
+			return;
 		}
-		List<Scope> scopes = null;
-		try {
-			scopes = scopesApi.getScopesByQuery1(null, true);
-		} catch (Exception e) {
-			log("ERROR getting scopes: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-		}
-		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-		Scope toplevelScope = scopes.get(0);
 
-		// Prepare data for B2B test
+		// Prepare data for B2B test and execute B2B test
+		BackToBackTestExecutionData data = prepareInfoObject();
+		String b2bTestUid;
+		try {
+			log("Executing Back-to-Back Test %s vs. %s...", data.getRefMode(), data.getCompMode());
+			Job job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
+			Map<?, ?> resultMap = (Map<?, ?>) HttpRequester.waitForCompletion(job.getJobID(), "result");
+			b2bTestUid = (String) resultMap.get("uid");
+		} catch (Exception e) {
+			error("Failed to execute B2B test.", e);
+			return;
+		}
+
+		// results and stuff
+		parseResultsAndCreateReport(b2bTestUid);
+
+	}
+
+	/**
+	 * Parses the results and creates the report.
+	 */
+	private void parseResultsAndCreateReport(String b2bTestUid) {
+		// parse results
+		try {
+			BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
+			parseResult(b2bTest);
+		} catch (Exception e) {
+			warning("Failed to parse the B2B test results.", e);
+		}
+		// create report
+		try {
+			generateAndExportReport(b2bTestUid);
+		} catch (ApiException e) {
+			warning("Failed to create the B2B test report.", e);
+		}
+		
+	}
+
+	/**
+	 * Prepares the info object for rbt execution
+	 * 
+	 * @return
+	 * @throws ApiException
+	 */
+	private BackToBackTestExecutionData prepareInfoObject() throws ApiException {
 		BackToBackTestExecutionData data = new BackToBackTestExecutionData();
 		List<String> executionConfigs = execConfigApi.getExecutionRecords().getExecConfigNames();
 		if (step.getReference() != null && step.getComparison() != null) {
@@ -90,39 +122,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 			// fallback: first config vs. second config
 			data.refMode(executionConfigs.get(0)).compMode(executionConfigs.get(1));
 		}
-
-		// Execute B2B test and return result
-		Job job = null;
-		try {
-			log("Executing Back-to-Back Test %s vs. %s...", data.getRefMode(), data.getCompMode());
-			job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
-		} catch (Exception e) {
-			log("Error: failed to execute B2B test: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
-		Map<?, ?> resultMap = (Map<?, ?>) HttpRequester.waitForCompletion(job.getJobID(), "result");
-
-		String b2bTestUid = (String) resultMap.get("uid");
-		try {
-			BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
-			parseResult(b2bTest);
-			// detail with link happens internally in the report func
-			generateAndExportReport(b2bTestUid);
-		} catch (Exception e) {
-			log("ERROR executing B2B tests: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
-
+		return data;
 	}
 
 	private void parseResult(BackToBackTest b2bTest) {
@@ -221,11 +221,6 @@ public class BtcB2BStep extends Step implements Serializable {
 			return Collections.singleton(TaskListener.class);
 		}
 
-		/*
-		 * This specifies the step name that the the user can use in his Jenkins
-		 * Pipeline - for example: btcStartup installPath: 'C:/Program
-		 * Files/BTC/ep2.9p0', port: 29267
-		 */
 		@Override
 		public String getFunctionName() {
 			return "btcBackToBack";

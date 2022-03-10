@@ -18,7 +18,6 @@ import org.openapitools.client.ApiException;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
 import org.openapitools.client.api.CodeCoverageRobustnessCheckB2BApi;
 import org.openapitools.client.api.CoverageGenerationApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.CodeCoverageResult;
@@ -49,82 +48,64 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcVectorGenerationStep step;
-
+	private CoverageGenerationApi vectorGenerationApi = new CoverageGenerationApi();
+	private ScopesApi scopeApi = new ScopesApi();
+	private ReportsApi reportApi = new ReportsApi();
+	private CodeAnalysisReportsB2BApi b2bCodeAnalysisReportApi = new CodeAnalysisReportsB2BApi();
+	private CodeCoverageRobustnessCheckB2BApi coverageApi = new CodeCoverageRobustnessCheckB2BApi();
+	
 	public BtcVectorGenerationExecution(BtcVectorGenerationStep step, StepContext context) {
 		super(step, context);
 		this.step = step;
 	}
 
-	private CoverageGenerationApi vectorGenerationApi = new CoverageGenerationApi();
-	private ScopesApi scopeApi = new ScopesApi();
-	private ReportsApi reportApi = new ReportsApi();
-	private CodeAnalysisReportsB2BApi b2bCodeAnalysisReportApi = new CodeAnalysisReportsB2BApi();
-	private ProfilesApi profilesApi = new ProfilesApi();
-	private CodeCoverageRobustnessCheckB2BApi coverageApi = new CodeCoverageRobustnessCheckB2BApi();
-
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to generate tests");
-		}
+		// Preparation
 		List<Scope> scopesList = null;
 		try {
 			scopesList = scopeApi.getScopesByQuery1(null, true);
+			checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
 		} catch (Exception e) {
-			log("ERROR. could not get scopes: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
+			warning("Failed to retrieve scopes for the vector generation.", e);
+			return;
 		}
-		checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
+		
+		// Vector Generation
 		try {
 			log("Generating Vectors...");
 			prepareAndExecuteVectorGeneration();
 		} catch (Exception e) {
-			log("ERROR: failed to execute vector generation: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
+			warning("Failed to execute vector generation.", e);
+			return;
 		}
-		String msg = "Successfully executed vectorGeneration";
+
 		// Reporting
-		Scope toplevel = scopesList.get(0);
-		if (step.isCreateReport()) {
-			try {
-				Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
-				ReportExportInfo info = new ReportExportInfo();
-				String reportName = "CodeCoverageReport";
-				info.setNewName(reportName);
-				info.setExportPath(Store.exportPath);
-				reportApi.exportReport(report.getUid(), info);
-				msg += " and exported the coverage report";
-				detailWithLink("Code Coverage Report", reportName + ".html");
-			} catch (Exception e) {
-				log("WARNING: failed to make and export report: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				warning();
-			}
-		}
+		reporting(scopesList.get(0));
+	}
+
+	private void reporting(Scope toplevel) throws ApiException {
+		String msg = "Successfully executed vectorGeneration";
 		CodeCoverageResult codeCoverageResult = coverageApi.getCodeCoverageResultByScope(toplevel.getUid(), "MCDC|STM");
 		double stmD = codeCoverageResult.getStatementCoverage().getCoveredCompletelyPercentage().doubleValue();
 		double mcdcD = codeCoverageResult.getMcDCCoverage().getCoveredCompletelyPercentage().doubleValue();
 		String info = stmD + "% Statement, " + mcdcD + "% MC/DC";
+		if (step.isCreateReport()) {
+			try {
+				Report report = b2bCodeAnalysisReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+				ReportExportInfo reportInfo = new ReportExportInfo();
+				String reportName = "CodeCoverageReport";
+				reportInfo.setNewName(reportName);
+				reportInfo.setExportPath(Store.exportPath);
+				reportApi.exportReport(report.getUid(), reportInfo);
+				msg += " and exported the coverage report";
+				detailWithLink("Code Coverage Report", reportName + ".html");
+			} catch (Exception e) {
+				warning("Failed to create report.", e);
+			}
+			info(info);
+		}
 		log(msg + ": " + info);
-		info(info);
-		response = 200;
 	}
 
 	private boolean isDummyRoot(ScopesApi scopeApi) throws ApiException {

@@ -10,7 +10,6 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -20,8 +19,8 @@ import org.openapitools.client.model.TLImportInfo.TestModeEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -41,47 +40,52 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 		this.step = step;
 	}
 
-	/*
-	 * Put the desired action here: - checking preconditions - access step
-	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
-	 * the Jenkins console (field: jenkinsConsole) - set resonse code (field:
-	 * response)
-	 */
 	@Override
 	protected void performAction() throws Exception {
 		/*
 		 * Preparation
 		 */
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
+		String tlModelPath = toRemoteAbsolutePathString(step.getTlModelPath());
+		String tlScriptPath = toRemoteAbsolutePathString(step.getTlScriptPath());
 		preliminaryChecks();
 		Store.epp = resolveInAgentWorkspace(profilePath);
 		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports")
 				.toString();
+		profilesApi.createProfile(true);
 
 		/*
 		 * Prepare Matlab
 		 */
-		Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-
-		// TODO: Execute Startup Script (requires EP-2535)
+		prepareMatlab(step);
 
 		/*
 		 * Create the profile based on the code model
 		 */
-		String tlModelPath = toRemoteAbsolutePathString(step.getTlModelPath());
-		String tlScriptPath = toRemoteAbsolutePathString(step.getTlScriptPath());
+		// perform import
 		try {
-			profilesApi.createProfile(true);
+			TLImportInfo info = prepareInfoObject(tlModelPath, tlScriptPath);
+			Job job = archApi.importTargetLinkArchitecture1(info);
+			log("Importing TargetLink architecture...");
+			HttpRequester.waitForCompletion(job.getJobID());
 		} catch (Exception e) {
-			log("ERROR. Failed to create profile: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
+			error("Failed to import architecture.", e);
+			return;
 		}
-		TLImportInfo info = new TLImportInfo().tlModelFile(tlModelPath.toString()).tlInitScript(tlScriptPath.toString())
+		/*
+		 * Wrapping up, reporting, etc.
+		 */
+		String msg = "Architecture Import successful.";
+		detailWithLink(Store.epp.getName(), profilePath);
+		log(msg);
+		info(msg);
+	}
+
+	/**
+	 * Collect everything for the import
+	 */
+	private TLImportInfo prepareInfoObject(String tlModelPath, String tlScriptPath) throws Exception {
+		TLImportInfo info = new TLImportInfo().tlModelFile(tlModelPath).tlInitScript(tlScriptPath)
 				.fixedStepSolver(true);
 		// Calibration Handling
 		CalibrationHandlingEnum calibrationHandling = CalibrationHandlingEnum.EXPLICIT_PARAMETER;
@@ -99,7 +103,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 		info.setTestMode(testMode);
 		// Legacy Code XML (Environment)
 		if (step.getEnvironmentXmlPath() != null) {
-			info.setEnvironment(toRemoteAbsolutePathString(step.getEnvironmentXmlPath()).toString());
+			info.setEnvironment(toRemoteAbsolutePathString(step.getEnvironmentXmlPath()));
 		}
 		info.setUseExistingCode(step.isReuseExistingCode());
 		// TL Subsystem
@@ -115,27 +119,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 		if (step.getCodeFileMatcher() != null) {
 			info.setCfileMatcher(step.getCodeFileMatcher());
 		}
-		try {
-			Job job = archApi.importTargetLinkArchitecture1(info);
-			log("Importing TargetLink architecture...");
-			HttpRequester.waitForCompletion(job.getJobID());
-		} catch (Exception e) {
-			log("ERROR. Failed to import architecture: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
-		/*
-		 * Wrapping up, reporting, etc.
-		 */
-		String msg = "Architecture Import successful.";
-		detailWithLink(Store.epp.getName(), profilePath.toString());
-		response = 200;
-		log(msg);
-		info(msg);
+		return info;
 	}
 
 	/**
@@ -159,7 +143,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
  * the step is called the related StepExecution is triggered (see the class
  * below this one)
  */
-public class BtcProfileCreateTLStep extends Step implements Serializable {
+public class BtcProfileCreateTLStep extends Step implements Serializable, MatlabAwareStep {
 
 	private static final long serialVersionUID = 1L;
 
@@ -205,11 +189,6 @@ public class BtcProfileCreateTLStep extends Step implements Serializable {
 			return Collections.singleton(TaskListener.class);
 		}
 
-		/*
-		 * This specifies the step name that the the user can use in his Jenkins
-		 * Pipeline - for example: btcStartup installPath: 'C:/Program
-		 * Files/BTC/ep2.9p0', port: 29267
-		 */
 		@Override
 		public String getFunctionName() {
 			return "btcProfileCreateTL";

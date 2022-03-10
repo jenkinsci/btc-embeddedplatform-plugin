@@ -12,7 +12,6 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.CCodeImportInfo;
@@ -20,6 +19,7 @@ import org.openapitools.client.model.Job;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -33,14 +33,13 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateCStep step;
+	private ProfilesApi profilesApi = new ProfilesApi();
+	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public BtcProfileCreateCStepExecution(BtcProfileCreateCStep step, StepContext context) {
 		super(step, context);
 		this.step = step;
 	}
-
-	private ProfilesApi profilesApi = new ProfilesApi();
-	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	@Override
 	protected void performAction() throws Exception {
@@ -52,25 +51,14 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 		preliminaryChecks(codeModelPath);
 		Store.epp = resolveInAgentWorkspace(profilePath);
 		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath());
+		profilesApi.createProfile(true);
 
-		// TODO: Configure ML connection and execute ML Startup Script if needed
-		// (requires EP-2535)
-		// log("Preparing Matlab...");
+		// Matlab stuff
+		prepareMatlab(step);
 
 		/*
 		 * Create the profile based on the code model
 		 */
-		try {
-			profilesApi.createProfile(true);
-		} catch (Exception e) {
-			log("ERROR. Failed to create profile:" + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
 		Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
 		CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
 		Job job = null;
@@ -84,20 +72,14 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 			 */
 			msg = "Architecture Import successful.";
 			detailWithLink(Store.epp.getName(), profilePath);
-			response = 200;
+			info(msg);
+			log(msg);
 		} catch (Exception e) {
-			msg = "ERROR: Failed to import C-Code architecture: " + e.getMessage();
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
+			error("Failed to import C-Code architecture. ", e);
+			return;
 		}
-		log(msg);
-		info(msg);
-
 	}
+
 
 	/**
 	 * Checks if the profilePath and codeModelPath are valid (!= null), discards any
@@ -120,7 +102,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
  * the step is called the related StepExecution is triggered (see the class
  * below this one)
  */
-public class BtcProfileCreateCStep extends Step implements Serializable {
+public class BtcProfileCreateCStep extends Step implements Serializable, MatlabAwareStep {
 
 	private static final long serialVersionUID = 1L;
 
@@ -134,7 +116,7 @@ public class BtcProfileCreateCStep extends Step implements Serializable {
 	private String startupScriptPath;
 	private String compilerShortName;
 	private String matlabVersion;
-	private String matlabInstancePolicy;
+	private String matlabInstancePolicy = "AUTO";
 	private boolean saveProfileAfterEachStep;
 	private String licenseLocationString; // mark as deprecated?
 

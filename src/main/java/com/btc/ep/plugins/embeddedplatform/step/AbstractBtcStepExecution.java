@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -17,6 +19,9 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.openapitools.client.ApiException;
+import org.openapitools.client.api.MatlabScriptExecutionApi;
+import org.openapitools.client.model.Job;
+import org.openapitools.client.model.MatlabScriptInput;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.BasicStep;
@@ -247,11 +252,64 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	}
 
 	/**
+	 * Sets the status to ERROR and logs an error message to the jenkinsConsole
+	 */
+	public AbstractBtcStepExecution error(String message) {
+		return error(message, null);
+	}
+
+	/**
+	 * Sets the status to ERROR and logs an error message and exception to the
+	 * jenkinsConsole
+	 */
+	public AbstractBtcStepExecution error(String message, Throwable t) {
+		log("Error: " + message);
+		if (t != null) {
+			// print response if available
+			if (t instanceof ApiException) {
+				log(((ApiException) t).getResponseBody());
+			}
+			// print full stack trace
+			t.printStackTrace(jenkinsConsole);
+		}
+		return error();
+	}
+
+	/**
+	 * Sets the status to warning and logs the given message.
+	 */
+	public AbstractBtcStepExecution warning(String message) {
+		return warning(message, null);
+	}
+	
+	/**
+	 * Sets the status to warning, logs the given message and prints the stack trace.
+	 */
+	public AbstractBtcStepExecution warning(String message, Throwable t) {
+		log("Warning: " + message);
+		if (t != null) {
+			// print response if available
+			if (t instanceof ApiException) {
+				log(((ApiException) t).getResponseBody());
+			}
+			// print full stack trace
+			t.printStackTrace(jenkinsConsole);
+		}
+		return warning();
+	}
+	
+	/**
 	 * Sets the status to warning
 	 */
 	public AbstractBtcStepExecution warning() {
 		this.reportingStep.setStatusWARNING(true);
 		status(Status.WARNING);
+		// also set the build result to unstable
+		// also set the build result to failure
+		try {
+			getContext().get(Run.class).setResult(Result.FAILURE);
+		} catch (Exception e) {
+		}
 		return this;
 	}
 
@@ -357,6 +415,18 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	}
 
 	/**
+	 * Returns the file or directory name.
+	 * 
+	 * @param path must not be null
+	 * @return the file or directory name
+	 */
+	protected String getFileName(String path) {
+		String[] parts = path.replace("\\", "/").split("/");
+		String name = parts[parts.length - 1];
+		return name;
+	}
+	
+	/**
 	 * Returns a resolved profilePath that uses the give profilePath (may be
 	 * relative) if not null. Otherwise it derives the path from the model path or,
 	 * if that is null, it returns a fallback "profile.epp" in the workspace root.
@@ -393,7 +463,61 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 		HtmlPublisher.publishReports(getContext().get(Run.class), getContext().get(FilePath.class),
 				getContext().get(TaskListener.class), Collections.singletonList(target), HtmlPublisher.class);
 	}
+	
+	/**
+	 * Configures the ML connection and runs the startup script (if specified)
+	 * 
+	 * @throws Exception
+	 */
+	protected void prepareMatlab(MatlabAwareStep step) throws Exception {
+		String matlabVersionOrEmptyString = step.getMatlabVersion() == null ? "" : step.getMatlabVersion();
+		log("Preparing Matlab " + matlabVersionOrEmptyString + "...");
+		
+		Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+		MatlabScriptExecutionApi mlApi = new MatlabScriptExecutionApi();
+		MatlabScriptInput input = new MatlabScriptInput();
 
+		/*
+		 * Input matches this pattern: <scriptPath> <arg0> <arg1> ... <argN>.
+		 * Script path can be absolute or relative to the workspace
+		 * 
+		 * "myscript.m" - "folder/myscript.m" - "E:/folder/myscript.m" -
+		 * "/home/thabok/myscript.m"
+		 * 
+		 * and possibly with args
+		 * 
+		 * - "myscript.m arg0 arg1 arg2"
+		 */
+		String startupScriptPath = step.getStartupScriptPath();
+		if (startupScriptPath != null) {
+			String scriptDirectory ;
+			String scriptName;
+			List<String> parts = Util.extractSpaceSeparatedParts(startupScriptPath);
+			String scriptPath = parts.remove(0);
+			// the remaining things are arguments, may be an empty list
+			List<Object> inArgs = new ArrayList<>(parts);
+			// we need to resolve an absolute path to use in Matlab
+			if (isPathAbsolute(scriptPath)) {
+				scriptName = getFileName(scriptPath);
+				scriptDirectory = scriptPath.replace(scriptName, "");
+			} else {
+				FilePath resolvedScriptPath = resolveInAgentWorkspace(scriptPath);
+				scriptName = resolvedScriptPath.getName();
+				scriptDirectory = resolvedScriptPath.getParent().getRemote();
+			}
+
+			// add script parent directory to ml path
+			input = new MatlabScriptInput().scriptName("addpath").inArgs(Arrays.asList(scriptDirectory)).outArgs(0);
+			mlApi.executeMatlabScriptShort(input); // short -> finishes instantly
+			
+			// call script: long -> need to query result
+			input = new MatlabScriptInput().scriptName(scriptName).inArgs(inArgs).outArgs(0);
+			Job job = mlApi.executeMatlabScriptLong(input);
+			HttpRequester.waitForCompletion(job.getJobID());
+		}
+		log("Successfully prepared Matlab " + matlabVersionOrEmptyString);
+	}
+	
 	/**
 	 * Implemented by the individual btc step executors.
 	 * 

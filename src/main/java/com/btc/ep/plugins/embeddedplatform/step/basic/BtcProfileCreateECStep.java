@@ -3,7 +3,6 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 import java.io.File;
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -24,8 +23,8 @@ import org.openapitools.client.model.Job;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -64,14 +63,13 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports");
 		profilesApi.createProfile(true);
 
-		/*
-		 * Prepare Matlab
-		 */
-		log("Preparing Matlab...");
-		Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-		// TODO: Execute Startup Script (requires EP-2535)
 
-		// TODO: Create Wrapper Model (requires EP-2538)
+		// Matlab stuff
+		prepareMatlab(step);
+
+		/*
+		 * EC Wrapper Model
+		 */
 		String modelPath = slModelPath.toString();
 		String scriptPath = slScriptPath == null ? null : slScriptPath.toString();
 		if (step.isCreateWrapperModel()) {
@@ -81,23 +79,18 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 			try {
 				Job job = archApi.createEmbeddedCoderCWrapperModel(wrapperInfo);
 				log("Creating wrapper model for autosar component...");
-				Object resultObj = HttpRequester.waitForCompletion(job.getJobID(), "result");
-				modelPath = (String) ((Map<?, ?>) resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_MODEL_FILE);
-				scriptPath = (String) ((Map<?, ?>) resultObj).get(ECWrapperResultInfo.SERIALIZED_NAME_EC_INIT_FILE);
+				ECWrapperResultInfo resultInfo = HttpRequester.waitForCompletion(job.getJobID(), "result", ECWrapperResultInfo.class);
+				modelPath = resultInfo.getEcModelFile();
+				scriptPath = resultInfo.getEcInitFile();
 				log("EmbeddedCoder Autosar wrapper model creation succeeded.");
 			} catch (Exception e) {
-				log("ERROR. Failed to create wrapper model: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				error();
+				error("Failed to create wrapper model.", e);
+				return;
 			}
 		}
 
 		/*
-		 * Create the profile based on the code model
+		 * EC Architecture Import
 		 */
 		ECImportInfo info = new ECImportInfo().ecModelFile(modelPath).ecInitScript(scriptPath).fixedStepSolver(true);
 		if (step.getSubsystemMatcher() != null) {
@@ -117,20 +110,14 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 			log("Importing EmbeddedCoder architecture '" + new File(modelPath).getName() + "'...");
 			HttpRequester.waitForCompletion(job.getJobID());
 		} catch (Exception e) {
-			log("ERROR: Failed to import architecture: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
+			error("Failed to import architecture.", e);
+			return;
 		}
 		/*
 		 * Wrapping up, reporting, etc.
 		 */
 		String msg = "Architecture Import successful.";
 		detailWithLink(Store.epp.getName(), profilePath.toString());
-		response = 200;
 		log(msg);
 		info(msg);
 	}
@@ -192,7 +179,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
  * the step is called the related StepExecution is triggered (see the class
  * below this one)
  */
-public class BtcProfileCreateECStep extends Step implements Serializable {
+public class BtcProfileCreateECStep extends Step implements Serializable, MatlabAwareStep {
 
 	private static final long serialVersionUID = 1L;
 

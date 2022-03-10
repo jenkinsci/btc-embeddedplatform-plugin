@@ -18,7 +18,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionConfigsApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.RequirementBasedTestExecutionApi;
@@ -56,29 +55,20 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	private static final String REPORT_NAME_RBT = "TestExecutionReport";
 	private static final long serialVersionUID = 1L;
 	private BtcRBTStep step;
-
+	private RequirementBasedTestExecutionApi testExecutionApi = new RequirementBasedTestExecutionApi();
+	private RequirementBasedTestExecutionReportsApi testExecutionReportApi = new RequirementBasedTestExecutionReportsApi();
+	private ScopesApi scopesApi = new ScopesApi();
+	private ReportsApi reportingApi = new ReportsApi();
+	private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
+	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
+	
 	public BtcRBTStepExecution(BtcRBTStep step, StepContext context) {
 		super(step, context);
 		this.step = step;
 	}
 
-	private RequirementBasedTestExecutionApi testExecutionApi = new RequirementBasedTestExecutionApi();
-	private RequirementBasedTestExecutionReportsApi testExecutionReportApi = new RequirementBasedTestExecutionReportsApi();
-	private ScopesApi scopesApi = new ScopesApi();
-	private ProfilesApi profilesApi = new ProfilesApi();
-	private ReportsApi reportingApi = new ReportsApi();
-	private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
-	private ExecutionConfigsApi erApi = new ExecutionConfigsApi();
-
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to run tests");
-		}
-
 		// Prepare data
 		List<String> tcUids = getRelevantTestCaseUIDs();
 
@@ -90,36 +80,53 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 			return;
 		}
 
-		// Continue with RBT Execution
+		// RBT Execution
+		RBTExecutionDataExtendedNoReport info = prepareInfoObject(tcUids);
+		Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
+		RBTestCaseExecutionResultMapData testResults = HttpRequester.waitForCompletion(job.getJobID(), "result",
+				RBTestCaseExecutionResultMapData.class);
+
+		// results + repo
+		parseResultsAndCreateReport(tcUids, testResults);
+	}
+
+	/**
+	 * Parses the results and creates the report.
+	 * 
+	 * @param tcUids
+	 * @param testResults
+	 */
+	private void parseResultsAndCreateReport(List<String> tcUids, RBTestCaseExecutionResultMapData testResults) {
+		if (testResults != null) {
+			try {
+				analyzeResults(testResults, tcUids.isEmpty());
+			} catch (Exception e) {
+				warning("Failed to parse Test Results.", e);
+			}
+			try {
+				generateAndExportReport(testResults);
+			} catch (Exception e) {
+				warning("Failed to create the report.", e);
+			}
+		}
+	}
+
+	/**
+	 * Prepares the info object for rbt execution
+	 */
+	private RBTExecutionDataExtendedNoReport prepareInfoObject(List<String> tcUids) throws ApiException {
 		RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
 		RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
 		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
 		if (executionConfigNames.isEmpty()) {
-			executionConfigNames = erApi.getExecutionRecords().getExecConfigNames();
+			executionConfigNames = ecApi.getExecutionRecords().getExecConfigNames();
 		}
+		log("Executing Requirements-based Tests on %s...", executionConfigNames);
 		data.setForceExecute(false);
 		data.setExecConfigNames(executionConfigNames);
 		info.setUiDs(tcUids);
 		info.setData(data);
-
-		log("Executing Requirements-based Tests on %s...", executionConfigNames);
-		Job job = testExecutionApi.executeRBTOnRBTestCasesList(info);
-		RBTestCaseExecutionResultMapData testResults = HttpRequester.waitForCompletion(job.getJobID(), "result",
-				RBTestCaseExecutionResultMapData.class);
-		if (testResults != null) {
-			analyzeResults(testResults, tcUids.isEmpty());
-			try {
-				generateAndExportReport(testResults);
-			} catch (Exception e) {
-				log("WARNING. failed to generate and export report: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				warning();
-			}
-		}
+		return info;
 	}
 
 	/**

@@ -13,11 +13,11 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
-import org.openapitools.client.api.BackToBackTestsApi;
-import org.openapitools.client.api.ProfilesApi;
+import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ScopesApi;
-import org.openapitools.client.model.BackToBackTestExecutionData;
+import org.openapitools.client.api.TestCaseStimuliVectorSimulationApi;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.model.TestCaseSimulationOnListParams;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -33,72 +33,41 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcSimulationStep step;
-
+	private ScopesApi scopeApi = new ScopesApi();
+	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
+	private TestCaseStimuliVectorSimulationApi simApi = new TestCaseStimuliVectorSimulationApi();
+	
 	public BtcSimulationStepExecution(BtcSimulationStep step, StepContext context) {
 		super(step, context);
 		this.step = step;
 	}
 
-	private ProfilesApi profileApi = new ProfilesApi();
-	private BackToBackTestsApi b2bApi = new BackToBackTestsApi(); // workaround because there's no pure simulation api
-	private ScopesApi scopeApi = new ScopesApi();
-
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
+		// Prepare data and simulate
 		try {
-			profileApi.getCurrentProfile(); // throws Exception if no profile is active
+			TestCaseSimulationOnListParams info = prepareInfoObject();
+			Job job = simApi.simulateOnScopeList(info);
+			HttpRequester.waitForCompletion(job.getJobID());
 		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to run tests");
+			error("Failed simulate vectors.", e);
+			return;
 		}
+		log("--> Simulation successfully executed.");
+	}
 
-		// Prepare data
+	private TestCaseSimulationOnListParams prepareInfoObject() throws ApiException {
+		TestCaseSimulationOnListParams info = new TestCaseSimulationOnListParams();
+		List<String> scopeUids = scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid())
+				.collect(Collectors.toList());
 		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
-		// TODO: query all Execution configs if nothing is specified (requires EP-2536)
-
-		/*
-		 * Workaround because there's no pure simulation api
-		 */
-		List<String> scopeUids = null;
-		try {
-			scopeUids = scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid())
-					.collect(Collectors.toList());
-		} catch (Exception e) {
-			log("ERROR. could not get any scopes: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
+		if (executionConfigNames.isEmpty()) {
+			executionConfigNames = ecApi.getExecutionRecords().getExecConfigNames();
 		}
-		for (String executionConfig : executionConfigNames) {
-			BackToBackTestExecutionData data = new BackToBackTestExecutionData();
-			data.refMode(executionConfig);
-			data.compMode(executionConfig);
-			for (String scopeUid : scopeUids) {
-				try {
-					Job job = b2bApi.executeBackToBackTestOnScope(scopeUid, data);
-					HttpRequester.waitForCompletion(job.getJobID());
-				} catch (ApiException e) {
-					// see EP-2568
-					log("WARNING. failed to execute for scope " + scopeUid + ": " + e.getMessage());
-					try {
-						log(((ApiException) e).getResponseBody());
-					} catch (Exception idc) {
-					}
-					;
-					warning();
-				}
-			}
-		}
-		/*
-		 * End of workaround
-		 */
-
-		// print success message and return response code
-		// log("--> [200] Simulation successfully executed.");
-		response = 200;
+		log("Simulating on %s...", executionConfigNames);
+		info.setExecConfigNames(executionConfigNames);
+		info.setUiDs(scopeUids);
+		return info;
 	}
 
 }

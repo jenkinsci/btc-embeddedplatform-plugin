@@ -1,6 +1,7 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
 import static com.google.common.base.Preconditions.checkArgument;
+
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -12,10 +13,8 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
 import org.openapitools.client.api.CodeAnalysisReportsRbtApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Report;
@@ -35,38 +34,25 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcCodeAnalysisReportStep step;
-
+	private CodeAnalysisReportsRbtApi rbtReportApi = new CodeAnalysisReportsRbtApi();
+	private CodeAnalysisReportsB2BApi b2bReportApi = new CodeAnalysisReportsB2BApi();
+	private ScopesApi scopeApi = new ScopesApi();
+	private ReportsApi reportApi = new ReportsApi();
+	
 	public BtcCodeAnalysisReportStepExecution(BtcCodeAnalysisReportStep step, StepContext context) {
 		super(step, context);
 		this.step = step;
 	}
 
-	private ProfilesApi profilesApi = new ProfilesApi();
-	private CodeAnalysisReportsRbtApi rbtReportApi = new CodeAnalysisReportsRbtApi();
-	private CodeAnalysisReportsB2BApi b2bReportApi = new CodeAnalysisReportsB2BApi();
-	private ScopesApi scopeApi = new ScopesApi();
-	private ReportsApi reportApi = new ReportsApi();
-
 	@Override
 	protected void performAction() throws Exception {
 		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			result("ERROR");
-			error();
-			throw new IllegalStateException("You need an active profile for the current command");
-		}
 		List<Scope> scopes = null;
 		try {
 			scopes = scopeApi.getScopesByQuery1(null, true);
 		} catch (Exception e) {
-			log("ERROR: failed to get scopes. " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
+			error("Failed to get scopes.", e);
+			return;
 		}
 		checkArgument(!scopes.isEmpty(), "ERROR: no top-level scope in selected profile");
 		Scope toplevel = scopes.get(0);
@@ -82,16 +68,6 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 			} else { // B2B testing
 				report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
 			}
-		} catch (Exception e) {
-			log("--> WARNING. Report not generated: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
-		}
-		if (report != null) {
 			ReportExportInfo info = new ReportExportInfo();
 			info.setNewName(step.getReportName());
 			info.setExportPath(Store.exportPath);
@@ -102,14 +78,10 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 				info(msg);
 				log(msg);
 			} catch (Exception e) {
-				log("--> WARNING: Failed to export report. " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				warning();
+				warning("Failed to export report.", e);
 			}
+		} catch (Exception e) {
+			warning("Report not generated.", e);
 		}
 	}
 

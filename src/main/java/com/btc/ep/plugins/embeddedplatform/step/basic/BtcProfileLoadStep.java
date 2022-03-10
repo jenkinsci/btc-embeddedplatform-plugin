@@ -12,7 +12,6 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
@@ -20,6 +19,7 @@ import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -63,36 +63,30 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 			msg = "Successfully loaded the profile";
 			response = 200;
 		} catch (Exception e) {
-			log("ERROR: failed to open profile. " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-			msg = "Could not open profile";
+			error("Problem while opening the profile.", e);
+			return;
 		}
 
+		/*
+		 * Prepare Matlab if needed
+		 */
 		try {
 			boolean hasModelBasedArchitecture = archApi.getArchitectures(null).stream()
 					.filter(arch -> "Simulink".equals(arch.getArchitectureKind())
 							|| "TargetLink".equals(arch.getArchitectureKind()))
 					.findAny().isPresent();
 			if (hasModelBasedArchitecture || step.getStartupScriptPath() != null) {
-				Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
-				// TODO: Execute Startup Script (requires EP-2535)
+				// Prepare Matlab
+				prepareMatlab(step);
 			}
 		} catch (Exception e) {
-			log("WARNING. Failed to get existing architectures: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
+			error("Failed to prepare Matlab.", e);
+			return;
 		}
 
-		// Compiler Settings
+		/*
+		 * Compiler Settings
+		 */
 		String compilerShortName = step.getCompilerShortName();
 		if (compilerShortName != null) {
 			Util.setCompiler(compilerShortName);
@@ -108,13 +102,8 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 				msg += " (incl. arch-update)";
 				response = 201;
 			} catch (Exception e) {
-				log("WARNING. Failed to update architecture: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				warning();
+				error("Failed to update architecture.", e);
+				return;
 			}
 		}
 		log(msg + ".");
@@ -157,16 +146,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		if (path != null) {
 			updateModelPath.setEnvironment(path);
 		}
-		try {
-			archApi.updateModelPaths("", updateModelPath);
-		} catch (Exception e) {
-			log("WARNING failed to update master model: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-		}
+		archApi.updateModelPaths("", updateModelPath);
 	}
 
 }
@@ -176,7 +156,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
  * the step is called the related StepExecution is triggered (see the class
  * below this one)
  */
-public class BtcProfileLoadStep extends Step implements Serializable {
+public class BtcProfileLoadStep extends Step implements Serializable, MatlabAwareStep {
 
 	private static final long serialVersionUID = 1L;
 
@@ -222,11 +202,6 @@ public class BtcProfileLoadStep extends Step implements Serializable {
 			return Collections.singleton(TaskListener.class);
 		}
 
-		/*
-		 * This specifies the step name that the the user can use in his Jenkins
-		 * Pipeline - for example: btcStartup installPath: 'C:/Program
-		 * Files/BTC/ep2.9p0', port: 29267
-		 */
 		@Override
 		public String getFunctionName() {
 			return "btcProfileLoad";

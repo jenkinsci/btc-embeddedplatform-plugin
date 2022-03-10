@@ -132,9 +132,10 @@ public class HttpRequester {
 				return responseObject;
 			}
 		default:
-			String msg = r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase();
+			String reasonPhrase = r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase();
+			String msg = String.format("Request returned: %s, %s", reasonPhrase, r.getContent());
 			System.err.println(msg);
-			throw new ApiException("Request returned :" + msg);
+			throw new ApiException(msg);
 		}
 		return null;
 	}
