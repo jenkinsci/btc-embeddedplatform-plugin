@@ -12,19 +12,17 @@ import hudson.Extension;
 @Extension
 public class EmbeddedPlatformDSL extends PipelineDSLGlobal {
 
-    @Override
-    public String getFunctionName() {
-        return "btc";
-    }
+	@Override
+	public String getFunctionName() {
+		return "btc";
+	}
 
-    @Extension
-    public static class MiscWhitelist extends ProxyWhitelist {
+	@Extension
+	public static class MiscWhitelist extends ProxyWhitelist {
 
-        public MiscWhitelist() throws IOException {
-            super(new StaticWhitelist(
-                "method java.util.Map$Entry getKey",
-                "method java.util.Map$Entry getValue"));
-        }
-    }
+		public MiscWhitelist() throws IOException {
+			super(new StaticWhitelist("method java.util.Map$Entry getKey", "method java.util.Map$Entry getValue"));
+		}
+	}
 
 }

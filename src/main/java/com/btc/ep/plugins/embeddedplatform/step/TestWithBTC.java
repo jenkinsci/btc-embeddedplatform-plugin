@@ -54,35 +54,35 @@ import hudson.model.TaskListener;
  */
 class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
-    private TestWithBTC step;
+	private static final long serialVersionUID = 1L;
+	private TestWithBTC step;
 
-    public TestWithBTCStepExecution(TestWithBTC step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
+	public TestWithBTCStepExecution(TestWithBTC step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
 	@Override
-    protected void performAction() throws Exception {
+	protected void performAction() throws Exception {
 		// Load test config
-        log("Applying specified test config file " + step.getTestConfigPath());
-        FilePath testConfigFilePath = resolveInAgentWorkspace(step.getTestConfigPath());
-        Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
-    	TestConfig testConfig = yaml.loadAs(new FileInputStream(testConfigFilePath.getRemote()), TestConfig.class);
-        
-    	// Initial sanity checks
-    	checkTestConfig(testConfig);
-    	
-    	// Startup / Connect
+		log("Applying specified test config file " + step.getTestConfigPath());
+		FilePath testConfigFilePath = resolveInAgentWorkspace(step.getTestConfigPath());
+		Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
+		TestConfig testConfig = yaml.loadAs(new FileInputStream(testConfigFilePath.getRemote()), TestConfig.class);
+
+		// Initial sanity checks
+		checkTestConfig(testConfig);
+
+		// Startup / Connect
 		run(testConfig.generalOptions, new BtcStartupStep());
-		
+
 		// Run test steps
 		runSteps(testConfig.testSteps);
-		
+
 		// Wrap up
 		new BtcWrapUpStep().start(getContext()).start();
-    }
-	
+	}
+
 	private void runSteps(List<Map<String, Object>> testSteps) {
 		boolean skipRemainingStepsDueToFailure = false;
 		for (Map<String, Object> testStep : testSteps) {
@@ -110,8 +110,8 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 	}
 
 	/**
-	 * Grabs the value from the testStep objects, applies them to the target step and starts it.
-	 * Ensures that mandatory values are present.
+	 * Grabs the value from the testStep objects, applies them to the target step
+	 * and starts it. Ensures that mandatory values are present.
 	 * 
 	 * @param testStep the input data
 	 */
@@ -138,7 +138,8 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 			break;
 		case "embeddedCoder":
 			String slModelPath1 = (String) testStep.get("slModelPath");
-			checkArgument(slModelPath1 != null, "No slModelPath was provided for the EmbeddedCoder Profile Creation step.");
+			checkArgument(slModelPath1 != null,
+					"No slModelPath was provided for the EmbeddedCoder Profile Creation step.");
 			run(testStep, new BtcProfileCreateTLStep(slModelPath1));
 			break;
 		case "simulink":
@@ -206,19 +207,20 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 //		case "vectorExport":
 //			run(testStep, new BtcVectorExportStep());
 //			break;
-		
+
 		default:
 			log("Test Step '%s' is not a supported step. Please refer to the docs and verify the spelling.", stepName);
 			break;
 		}
-		
+
 	}
 
 	/**
 	 * Applies the sourceObjects values to the target step and runs it.
 	 * 
-	 * @param sourceObject the source object with matching attributes / getter/setters
-	 * @param targetStep the step to be executed
+	 * @param sourceObject the source object with matching attributes /
+	 *                     getter/setters
+	 * @param targetStep   the step to be executed
 	 */
 	private void run(Object sourceObject, Step targetStep) throws Exception {
 		StepExecution stepExecution = Util.applyMatchingFields(sourceObject, targetStep).start(getContext());
@@ -226,93 +228,97 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 		// stepExecution.start() will not throw any exception from the step execution
 		// parse step execution's status
 		if (Status.ERROR.toString().equals(stepExecution.getStatus())) {
-			throw new ErrorOccurredException();			
+			throw new ErrorOccurredException();
 		}
 	}
-	
+
 	private void checkTestConfig(TestConfig testConfig) {
 		// check if config is available and has steps
 		checkArgument(testConfig != null, "No valid TestConfig was provided.");
 		checkArgument(testConfig.testSteps != null && !testConfig.testSteps.isEmpty(),
 				"Provided TestConfig " + step.getTestConfigPath() + " does not contain any test steps.");
-		
+
 		// check if the config has exactly 1 init step
 		List<Object> initSteps = testConfig.testSteps.stream()
-				.filter(step -> TestConfig.INIT_STEPS.contains(step.get("name")))
-				.map(step -> step.get("name")).collect(Collectors.toList());
+				.filter(step -> TestConfig.INIT_STEPS.contains(step.get("name"))).map(step -> step.get("name"))
+				.collect(Collectors.toList());
 		int numberOfInitSteps = initSteps.size();
-		checkArgument(numberOfInitSteps != 0, "TestConfig " + step.getTestConfigPath() +
-				" must include one of the available initial steps: " + TestConfig.INIT_STEPS);
-		checkArgument(numberOfInitSteps == 1, "TestConfig " + step.getTestConfigPath() +
-				" must not include more than initial steps. Found: " + initSteps);
-		
+		checkArgument(numberOfInitSteps != 0, "TestConfig " + step.getTestConfigPath()
+				+ " must include one of the available initial steps: " + TestConfig.INIT_STEPS);
+		checkArgument(numberOfInitSteps == 1, "TestConfig " + step.getTestConfigPath()
+				+ " must not include more than initial steps. Found: " + initSteps);
+
 	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class TestWithBTC extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String testConfigPath = "TestConfig.yaml";
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String testConfigPath = "TestConfig.yaml";
 
-    @DataBoundConstructor
-    public TestWithBTC() {
-        super();
-    }
+	@DataBoundConstructor
+	public TestWithBTC() {
+		super();
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new TestWithBTCStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new TestWithBTCStepExecution(this, context);
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        /*
-         * This specifies the step name that the the user can use in his Jenkins Pipeline
-         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
-         */
-        @Override
-        public String getFunctionName() {
-            return "TestWithBTC";
-        }
+		/*
+		 * This specifies the step name that the the user can use in his Jenkins
+		 * Pipeline - for example: btcStartup installPath: 'C:/Program
+		 * Files/BTC/ep2.9p0', port: 29267
+		 */
+		@Override
+		public String getFunctionName() {
+			return "TestWithBTC";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC Tests using testconfig";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC Tests using testconfig";
+		}
+	}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
 
 	public String getTestConfigPath() {
 		return testConfigPath;
 	}
+
 	@DataBoundSetter
 	public void setTestConfigPath(String testConfigPath) {
 		this.testConfigPath = testConfigPath;
 	}
 
-    /*
-     * End of getter/setter section
-     */
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

@@ -27,154 +27,155 @@ import hudson.model.TaskListener;
  */
 class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    private BtcToleranceExportStep step;
+	private BtcToleranceExportStep step;
 
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private TolerancesApi tolerancesApi = new TolerancesApi();
-    private ScopesApi scopesApi = new ScopesApi();
+	/*
+	 * This field can be used to indicate what's happening during the execution
+	 */
+	private TolerancesApi tolerancesApi = new TolerancesApi();
+	private ScopesApi scopesApi = new ScopesApi();
 
-    /**
-     * Constructor
-     *
-     * @param step
-     * @param context
-     */
-    public BtcToleranceExportStepExecution(BtcToleranceExportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
+	/**
+	 * Constructor
+	 *
+	 * @param step
+	 * @param context
+	 */
+	public BtcToleranceExportStepExecution(BtcToleranceExportStep step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
-    private ProfilesApi profilesApi = new ProfilesApi();
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
-        // Get the path
-        String path = step.getPath() != null ? toRemoteAbsolutePathString(step.getPath()) : Store.exportPath;
-        String kind = step.getUseCase();
-        checkArgument(kind == "RBT" || kind == "B2B", "Error: invalid use case '" + kind + 
-        		"'. Supported cases are 'RBT' and 'B2B'.");
-        
-        // TODO: ep-2723. this is a temporary workaround in the meantime.
-    }
+	private ProfilesApi profilesApi = new ProfilesApi();
+
+	/*
+	 * Put the desired action here: - checking preconditions - access step
+	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
+	 * the Jenkins console (field: jenkinsConsole) - set response code (field:
+	 * response)
+	 */
+	@Override
+	protected void performAction() throws Exception {
+		// Check preconditions
+		try {
+			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+		} catch (Exception e) {
+			throw new IllegalStateException("You need an active profile to run tests");
+		}
+		// Get the path
+		String path = step.getPath() != null ? toRemoteAbsolutePathString(step.getPath()) : Store.exportPath;
+		String kind = step.getUseCase();
+		checkArgument(kind == "RBT" || kind == "B2B",
+				"Error: invalid use case '" + kind + "'. Supported cases are 'RBT' and 'B2B'.");
+
+		// TODO: ep-2723. this is a temporary workaround in the meantime.
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcToleranceExportStep extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String path;
-    private String useCase = "B2B";
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String path;
+	private String useCase = "B2B";
 
-    @DataBoundConstructor
-    public BtcToleranceExportStep() {
-        super();
-    }
+	@DataBoundConstructor
+	public BtcToleranceExportStep() {
+		super();
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcToleranceExportStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcToleranceExportStepExecution(this, context);
+	}
 
-    /**
-     * Get path.
-     * 
-     * @return the path
-     */
-    public String getPath() {
-        return path;
+	/**
+	 * Get path.
+	 * 
+	 * @return the path
+	 */
+	public String getPath() {
+		return path;
 
-    }
+	}
 
-    /**
-     * Set path.
-     * 
-     * @param path the path to set
-     */
-    @DataBoundSetter
-    public void setPath(String path) {
-        this.path = path;
+	/**
+	 * Set path.
+	 * 
+	 * @param path the path to set
+	 */
+	@DataBoundSetter
+	public void setPath(String path) {
+		this.path = path;
 
-    }
-    
+	}
 
-    /**
-     * Get useCase.
-     * 
-     * @return the useCase
-     */
-    public String getUseCase() {
-        return useCase;
+	/**
+	 * Get useCase.
+	 * 
+	 * @return the useCase
+	 */
+	public String getUseCase() {
+		return useCase;
 
-    }
+	}
 
-    /**
-     * Set useCase.
-     * 
-     * @param useCase the useCase to set
-     */
-    @DataBoundSetter
-    public void setUseCase(String useCase) {
-        this.useCase = useCase;
+	/**
+	 * Set useCase.
+	 * 
+	 * @param useCase the useCase to set
+	 */
+	@DataBoundSetter
+	public void setUseCase(String useCase) {
+		this.useCase = useCase;
 
-    }
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        /*
-         * This specifies the step name that the the user can use in his Jenkins Pipeline
-         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
-         */
-        @Override
-        public String getFunctionName() {
-            return "btcToleranceExport";
-        }
+		/*
+		 * This specifies the step name that the the user can use in his Jenkins
+		 * Pipeline - for example: btcStartup installPath: 'C:/Program
+		 * Files/BTC/ep2.9p0', port: 29267
+		 */
+		@Override
+		public String getFunctionName() {
+			return "btcToleranceExport";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC Tolerance Export Step";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC Tolerance Export Step";
+		}
+	}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
 
-    /*
-     * End of getter/setter section
-     */
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

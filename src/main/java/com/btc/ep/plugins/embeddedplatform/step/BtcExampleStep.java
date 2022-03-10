@@ -29,112 +29,113 @@ import hudson.model.TaskListener;
  */
 class BtcExampleStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
-    private BtcExampleStep step;
+	private static final long serialVersionUID = 1L;
+	private BtcExampleStep step;
 
-    public BtcExampleStepExecution(BtcExampleStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
+	public BtcExampleStepExecution(BtcExampleStep step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set resonse code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-        log("The value of the string parameter is " + step.getStrStepParam());
-        log("The value of the integer parameter is " + step.getIntStepParam());
-        log("Workspace: " + Paths.get(getContext().get(FilePath.class).toURI()).toString());
-        // print success message and return response code
-        log("--> [200] Example step successfully executed.");
-        response = 200;
-    }
+	/*
+	 * Put the desired action here: - checking preconditions - access step
+	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
+	 * the Jenkins console (field: jenkinsConsole) - set resonse code (field:
+	 * response)
+	 */
+	@Override
+	protected void performAction() throws Exception {
+		log("The value of the string parameter is " + step.getStrStepParam());
+		log("The value of the integer parameter is " + step.getIntStepParam());
+		log("Workspace: " + Paths.get(getContext().get(FilePath.class).toURI()).toString());
+		// print success message and return response code
+		log("--> [200] Example step successfully executed.");
+		response = 200;
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcExampleStep extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String strStepParam;
-    private int intStepParam;
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String strStepParam;
+	private int intStepParam;
 
-    @DataBoundConstructor
-    public BtcExampleStep() {
-        super();
-    }
+	@DataBoundConstructor
+	public BtcExampleStep() {
+		super();
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcExampleStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcExampleStepExecution(this, context);
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        /*
-         * This specifies the step name that the the user can use in his Jenkins Pipeline
-         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
-         */
-        @Override
-        public String getFunctionName() {
-            return "btcExample";
-        }
+		/*
+		 * This specifies the step name that the the user can use in his Jenkins
+		 * Pipeline - for example: btcStartup installPath: 'C:/Program
+		 * Files/BTC/ep2.9p0', port: 29267
+		 */
+		@Override
+		public String getFunctionName() {
+			return "btcExample";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC Example Step";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC Example Step";
+		}
+	}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
 
-    public String getStrStepParam() {
-        return strStepParam;
+	public String getStrStepParam() {
+		return strStepParam;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setStrStepParam(String strStepParam) {
-        this.strStepParam = strStepParam;
+	@DataBoundSetter
+	public void setStrStepParam(String strStepParam) {
+		this.strStepParam = strStepParam;
 
-    }
+	}
 
-    public int getIntStepParam() {
-        return intStepParam;
+	public int getIntStepParam() {
+		return intStepParam;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setIntStepParam(int intStepParam) {
-        this.intStepParam = intStepParam;
+	@DataBoundSetter
+	public void setIntStepParam(int intStepParam) {
+		this.intStepParam = intStepParam;
 
-    }
+	}
 
-    /*
-     * End of getter/setter section
-     */
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

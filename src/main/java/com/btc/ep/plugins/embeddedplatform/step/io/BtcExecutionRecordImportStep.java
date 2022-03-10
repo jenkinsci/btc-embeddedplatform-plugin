@@ -32,152 +32,159 @@ import hudson.model.TaskListener;
  */
 class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
-    private BtcExecutionRecordImportStep step;
+	private static final long serialVersionUID = 1L;
+	private BtcExecutionRecordImportStep step;
 
-    public BtcExecutionRecordImportStepExecution(BtcExecutionRecordImportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
+	public BtcExecutionRecordImportStepExecution(BtcExecutionRecordImportStep step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
-    private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
-    private ProfilesApi profilesApi = new ProfilesApi();
-    private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
+	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
+	private ProfilesApi profilesApi = new ProfilesApi();
+	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
 
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
-        FilePath exportDir = resolveInAgentWorkspace(step.getDir());
-        
-        List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
-        List<String> paths = files.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
-        ExecutionRecordImportInfo data = new ExecutionRecordImportInfo();
-        data.setFormat("MDF");
-        // execution config can be user-defined, so there's no check to make
-        String kind = step.getExecutionConfig() != null ? step.getExecutionConfig() : ecApi.getExecutionRecords().getExecConfigNames().get(0);
-        data.setKind(kind);
-        data.setPaths(paths);
-        data.setFolderName(step.getFolderName());
-        Job job = null;
-        Object response_obj = null;
-        try {
-        	job = erApi.importExecutionRecord(data);
-        	response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
-        } catch (Exception e) {
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        }
-        int response_int = (int) response_obj;
-        switch (step.getExecutionConfig()) {
-        	case "TL MIL":
-        	case "SL MIL":
-        	case "PIL":
-        	case "SIL":
-        		break;
-        	default:
-        		log("Warning: non-standard execution config " + step.getExecutionConfig()
-        		+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
-        		warning();
-        }
-        response = response_int;
-        switch (response_int) {
-        	case 201:
-        		// successful. nothing to report.
-        		break;
-        	case 400:
-        		log("Error: Bad request (make sure the arguments you passed in are valid");
-        		error();
-        		break;
-        	case 404:
-        		log("Error: Not found.");
-        		error();
-        		break;
-        	case 500: 
-        		log("Error: Internal server error.");
-        		error();
-        		break;
-        }
-        info("Finished important execution records");
+	@Override
+	protected void performAction() throws Exception {
+		// Check preconditions
+		try {
+			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+		} catch (Exception e) {
+			throw new IllegalStateException("You need an active profile to run tests");
+		}
+		FilePath exportDir = resolveInAgentWorkspace(step.getDir());
 
-    }
+		List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
+		List<String> paths = files.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
+		ExecutionRecordImportInfo data = new ExecutionRecordImportInfo();
+		data.setFormat("MDF");
+		// execution config can be user-defined, so there's no check to make
+		String kind = step.getExecutionConfig() != null ? step.getExecutionConfig()
+				: ecApi.getExecutionRecords().getExecConfigNames().get(0);
+		data.setKind(kind);
+		data.setPaths(paths);
+		data.setFolderName(step.getFolderName());
+		Job job = null;
+		Object response_obj = null;
+		try {
+			job = erApi.importExecutionRecord(data);
+			response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
+		} catch (Exception e) {
+			try {
+				log(((ApiException) e).getResponseBody());
+			} catch (Exception idc) {
+			}
+			;
+		}
+		int response_int = (int) response_obj;
+		switch (step.getExecutionConfig()) {
+		case "TL MIL":
+		case "SL MIL":
+		case "PIL":
+		case "SIL":
+			break;
+		default:
+			log("Warning: non-standard execution config " + step.getExecutionConfig()
+					+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
+			warning();
+		}
+		response = response_int;
+		switch (response_int) {
+		case 201:
+			// successful. nothing to report.
+			break;
+		case 400:
+			log("Error: Bad request (make sure the arguments you passed in are valid");
+			error();
+			break;
+		case 404:
+			log("Error: Not found.");
+			error();
+			break;
+		case 500:
+			log("Error: Internal server error.");
+			error();
+			break;
+		}
+		info("Finished important execution records");
+
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcExecutionRecordImportStep extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String dir;
-    private String executionConfig;
-    private String folderName;
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String dir;
+	private String executionConfig;
+	private String folderName;
 
-    @DataBoundConstructor
-    public BtcExecutionRecordImportStep(String dir) {
-        super();
-        this.dir = dir;
-    }
+	@DataBoundConstructor
+	public BtcExecutionRecordImportStep(String dir) {
+		super();
+		this.dir = dir;
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcExecutionRecordImportStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcExecutionRecordImportStepExecution(this, context);
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        @Override
-        public String getFunctionName() {
-            return "btcExecutionRecordExport";
-        }
+		@Override
+		public String getFunctionName() {
+			return "btcExecutionRecordExport";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC Execution Record Export Step";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC Execution Record Export Step";
+		}
+	}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
-    public String getDir() {
-        return dir;
-    }
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
+	public String getDir() {
+		return dir;
+	}
 
-    public String getExecutionConfig() {
-        return executionConfig;
-    }
+	public String getExecutionConfig() {
+		return executionConfig;
+	}
 
-    public String getFolderName() {
-        return folderName;
+	public String getFolderName() {
+		return folderName;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setFolderName(String folderName) {
-        this.folderName = folderName;
+	@DataBoundSetter
+	public void setFolderName(String folderName) {
+		this.folderName = folderName;
 
-    }
-    /*
-     * End of getter/setter section
-     */
+	}
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

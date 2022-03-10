@@ -5,6 +5,6 @@ package com.btc.ep.plugins.embeddedplatform.reporting;
  */
 public enum ReportType {
 
-    JENKINS_AUTOMATION_REPORT, JENKINS_OVERVIEW_REPORT
+	JENKINS_AUTOMATION_REPORT, JENKINS_OVERVIEW_REPORT
 
 }

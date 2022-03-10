@@ -28,218 +28,228 @@ import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-
 /**
  * This class defines what happens when the above step is executed
  */
 class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
-    private BtcAddDomainCheckGoals step;
+	private static final long serialVersionUID = 1L;
+	private BtcAddDomainCheckGoals step;
 
-    public BtcAddDomainCheckGoalsStepExecution(BtcAddDomainCheckGoals step, StepContext context) {
-        super(step, context); //
-        this.step = step;
-    }
+	public BtcAddDomainCheckGoalsStepExecution(BtcAddDomainCheckGoals step, StepContext context) {
+		super(step, context); //
+		this.step = step;
+	}
 
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
-    private DomainChecksApi domainApi = new DomainChecksApi();
-    private ScopesApi scopesApi = new ScopesApi();
-    private ProfilesApi profilesApi = new ProfilesApi();
-    
-    @Override
-    protected void performAction() throws Exception {
-  
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-        	log("ERROR: No active profile found. Did you successfuly load one in?");
-        	error();
-            throw new IllegalStateException("You need an active profile for the current command");
-        }
-        List<Scope> scopesList = null;
-        try {
-        	scopesList = scopesApi.getScopesByQuery1(null, true);
-        } catch(Exception e) {
-        	log("ERROR could not query scopes: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        }
-        checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-        int rast;
-        try {
-    		rast = Integer.parseInt(step.getRaster());
-    	} catch (Exception e) {
-    		log("WARNING: invalid integer '" + step.getRaster() + "'. Changing to default value of 25 instead. This will affect results!");
-    		warning();
-    		rast = 25;
-    		step.setRaster("25");
-    	}
-        checkArgument(rast > 0 && rast <= 100,
-        		"ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
-        
-    	// check if we have to iterate over all scopes,
-    	// only top level scope, or the given scope
-    	if (step.getScopePath() != "*") { // find a specific scope
-    		String scope = null;
-    		// get top level scope
-    		if (step.getScopePath() != null) { // scope given. use it.
-    			List<Scope> scopes = null;
-    			try {
-    				scopes = scopesApi.getScopesByQuery1(step.getScopePath(), false);
-    			} catch (Exception e) {
-    				log("ERROR getting scope " + step.getScopePath() + ": "+ e.getMessage());
-    				try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-    			}
-    			checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-    			scope = scopes.get(0).getUid();
-    		} else { // no scope given. default is top level scope.
-        		List<Scope> scopes = null;
-        		try {
-        			scopes = scopesApi.getScopesByQuery1(null, true);
-        		} catch (Exception e) {
-    				log("ERROR getting top level scope: " + e.getMessage());
-    				try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-    			}
-        		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-                scope = scopes.get(0).getUid();
-        	}
-    		sendPerformAction(scope);
-    	} else { // else step.getScopePath() == "*". iterate over all scopes
-    		List<Scope> scopes = null;
-    		try {
-    			scopes = scopesApi.getScopesByQuery1(null, false);
-    		} catch (Exception e) {
-				log("ERROR getting list of all scopes: " + e.getMessage());
-				try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
+	private DomainChecksApi domainApi = new DomainChecksApi();
+	private ScopesApi scopesApi = new ScopesApi();
+	private ProfilesApi profilesApi = new ProfilesApi();
+
+	@Override
+	protected void performAction() throws Exception {
+
+		// Check preconditions
+		try {
+			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+		} catch (Exception e) {
+			log("ERROR: No active profile found. Did you successfuly load one in?");
+			error();
+			throw new IllegalStateException("You need an active profile for the current command");
+		}
+		List<Scope> scopesList = null;
+		try {
+			scopesList = scopesApi.getScopesByQuery1(null, true);
+		} catch (Exception e) {
+			log("ERROR could not query scopes: " + e.getMessage());
+			try {
+				log(((ApiException) e).getResponseBody());
+			} catch (Exception idc) {
 			}
-    		checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-    		for(Scope scope: scopes) {
-    			sendPerformAction(scope.getUid());
-    		}
-    	}
-    	result("PASSED");
-    	info("Finished adding domain checks");
-    	
-    }
-    final private void sendPerformAction(String scopeuid) {
-    	// if we are given a config file, import the XML settings
-    	// as our domain check goals.
-    	if (step.getDcXmlPath() != null) {
-    		String dcXmlPath;
-    		try {
-    			dcXmlPath = toRemoteAbsolutePathString(step.getDcXmlPath());
-    		} catch (Exception e) {
-    			log("ERROR: invalid path given: "+step.getDcXmlPath() + ". " + e.getMessage());
-    			error();
-    			return;
-    		}
-        	RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
-        	r.setScopeUid(scopeuid);
-        	r.setFilePath(dcXmlPath);
-        	try {
-        		log("Importing Domain Check Goals from XML...");
-        		Job job = domainApi.importDomainChecksGoals(r);
-        		HttpRequester.waitForCompletion(job.getJobID(), "result");
-	        	log("Successfully imported domain checks");
+			;
+		}
+		checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
+		int rast;
+		try {
+			rast = Integer.parseInt(step.getRaster());
+		} catch (Exception e) {
+			log("WARNING: invalid integer '" + step.getRaster()
+					+ "'. Changing to default value of 25 instead. This will affect results!");
+			warning();
+			rast = 25;
+			step.setRaster("25");
+		}
+		checkArgument(rast > 0 && rast <= 100, "ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
+
+		// check if we have to iterate over all scopes,
+		// only top level scope, or the given scope
+		if (step.getScopePath() != "*") { // find a specific scope
+			String scope = null;
+			// get top level scope
+			if (step.getScopePath() != null) { // scope given. use it.
+				List<Scope> scopes = null;
+				try {
+					scopes = scopesApi.getScopesByQuery1(step.getScopePath(), false);
+				} catch (Exception e) {
+					log("ERROR getting scope " + step.getScopePath() + ": " + e.getMessage());
+					try {
+						log(((ApiException) e).getResponseBody());
+					} catch (Exception idc) {
+					}
+				}
+				checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
+				scope = scopes.get(0).getUid();
+			} else { // no scope given. default is top level scope.
+				List<Scope> scopes = null;
+				try {
+					scopes = scopesApi.getScopesByQuery1(null, true);
+				} catch (Exception e) {
+					log("ERROR getting top level scope: " + e.getMessage());
+					try {
+						log(((ApiException) e).getResponseBody());
+					} catch (Exception idc) {
+					}
+					;
+				}
+				checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
+				scope = scopes.get(0).getUid();
+			}
+			sendPerformAction(scope);
+		} else { // else step.getScopePath() == "*". iterate over all scopes
+			List<Scope> scopes = null;
+			try {
+				scopes = scopesApi.getScopesByQuery1(null, false);
+			} catch (Exception e) {
+				log("ERROR getting list of all scopes: " + e.getMessage());
+				try {
+					log(((ApiException) e).getResponseBody());
+				} catch (Exception idc) {
+				}
+				;
+			}
+			checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
+			for (Scope scope : scopes) {
+				sendPerformAction(scope.getUid());
+			}
+		}
+		result("PASSED");
+		info("Finished adding domain checks");
+
+	}
+
+	final private void sendPerformAction(String scopeuid) {
+		// if we are given a config file, import the XML settings
+		// as our domain check goals.
+		if (step.getDcXmlPath() != null) {
+			String dcXmlPath;
+			try {
+				dcXmlPath = toRemoteAbsolutePathString(step.getDcXmlPath());
+			} catch (Exception e) {
+				log("ERROR: invalid path given: " + step.getDcXmlPath() + ". " + e.getMessage());
+				error();
+				return;
+			}
+			RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
+			r.setScopeUid(scopeuid);
+			r.setFilePath(dcXmlPath);
+			try {
+				log("Importing Domain Check Goals from XML...");
+				Job job = domainApi.importDomainChecksGoals(r);
+				HttpRequester.waitForCompletion(job.getJobID(), "result");
+				log("Successfully imported domain checks");
 			} catch (Exception e) {
 				error();
 				log("ERROR: Failed to import Domain Checks goals: " + e.getMessage());
-				
-			}	
-        } else { // no config file given-- use our input variables
-    		// create API object
-        	RestDomainChecksRangesInput r = new RestDomainChecksRangesInput();
-    		r.setScopeUid(scopeuid);
-    		r.setApplyBoundaryChecks(step.isActivateBoundaryCheck());
-    		r.setApplyInvalidRangesChecks(step.isActivateRangeViolationCheck());
-    		r.setPercentage(Integer.parseInt(step.getRaster()));
-    		try { //send API object
-    			log("Creating Domain Check Goals...");
-    			domainApi.createDomainChecksRanges(r);
-    			log("Successfully created Domain Check Goals");
-    		} catch (Exception e) {
-    			error();
-    			log("Failed to create DomainChecks goals: " + e.getMessage());
-    		}
-        }
-    }
+
+			}
+		} else { // no config file given-- use our input variables
+			// create API object
+			RestDomainChecksRangesInput r = new RestDomainChecksRangesInput();
+			r.setScopeUid(scopeuid);
+			r.setApplyBoundaryChecks(step.isActivateBoundaryCheck());
+			r.setApplyInvalidRangesChecks(step.isActivateRangeViolationCheck());
+			r.setPercentage(Integer.parseInt(step.getRaster()));
+			try { // send API object
+				log("Creating Domain Check Goals...");
+				domainApi.createDomainChecksRanges(r);
+				log("Successfully created Domain Check Goals");
+			} catch (Exception e) {
+				error();
+				log("Failed to create DomainChecks goals: " + e.getMessage());
+			}
+		}
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcAddDomainCheckGoals extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String scopePath;
-    private String dcXmlPath;
-    private String raster = "25";
-    private boolean activateRangeViolationCheck = false;
-    private boolean activateBoundaryCheck = false;
-    
-    private static final String PIPELINE_FUNCTION_NAME = "btcaddDomainCheckGoals";
-    private static final String JENKINS_DISPLAY_NAME = "BTC Domain Check Goals";
-    private static final String BTC_REPORTING_NAME = "Domain Check Goals";
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String scopePath;
+	private String dcXmlPath;
+	private String raster = "25";
+	private boolean activateRangeViolationCheck = false;
+	private boolean activateBoundaryCheck = false;
 
-    @DataBoundConstructor
-    public BtcAddDomainCheckGoals() {
-        super();
-    }
+	private static final String PIPELINE_FUNCTION_NAME = "btcaddDomainCheckGoals";
+	private static final String JENKINS_DISPLAY_NAME = "BTC Domain Check Goals";
+	private static final String BTC_REPORTING_NAME = "Domain Check Goals";
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcAddDomainCheckGoalsStepExecution(this, context);
-    }
+	@DataBoundConstructor
+	public BtcAddDomainCheckGoals() {
+		super();
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcAddDomainCheckGoalsStepExecution(this, context);
+	}
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        /*
-         * This specifies the step name that the the user can use in his Jenkins Pipeline
-         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
-         */
-        @Override
-        public String getFunctionName() {
-            return PIPELINE_FUNCTION_NAME;
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return JENKINS_DISPLAY_NAME;
-        }
-    }
+		/*
+		 * This specifies the step name that the the user can use in his Jenkins
+		 * Pipeline - for example: btcStartup installPath: 'C:/Program
+		 * Files/BTC/ep2.9p0', port: 29267
+		 */
+		@Override
+		public String getFunctionName() {
+			return PIPELINE_FUNCTION_NAME;
+		}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return JENKINS_DISPLAY_NAME;
+		}
+	}
+
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
 
 	public String getScopePath() {
 		return scopePath;
 	}
 
-    @DataBoundSetter
+	@DataBoundSetter
 	public void setScopePath(String scopePath) {
 		this.scopePath = scopePath;
 	}
@@ -248,7 +258,7 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
 		return dcXmlPath;
 	}
 
-    @DataBoundSetter
+	@DataBoundSetter
 	public void setDcXmlPath(String dcXmlPath) {
 		this.dcXmlPath = dcXmlPath;
 	}
@@ -257,7 +267,7 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
 		return raster;
 	}
 
-    @DataBoundSetter
+	@DataBoundSetter
 	public void setRaster(String raster) {
 		this.raster = raster;
 	}
@@ -266,7 +276,7 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
 		return activateRangeViolationCheck;
 	}
 
-    @DataBoundSetter
+	@DataBoundSetter
 	public void setActivateRangeViolationCheck(boolean activateRangeViolationCheck) {
 		this.activateRangeViolationCheck = activateRangeViolationCheck;
 	}
@@ -275,13 +285,13 @@ public class BtcAddDomainCheckGoals extends Step implements Serializable {
 		return activateBoundaryCheck;
 	}
 
-    @DataBoundSetter
+	@DataBoundSetter
 	public void setActivateBoundaryCheck(boolean activateBoundaryCheck) {
 		this.activateBoundaryCheck = activateBoundaryCheck;
 	}
 
-    /*
-     * End of getter/setter section
-     */
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

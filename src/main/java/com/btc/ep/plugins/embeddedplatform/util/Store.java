@@ -13,18 +13,18 @@ import hudson.Proc;
 
 public class Store {
 
-    // General
-    public static Proc epProcess;
-    public static FilePath epp;
-    public static String exportPath;
-    public static String globalSuffix;
+	// General
+	public static Proc epProcess;
+	public static FilePath epp;
+	public static String exportPath;
+	public static String globalSuffix;
 
-    // Reporting
-    public static JenkinsAutomationReport reportData;
-    public static TestStepSection testStepSection;
-    public static PilInfoSection pilInfoSection;
-    public static StepArgSection testStepArgumentSection;
-    public static Date startDate;
-    public static MetaInfoSection metaInfoSection;
+	// Reporting
+	public static JenkinsAutomationReport reportData;
+	public static TestStepSection testStepSection;
+	public static PilInfoSection pilInfoSection;
+	public static StepArgSection testStepArgumentSection;
+	public static Date startDate;
+	public static MetaInfoSection metaInfoSection;
 
 }

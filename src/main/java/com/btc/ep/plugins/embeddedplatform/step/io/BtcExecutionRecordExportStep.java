@@ -30,143 +30,151 @@ import hudson.model.TaskListener;
  */
 class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
-    private BtcExecutionRecordExportStep step;
+	private static final long serialVersionUID = 1L;
+	private BtcExecutionRecordExportStep step;
 
-    public BtcExecutionRecordExportStepExecution(BtcExecutionRecordExportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
+	public BtcExecutionRecordExportStepExecution(BtcExecutionRecordExportStep step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
-    private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
-    private ProfilesApi profilesApi = new ProfilesApi();
-    
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
-        String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
-        List<String> uids = null;
-        try {
-        	uids = erApi.getExecutionRecords2()
-            .stream()
-            .filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
-                && (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
-            .map(er -> er.getUid())
-            .collect(Collectors.toList());
-        } catch (Exception e) {
-        	log("ERROR. Failed to process execution records: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	error();
-        }
-        if (uids.isEmpty()) {
-        	log("Warning: no execution records to export found. Did you run any tests yet?");
-        	warning();
-        	return;
-        }
-        
-        RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
-        data.setUiDs(uids);
-        data.setExportDirectory(exportDir);
-        data.setExportFormat("MDF");
-        try {
-	        Job job = erApi.exportExecutionRecords(data);
-	        Object response = HttpRequester.waitForCompletion(job.getJobID());
-	        // TODO: the callback is always just null. is there a way of checking the status of the job?
-	        detailWithLink("Execution Records Export Folder", data.getExportDirectory());
-	        // TODO: does linking to a folder work? if not just info the export dir.
-	        info("Exported execution records");
-        } catch (Exception e) {
-        	log("ERROR. Could not export execution records: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	error();
-        }
+	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
+	private ProfilesApi profilesApi = new ProfilesApi();
 
-    }
+	@Override
+	protected void performAction() throws Exception {
+		// Check preconditions
+		try {
+			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+		} catch (Exception e) {
+			throw new IllegalStateException("You need an active profile to run tests");
+		}
+		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
+		List<String> uids = null;
+		try {
+			uids = erApi.getExecutionRecords2().stream()
+					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
+							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
+					.map(er -> er.getUid()).collect(Collectors.toList());
+		} catch (Exception e) {
+			log("ERROR. Failed to process execution records: " + e.getMessage());
+			try {
+				log(((ApiException) e).getResponseBody());
+			} catch (Exception idc) {
+			}
+			;
+			error();
+		}
+		if (uids.isEmpty()) {
+			log("Warning: no execution records to export found. Did you run any tests yet?");
+			warning();
+			return;
+		}
+
+		RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
+		data.setUiDs(uids);
+		data.setExportDirectory(exportDir);
+		data.setExportFormat("MDF");
+		try {
+			Job job = erApi.exportExecutionRecords(data);
+			Object response = HttpRequester.waitForCompletion(job.getJobID());
+			// TODO: the callback is always just null. is there a way of checking the status
+			// of the job?
+			detailWithLink("Execution Records Export Folder", data.getExportDirectory());
+			// TODO: does linking to a folder work? if not just info the export dir.
+			info("Exported execution records");
+		} catch (Exception e) {
+			log("ERROR. Could not export execution records: " + e.getMessage());
+			try {
+				log(((ApiException) e).getResponseBody());
+			} catch (Exception idc) {
+			}
+			;
+			error();
+		}
+
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcExecutionRecordExportStep extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String dir;
-    private String executionConfig;
-    private String folderName;
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String dir;
+	private String executionConfig;
+	private String folderName;
 
-    @DataBoundConstructor
-    public BtcExecutionRecordExportStep() {
-        super();
-    }
+	@DataBoundConstructor
+	public BtcExecutionRecordExportStep() {
+		super();
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcExecutionRecordExportStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcExecutionRecordExportStepExecution(this, context);
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        @Override
-        public String getFunctionName() {
-            return "btcExecutionRecordExport";
-        }
+		@Override
+		public String getFunctionName() {
+			return "btcExecutionRecordExport";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC Execution Record Export Step";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC Execution Record Export Step";
+		}
+	}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
-    public String getDir() {
-        return dir;
-    }
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
+	public String getDir() {
+		return dir;
+	}
 
-    public String getExecutionConfig() {
-        return executionConfig;
-    }
+	public String getExecutionConfig() {
+		return executionConfig;
+	}
 
-    public String getFolderName() {
-        return folderName;
+	public String getFolderName() {
+		return folderName;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setFolderName(String folderName) {
-        this.folderName = folderName;
+	@DataBoundSetter
+	public void setFolderName(String folderName) {
+		this.folderName = folderName;
 
-    }
-    
-    @DataBoundSetter
-    public void setDir(String dir) {
-    	this.dir = dir;
-    }
+	}
 
-    /*
-     * End of getter/setter section
-     */
+	@DataBoundSetter
+	public void setDir(String dir) {
+		this.dir = dir;
+	}
 
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

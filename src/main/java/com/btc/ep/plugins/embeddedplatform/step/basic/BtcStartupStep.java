@@ -41,77 +41,81 @@ import hudson.model.TaskListener;
  */
 class BtcStartupStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
-    private BtcStartupStep step;
-    private String epVersion = "";
+	private static final long serialVersionUID = 1L;
+	private BtcStartupStep step;
+	private String epVersion = "";
 
-    public BtcStartupStepExecution(BtcStartupStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
+	public BtcStartupStepExecution(BtcStartupStep step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
-    @Override
-    protected void performAction() throws Exception {
-        // don't add this step to the report
-        noReporting();
+	@Override
+	protected void performAction() throws Exception {
+		// don't add this step to the report
+		noReporting();
 
-        // Prepare http connection
-        ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
-        Configuration.setDefaultApiClient(apiClient);
-        HttpRequester.port = step.getPort();
-        Store.startDate = new Date();
-        boolean connected = HttpRequester.checkConnection("/test", 200);
-        if (connected) {
-            response = 201;
-        } else {
-            // start command call can be skipped if we only connect to a starting instance (e.g. in docker)
-            if (!step.isSimplyConnect()) {
-                // prepare ep start command
-                List<String> command = createStartCommand();
-                
-                // start process and save it for future use (e.g. to destroy it)
-                try {
-                	log("Starting BTC EmbeddedPlatform: " + String.join(" ", command));
-	                Store.epProcess = spawnManagedProcess(command);
-                } catch (Exception e) {
-                	log("ERROR. Failed to start BTC! " + e.getMessage());
-                	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-                	error();
-                	Store.epProcess.kill();
-                	return;
-                }
-            }
+		// Prepare http connection
+		ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
+		Configuration.setDefaultApiClient(apiClient);
+		HttpRequester.port = step.getPort();
+		Store.startDate = new Date();
+		boolean connected = HttpRequester.checkConnection("/test", 200);
+		if (connected) {
+			response = 201;
+		} else {
+			// start command call can be skipped if we only connect to a starting instance
+			// (e.g. in docker)
+			if (!step.isSimplyConnect()) {
+				// prepare ep start command
+				List<String> command = createStartCommand();
 
-            // wait for ep rest service to respond
-            connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
-            if (connected) {
-                log("Successfully connected to BTC EmbeddedPlatform " + epVersion
-                    + " on port " + step.getPort());
-                response = 200;
-            } else {
-                log("Connection timed out after " + step.getTimeout() + " seconds.");
-                failed();
-                response = 400;
-                return;
-            }
-        }
-        initializeReporting();
-    }
+				// start process and save it for future use (e.g. to destroy it)
+				try {
+					log("Starting BTC EmbeddedPlatform: " + String.join(" ", command));
+					Store.epProcess = spawnManagedProcess(command);
+				} catch (Exception e) {
+					log("ERROR. Failed to start BTC! " + e.getMessage());
+					try {
+						log(((ApiException) e).getResponseBody());
+					} catch (Exception idc) {
+					}
+					;
+					error();
+					Store.epProcess.kill();
+					return;
+				}
+			}
 
-    /**
-     * Initializes the reporting
-     */
-    private void initializeReporting() {
-        Store.reportData = new JenkinsAutomationReport();
-        String startDateString = Util.DATE_FORMAT.format(Store.startDate);
-        Store.reportData.setStartDate(startDateString);
-        Store.testStepSection = new TestStepSection();
-        Store.pilInfoSection = new PilInfoSection();
-        Store.metaInfoSection = new MetaInfoSection();
-        Store.testStepArgumentSection = new StepArgSection();
-    }
+			// wait for ep rest service to respond
+			connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
+			if (connected) {
+				log("Successfully connected to BTC EmbeddedPlatform " + epVersion + " on port " + step.getPort());
+				response = 200;
+			} else {
+				log("Connection timed out after " + step.getTimeout() + " seconds.");
+				failed();
+				response = 400;
+				return;
+			}
+		}
+		initializeReporting();
+	}
 
-    /**
+	/**
+	 * Initializes the reporting
+	 */
+	private void initializeReporting() {
+		Store.reportData = new JenkinsAutomationReport();
+		String startDateString = Util.DATE_FORMAT.format(Store.startDate);
+		Store.reportData.setStartDate(startDateString);
+		Store.testStepSection = new TestStepSection();
+		Store.pilInfoSection = new PilInfoSection();
+		Store.metaInfoSection = new MetaInfoSection();
+		Store.testStepArgumentSection = new StepArgSection();
+	}
+
+	/**
 	 * Creates the ep start command
 	 *
 	 * @return the ep start command
@@ -121,8 +125,8 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 		String licensingPackage = step.getLicensingPackage();
 		int port = step.getPort();
 		/*
-		 * IMPORTANT: Don't use something like System.getProperty("os.name"), it
-		 * 			  will return the operating system of the Jenkins controller
+		 * IMPORTANT: Don't use something like System.getProperty("os.name"), it will
+		 * return the operating system of the Jenkins controller
 		 */
 		if (isUnix()) {
 			return createStartCommand_LINUX(licensingPackage);
@@ -130,7 +134,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 			// prepare data for process call
 			epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
 			String jreDirectory = getJreDir();
-			
+
 			// Check preconditions
 			checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
 					"Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
@@ -139,225 +143,232 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 	}
 
 	/**
-     * Creates the ep start command for windows
-     *
-     * @param epVersion ep version string
-     * @param jreDirectory jreDirectory
-     * @param licensingPackage license package
-     * @param port the port to use
-     * @return the ep start command
-     * @throws IOException path issues...
-     */
-    private List<String> createStartCommand_WINDOWS(String epVersion, String jreDirectory,
-        String licensingPackage, int port) throws IOException {
-    	
-    	File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
-        checkArgument(epExecutable.exists(),
-            "BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
-    	
-        List<String> command = new ArrayList<>();
-        command.add("\"" + epExecutable.getCanonicalPath() + "\"");
-        command.add("-clearPersistedState");
-        command.add("-application");
-        command.add("ep.application.headless");
-        command.add("-nosplash");
-        command.add("-vm");
-        command.add("\"" + jreDirectory + "\"");
-        command.add("-vmargs");
-        command.add("-Dep.runtime.batch=ep");
-        command.add("-Dosgi.configuration.area.default=@user.home/AppData/Roaming/BTC/ep/" +
-            epVersion + "/" + port + "/configuration");
-        command.add("-Dosgi.instance.area.default=@user.home/AppData/Roaming/BTC/ep/" + epVersion + "/"
-            + port + "/workspace");
-        command.add("-Dep.configuration.logpath=AppData/Roaming/BTC/ep/" + epVersion + "/"
-            + port + "/logs");
-        command.add("-Dep.runtime.workdir=BTC/ep/" + epVersion + "/" + port);
-        command.add("-Dep.licensing.package=" + licensingPackage);
-        command.add("-Dep.rest.port=" + port);
-        if (step.getAdditionalJvmArgs() != null) {
-            command.add(step.getAdditionalJvmArgs());
-        }
-        return command;
-    }
-    
-    /**
-     * Creates the ep start command for linux (docker)
-     *
-     * @param licensingPackage license package
-     * @return the ep start command
-     * @throws IOException path issues...
-     * 
-     * ["/opt/Export/ep", "-clearPersistedState", "-application", "ep.application.headless", "-nosplash", "-console", "-consoleLog", "-vmargs", "-Dep.linux.config=/opt/.eplinuxregistry", "-Dep.licensing.package=EP_FULL"]
-     */
-    private List<String> createStartCommand_LINUX(String licensingPackage) throws IOException {
-        List<String> command = new ArrayList<>();
-        command.add("/opt/Export/ep"); // fixed based on docker image
-        command.add("-clearPersistedState");
-        command.add("-application");
-        command.add("ep.application.headless");
-        command.add("-nosplash");
-        command.add("-vmargs");
-        command.add("-Dep.runtime.batch=ep");
-        command.add("-Dep.linux.config=/opt/.eplinuxregistry");
-        command.add("-Dep.licensing.package=" + licensingPackage);
-        if (step.getAdditionalJvmArgs() != null) {
-            command.add(step.getAdditionalJvmArgs());
-        }
-        return command;
-    }
+	 * Creates the ep start command for windows
+	 *
+	 * @param epVersion        ep version string
+	 * @param jreDirectory     jreDirectory
+	 * @param licensingPackage license package
+	 * @param port             the port to use
+	 * @return the ep start command
+	 * @throws IOException path issues...
+	 */
+	private List<String> createStartCommand_WINDOWS(String epVersion, String jreDirectory, String licensingPackage,
+			int port) throws IOException {
 
-    private String getJreDir() {
-        File jreParentDir = new File(step.getInstallPath() + "/jres");
-        File[] javaDirs = jreParentDir.listFiles(new FilenameFilter() {
+		File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
+		checkArgument(epExecutable.exists(),
+				"BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
 
-            @Override
-            public boolean accept(File dir, String name) {
-                return name.startsWith("jdk");
+		List<String> command = new ArrayList<>();
+		command.add("\"" + epExecutable.getCanonicalPath() + "\"");
+		command.add("-clearPersistedState");
+		command.add("-application");
+		command.add("ep.application.headless");
+		command.add("-nosplash");
+		command.add("-vm");
+		command.add("\"" + jreDirectory + "\"");
+		command.add("-vmargs");
+		command.add("-Dep.runtime.batch=ep");
+		command.add("-Dosgi.configuration.area.default=@user.home/AppData/Roaming/BTC/ep/" + epVersion + "/" + port
+				+ "/configuration");
+		command.add("-Dosgi.instance.area.default=@user.home/AppData/Roaming/BTC/ep/" + epVersion + "/" + port
+				+ "/workspace");
+		command.add("-Dep.configuration.logpath=AppData/Roaming/BTC/ep/" + epVersion + "/" + port + "/logs");
+		command.add("-Dep.runtime.workdir=BTC/ep/" + epVersion + "/" + port);
+		command.add("-Dep.licensing.package=" + licensingPackage);
+		command.add("-Dep.rest.port=" + port);
+		if (step.getAdditionalJvmArgs() != null) {
+			command.add(step.getAdditionalJvmArgs());
+		}
+		return command;
+	}
 
-            }
-        });
-        checkArgument(javaDirs != null, "Failed to find the Java directory in the EP installation ('" + jreParentDir + "')");
-        checkArgument(javaDirs.length > 0, "Failed to find the Java runtime in " + jreParentDir.getPath());
-        String jreBinPath = javaDirs[0].getPath() + "/bin";
-        return jreBinPath;
-    }
+	/**
+	 * Creates the ep start command for linux (docker)
+	 *
+	 * @param licensingPackage license package
+	 * @return the ep start command
+	 * @throws IOException path issues...
+	 * 
+	 *                     ["/opt/Export/ep", "-clearPersistedState",
+	 *                     "-application", "ep.application.headless", "-nosplash",
+	 *                     "-console", "-consoleLog", "-vmargs",
+	 *                     "-Dep.linux.config=/opt/.eplinuxregistry",
+	 *                     "-Dep.licensing.package=EP_FULL"]
+	 */
+	private List<String> createStartCommand_LINUX(String licensingPackage) throws IOException {
+		List<String> command = new ArrayList<>();
+		command.add("/opt/Export/ep"); // fixed based on docker image
+		command.add("-clearPersistedState");
+		command.add("-application");
+		command.add("ep.application.headless");
+		command.add("-nosplash");
+		command.add("-vmargs");
+		command.add("-Dep.runtime.batch=ep");
+		command.add("-Dep.linux.config=/opt/.eplinuxregistry");
+		command.add("-Dep.licensing.package=" + licensingPackage);
+		if (step.getAdditionalJvmArgs() != null) {
+			command.add(step.getAdditionalJvmArgs());
+		}
+		return command;
+	}
+
+	private String getJreDir() {
+		File jreParentDir = new File(step.getInstallPath() + "/jres");
+		File[] javaDirs = jreParentDir.listFiles(new FilenameFilter() {
+
+			@Override
+			public boolean accept(File dir, String name) {
+				return name.startsWith("jdk");
+
+			}
+		});
+		checkArgument(javaDirs != null,
+				"Failed to find the Java directory in the EP installation ('" + jreParentDir + "')");
+		checkArgument(javaDirs.length > 0, "Failed to find the Java runtime in " + jreParentDir.getPath());
+		String jreBinPath = javaDirs[0].getPath() + "/bin";
+		return jreBinPath;
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcStartupStep extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String installPath;
-    private String licensingPackage = "ET_COMPLETE";
-    private String licenseLocationString;
-    private String additionalJvmArgs;
-    private int timeout = 120;
-    private int port = 29267;
-    private boolean simplyConnect;
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String installPath;
+	private String licensingPackage = "ET_COMPLETE";
+	private String licenseLocationString;
+	private String additionalJvmArgs;
+	private int timeout = 120;
+	private int port = 29267;
+	private boolean simplyConnect;
 
-    @DataBoundConstructor
-    public BtcStartupStep() {
-        super();
-    }
+	@DataBoundConstructor
+	public BtcStartupStep() {
+		super();
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcStartupStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcStartupStepExecution(this, context);
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        /*
-         * This specifies the step name that the the user can use in his Jenkins Pipeline
-         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
-         */
-        @Override
-        public String getFunctionName() {
-            return "btcStart";
-        }
+		/*
+		 * This specifies the step name that the the user can use in his Jenkins
+		 * Pipeline - for example: btcStartup installPath: 'C:/Program
+		 * Files/BTC/ep2.9p0', port: 29267
+		 */
+		@Override
+		public String getFunctionName() {
+			return "btcStart";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC EmbeddedPlatform Start up";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC EmbeddedPlatform Start up";
+		}
+	}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
 
-    public String getInstallPath() {
-        return installPath;
-    }
+	public String getInstallPath() {
+		return installPath;
+	}
 
-    @DataBoundSetter
-    public void setInstallPath(String installPath) {
-        this.installPath = installPath;
-    }
-    
-    public boolean isSimplyConnect() {
+	@DataBoundSetter
+	public void setInstallPath(String installPath) {
+		this.installPath = installPath;
+	}
+
+	public boolean isSimplyConnect() {
 		return simplyConnect;
 	}
-	
+
 	@DataBoundSetter
 	public void setSimplyConnect(boolean simplyConnect) {
 		this.simplyConnect = simplyConnect;
 	}
 
-    public int getPort() {
-        return port;
+	public int getPort() {
+		return port;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setPort(int port) {
-        this.port = port;
+	@DataBoundSetter
+	public void setPort(int port) {
+		this.port = port;
 
-    }
+	}
 
-    public String getLicensingPackage() {
-        return licensingPackage;
+	public String getLicensingPackage() {
+		return licensingPackage;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setLicensingPackage(String licensingPackage) {
-        this.licensingPackage = licensingPackage;
+	@DataBoundSetter
+	public void setLicensingPackage(String licensingPackage) {
+		this.licensingPackage = licensingPackage;
 
-    }
+	}
 
-    public String getAdditionalJvmArgs() {
-        return additionalJvmArgs;
+	public String getAdditionalJvmArgs() {
+		return additionalJvmArgs;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setAdditionalJvmArgs(String additionalJvmArgs) {
-        this.additionalJvmArgs = additionalJvmArgs;
+	@DataBoundSetter
+	public void setAdditionalJvmArgs(String additionalJvmArgs) {
+		this.additionalJvmArgs = additionalJvmArgs;
 
-    }
+	}
 
-    public int getTimeout() {
-        return timeout;
+	public int getTimeout() {
+		return timeout;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setTimeout(int timeout) {
-        this.timeout = timeout;
+	@DataBoundSetter
+	public void setTimeout(int timeout) {
+		this.timeout = timeout;
 
-    }
+	}
 
-    public String getLicenseLocationString() {
-        return licenseLocationString;
+	public String getLicenseLocationString() {
+		return licenseLocationString;
 
-    }
+	}
 
-    @DataBoundSetter
-    public void setLicenseLocationString(String licenseLocationString) {
-        this.licenseLocationString = licenseLocationString;
+	@DataBoundSetter
+	public void setLicenseLocationString(String licenseLocationString) {
+		this.licenseLocationString = licenseLocationString;
 
-    }
+	}
 
-    /*
-     * End of getter/setter section
-     */
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

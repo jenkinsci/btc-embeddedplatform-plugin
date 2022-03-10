@@ -31,125 +31,135 @@ import hudson.model.TaskListener;
  */
 class BtcSimulationStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
-    private BtcSimulationStep step;
+	private static final long serialVersionUID = 1L;
+	private BtcSimulationStep step;
 
-    public BtcSimulationStepExecution(BtcSimulationStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
+	public BtcSimulationStepExecution(BtcSimulationStep step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
-    private ProfilesApi profileApi = new ProfilesApi();
-    private BackToBackTestsApi b2bApi = new BackToBackTestsApi(); // workaround because there's no pure simulation api
-    private ScopesApi scopeApi = new ScopesApi();
+	private ProfilesApi profileApi = new ProfilesApi();
+	private BackToBackTestsApi b2bApi = new BackToBackTestsApi(); // workaround because there's no pure simulation api
+	private ScopesApi scopeApi = new ScopesApi();
 
-    @Override
-    protected void performAction() throws Exception {
-        // Check preconditions
-        try {
-            profileApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
+	@Override
+	protected void performAction() throws Exception {
+		// Check preconditions
+		try {
+			profileApi.getCurrentProfile(); // throws Exception if no profile is active
+		} catch (Exception e) {
+			throw new IllegalStateException("You need an active profile to run tests");
+		}
 
-        // Prepare data
-        List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
-        //TODO: query all Execution configs if nothing is specified (requires EP-2536)
+		// Prepare data
+		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
+		// TODO: query all Execution configs if nothing is specified (requires EP-2536)
 
-        /*
-         * Workaround because there's no pure simulation api
-         */
-        List<String> scopeUids = null;
-        try {
-            scopeUids = scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid()).collect(Collectors.toList());
-        } catch (Exception e) {
-        	log("ERROR. could not get any scopes: " + e.getMessage());
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	error();
-        }
-        for (String executionConfig : executionConfigNames) {
-            BackToBackTestExecutionData data = new BackToBackTestExecutionData();
-            data.refMode(executionConfig);
-            data.compMode(executionConfig);
-            for (String scopeUid : scopeUids) {
-                try {
-                    Job job = b2bApi.executeBackToBackTestOnScope(scopeUid, data);
-                    HttpRequester.waitForCompletion(job.getJobID());
-                } catch (ApiException e) {
-                    // see EP-2568
-                	log("WARNING. failed to execute for scope " + scopeUid + ": " + e.getMessage());
-                	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-                	warning();
-                }
-            }
-        }
-        /*
-         * End of workaround
-         */
+		/*
+		 * Workaround because there's no pure simulation api
+		 */
+		List<String> scopeUids = null;
+		try {
+			scopeUids = scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid())
+					.collect(Collectors.toList());
+		} catch (Exception e) {
+			log("ERROR. could not get any scopes: " + e.getMessage());
+			try {
+				log(((ApiException) e).getResponseBody());
+			} catch (Exception idc) {
+			}
+			;
+			error();
+		}
+		for (String executionConfig : executionConfigNames) {
+			BackToBackTestExecutionData data = new BackToBackTestExecutionData();
+			data.refMode(executionConfig);
+			data.compMode(executionConfig);
+			for (String scopeUid : scopeUids) {
+				try {
+					Job job = b2bApi.executeBackToBackTestOnScope(scopeUid, data);
+					HttpRequester.waitForCompletion(job.getJobID());
+				} catch (ApiException e) {
+					// see EP-2568
+					log("WARNING. failed to execute for scope " + scopeUid + ": " + e.getMessage());
+					try {
+						log(((ApiException) e).getResponseBody());
+					} catch (Exception idc) {
+					}
+					;
+					warning();
+				}
+			}
+		}
+		/*
+		 * End of workaround
+		 */
 
-        // print success message and return response code
-        //log("--> [200] Simulation successfully executed.");
-        response = 200;
-    }
+		// print success message and return response code
+		// log("--> [200] Simulation successfully executed.");
+		response = 200;
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcSimulationStep extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String executionConfigString;
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String executionConfigString;
 
-    @DataBoundConstructor
-    public BtcSimulationStep() {
-        super();
-    }
+	@DataBoundConstructor
+	public BtcSimulationStep() {
+		super();
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcSimulationStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcSimulationStepExecution(this, context);
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        @Override
-        public String getFunctionName() {
-            return "btcSimulation";
-        }
+		@Override
+		public String getFunctionName() {
+			return "btcSimulation";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC Simulation Step";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC Simulation Step";
+		}
+	}
 
-    public String getExecutionConfigString() {
-        return executionConfigString;
-    }
+	public String getExecutionConfigString() {
+		return executionConfigString;
+	}
 
-    @DataBoundSetter
-    public void setExecutionConfigString(String executionConfigString) {
-        this.executionConfigString = executionConfigString;
-    }
+	@DataBoundSetter
+	public void setExecutionConfigString(String executionConfigString) {
+		this.executionConfigString = executionConfigString;
+	}
 
-    /*
-     * End of getter/setter section
-     */
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

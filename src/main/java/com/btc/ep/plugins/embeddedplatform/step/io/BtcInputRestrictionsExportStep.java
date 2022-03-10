@@ -25,140 +25,145 @@ import hudson.model.TaskListener;
  */
 class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    private BtcInputRestrictionsExportStep step;
+	private BtcInputRestrictionsExportStep step;
 
-    /*
-     * This field can be used to indicate what's happening during the execution
-     */
-    private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
+	/*
+	 * This field can be used to indicate what's happening during the execution
+	 */
+	private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
 
-    /**
-     * Constructor
-     *
-     * @param step
-     * @param context
-     */
-    public BtcInputRestrictionsExportStepExecution(BtcInputRestrictionsExportStep step, StepContext context) {
-        super(step, context);
-        this.step = step;
-    }
-    
-    private ProfilesApi profilesApi = new ProfilesApi();
+	/**
+	 * Constructor
+	 *
+	 * @param step
+	 * @param context
+	 */
+	public BtcInputRestrictionsExportStepExecution(BtcInputRestrictionsExportStep step, StepContext context) {
+		super(step, context);
+		this.step = step;
+	}
 
-    /*
-     * Put the desired action here:
-     * - checking preconditions
-     * - access step parameters (field step: step.getFoo())
-     * - calling EP Rest API
-     * - print text to the Jenkins console (field: jenkinsConsole)
-     * - set response code (field: response)
-     */
-    @Override
-    protected void performAction() throws Exception {
-    	// Check preconditions
-        try {
-            profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-        } catch (Exception e) {
-            throw new IllegalStateException("You need an active profile to run tests");
-        }
-        // Get the path
-        String path = toRemoteAbsolutePathString(step.getPath());
+	private ProfilesApi profilesApi = new ProfilesApi();
 
-        InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
-        file.setFilePath(path);
-        try {
-        	inputRestrictionsApi.exportToFile(file);
-        	detailWithLink("Input Restrictions Export File", file.getFilePath());
-        } catch (ApiException e) {
-        	// TODO: convenience workaround EP-2722
-        	log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
-        	try {log(((ApiException)e).getResponseBody());} catch (Exception idc) {};
-        	error();
-        }
-        info("Finished exporting Input Restrictions");
+	/*
+	 * Put the desired action here: - checking preconditions - access step
+	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
+	 * the Jenkins console (field: jenkinsConsole) - set response code (field:
+	 * response)
+	 */
+	@Override
+	protected void performAction() throws Exception {
+		// Check preconditions
+		try {
+			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
+		} catch (Exception e) {
+			throw new IllegalStateException("You need an active profile to run tests");
+		}
+		// Get the path
+		String path = toRemoteAbsolutePathString(step.getPath());
 
-    }
+		InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
+		file.setFilePath(path);
+		try {
+			inputRestrictionsApi.exportToFile(file);
+			detailWithLink("Input Restrictions Export File", file.getFilePath());
+		} catch (ApiException e) {
+			// TODO: convenience workaround EP-2722
+			log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
+			try {
+				log(((ApiException) e).getResponseBody());
+			} catch (Exception idc) {
+			}
+			;
+			error();
+		}
+		info("Finished exporting Input Restrictions");
+
+	}
 
 }
 
 /**
- * This class defines a step for Jenkins Pipeline including its parameters.
- * When the step is called the related StepExecution is triggered (see the class below this one)
+ * This class defines a step for Jenkins Pipeline including its parameters. When
+ * the step is called the related StepExecution is triggered (see the class
+ * below this one)
  */
 public class BtcInputRestrictionsExportStep extends Step implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /*
-     * Each parameter of the step needs to be listed here as a field
-     */
-    private String path;
+	/*
+	 * Each parameter of the step needs to be listed here as a field
+	 */
+	private String path;
 
-    @DataBoundConstructor
-    public BtcInputRestrictionsExportStep() {
-        super();
-    }
+	@DataBoundConstructor
+	public BtcInputRestrictionsExportStep() {
+		super();
+	}
 
-    @Override
-    public StepExecution start(StepContext context) throws Exception {
-        return new BtcInputRestrictionsExportStepExecution(this, context);
-    }
+	@Override
+	public StepExecution start(StepContext context) throws Exception {
+		return new BtcInputRestrictionsExportStepExecution(this, context);
+	}
 
-    /**
-     * Get path.
-     * 
-     * @return the path
-     */
-    public String getPath() {
-        return path;
+	/**
+	 * Get path.
+	 * 
+	 * @return the path
+	 */
+	public String getPath() {
+		return path;
 
-    }
+	}
 
-    /**
-     * Set path.
-     * 
-     * @param path the path to set
-     */
-    @DataBoundSetter
-    public void setPath(String path) {
-        this.path = path;
+	/**
+	 * Set path.
+	 * 
+	 * @param path the path to set
+	 */
+	@DataBoundSetter
+	public void setPath(String path) {
+		this.path = path;
 
-    }
+	}
 
-    @Extension
-    public static class DescriptorImpl extends StepDescriptor {
+	@Extension
+	public static class DescriptorImpl extends StepDescriptor {
 
-        @Override
-        public Set<? extends Class<?>> getRequiredContext() {
-            return Collections.singleton(TaskListener.class);
-        }
+		@Override
+		public Set<? extends Class<?>> getRequiredContext() {
+			return Collections.singleton(TaskListener.class);
+		}
 
-        /*
-         * This specifies the step name that the the user can use in his Jenkins Pipeline
-         * - for example: btcStartup installPath: 'C:/Program Files/BTC/ep2.9p0', port: 29267
-         */
-        @Override
-        public String getFunctionName() {
-            return "btcInputRestrictionsExport";
-        }
+		/*
+		 * This specifies the step name that the the user can use in his Jenkins
+		 * Pipeline - for example: btcStartup installPath: 'C:/Program
+		 * Files/BTC/ep2.9p0', port: 29267
+		 */
+		@Override
+		public String getFunctionName() {
+			return "btcInputRestrictionsExport";
+		}
 
-        /*
-         * Display name (should be somewhat "human readable")
-         */
-        @Override
-        public String getDisplayName() {
-            return "BTC Input Restrictions Export Step";
-        }
-    }
+		/*
+		 * Display name (should be somewhat "human readable")
+		 */
+		@Override
+		public String getDisplayName() {
+			return "BTC Input Restrictions Export Step";
+		}
+	}
 
-    /*
-     * This section contains a getter and setter for each field. The setters need the @DataBoundSetter annotation.
-     */
+	/*
+	 * This section contains a getter and setter for each field. The setters need
+	 * the @DataBoundSetter annotation.
+	 */
 
-    /*
-     * End of getter/setter section
-     */
+	/*
+	 * End of getter/setter section
+	 */
 
 } // end of step class

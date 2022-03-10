@@ -13,19 +13,19 @@ import java.util.Map;
  */
 public class TemplateDataFactory {
 
-    public TemplateData createTemplateData(Path template, Map<String, Object> data, String relativePath) {
-        checkArgument(template != null, "Template path must not be null!");
+	public TemplateData createTemplateData(Path template, Map<String, Object> data, String relativePath) {
+		checkArgument(template != null, "Template path must not be null!");
 
-        String relPath = relativePath;
-        if (relPath == null || relPath.isEmpty()) {
-            File templateFile = template.toFile();
-            relPath = templateFile.getName().replace(".ftl", ".html").replace(".ftlh", ".html");
-        }
+		String relPath = relativePath;
+		if (relPath == null || relPath.isEmpty()) {
+			File templateFile = template.toFile();
+			relPath = templateFile.getName().replace(".ftl", ".html").replace(".ftlh", ".html");
+		}
 
-        return new TemplateData(template, data, relPath);
-    }
+		return new TemplateData(template, data, relPath);
+	}
 
-    public TemplateData createTemplateData(Path template) {
-        return createTemplateData(template, null, null);
-    }
+	public TemplateData createTemplateData(Path template) {
+		return createTemplateData(template, null, null);
+	}
 }
