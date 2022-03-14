@@ -1,16 +1,13 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -25,12 +22,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -39,12 +34,10 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.PreferencesApi;
-import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.RequirementsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Preference;
 import org.openapitools.client.model.Requirement;
-import org.openapitools.client.model.RequirementBasedTestCase;
 import org.openapitools.client.model.RequirementSource;
 import org.openapitools.client.model.Scope;
 import org.slf4j.Logger;
@@ -176,85 +169,9 @@ public class Util {
 		}
 
 		return file;
-//        ClassLoader classLoader = referenceClass.getClassLoader();
-//        return new File(classLoader.getResource(resourcePath).getFile().replace("%20", " ").replace("file:/", ""));
 	}
 
-	public static String getCompilerPreferenceValue(String compilerShortName) {
-		String shortName = compilerShortName.toUpperCase();
-		if (shortName.equals("MINGW64")) {
-			return Constants.PREF_COMPILER_MINGW_VALUE;
-		} else if (shortName.equals("MSSDK71")) {
-			return Constants.PREF_COMPILER_MSSDK71_VALUE;
-		} else if (shortName.startsWith("MSVC")) {
-			return shortName + "(64bit)";
-		}
-		// fallback, this might cause an error when no compiler preference value exists
-		// by this name
-		return compilerShortName;
-	}
-
-	/**
-	 * Tries to set an arbitrary compiler. Returns the compiler preference value
-	 * (e.g. "MinGW64 (64bit)") if succesful or null if no compiler could be set.
-	 *
-	 * @return compiler preference value or null (if unsuccessful)
-	 */
-	public static String setArbitraryCompiler() {
-		Preference preference = new Preference().preferenceName(Constants.PREF_COMPILER_KEY);
-		PreferencesApi prefApi = new PreferencesApi();
-		for (String compilerPrefValue : Constants.getKnownCompilerPreferenceValues()) {
-			try {
-				preference.setPreferenceValue(compilerPrefValue);
-				prefApi.setPreferences(Arrays.asList(preference));
-				return compilerPrefValue;
-			} catch (ApiException ignored) {
-				// all unavailable compilers will throw this exception
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Set a compiler based on a given shortName.
-	 * 
-	 * @throws ApiException if the selected compiler is not available
-	 */
-	public static void setCompiler(String shortName) throws ApiException {
-		Preference preference = new Preference().preferenceName(Constants.PREF_COMPILER_KEY);
-		PreferencesApi prefApi = new PreferencesApi();
-		String compilerPreferenceValue = getCompilerPreferenceValue(shortName);
-		preference.setPreferenceValue(compilerPreferenceValue);
-		prefApi.setPreferences(Arrays.asList(preference));
-	}
-
-	/**
-	 * Sets the specified compiler. Alternatively, tries to set an arbitrary
-	 * fallback compiler.
-	 * 
-	 * @throws RuntimeException if no compiler can be set.
-	 */
-	public static void setCompilerWithFallback(String compilerShortName, PrintStream jenkinsConsole)
-			throws RuntimeException {
-		String arbitraryCompiler = "n.a.";
-		if (compilerShortName != null) {
-			try {
-				Util.setCompiler(compilerShortName);
-			} catch (ApiException e) {
-				arbitraryCompiler = Util.setArbitraryCompiler();
-				if (arbitraryCompiler != null) {
-					jenkinsConsole.println("The selected compiler '" + compilerShortName
-							+ "' could not be set. Falling back to arbitrary compiler '" + arbitraryCompiler + "'.");
-				}
-			}
-		} else {
-			arbitraryCompiler = Util.setArbitraryCompiler();
-		}
-		if (arbitraryCompiler == null) {
-			throw new RuntimeException(
-					"No compiler could not be set. Please verify if a supported compiler is installed (see BTC EmbeddedPlatform Install Guide)");
-		}
-	}
+	
 
 	/**
 	 * Configures the Matlab connection according to the specified version and
@@ -320,85 +237,6 @@ public class Util {
 		return values;
 	}
 
-	/**
-	 * Filters the given testCases by applying the whitelist & blacklist and the
-	 * relevant requirements
-	 * 
-	 * @param rbTestCasesByScope   unfiltered testcases
-	 * @param filteredRequirements the requirements
-	 * @return the test cases that match the filter.
-	 */
-	public static List<RequirementBasedTestCase> filterTestCases(List<RequirementBasedTestCase> testCases,
-			List<Requirement> filteredRequirements, List<String> blacklistedTestCases,
-			List<String> whitelistedTestCases) {
-		Set<String> validTcNames = new HashSet<>();
-		List<RequirementBasedTestCase> filteredTestCases = new ArrayList<>();
-		if (filteredRequirements != null) {
-			for (Requirement req : filteredRequirements) {
-				List<RequirementBasedTestCase> testCasesLinkedToCurrentReq;
-				try {
-					testCasesLinkedToCurrentReq = new RequirementBasedTestCasesApi()
-							.getTestCasesByRequirementId(req.getUid(), false);
-					Set<String> tcNames = testCasesLinkedToCurrentReq.stream().map(tc -> tc.getName())
-							.collect(Collectors.toSet());
-					validTcNames.addAll(tcNames);
-				} catch (ApiException ignored) {
-				}
-
-			}
-		}
-		for (RequirementBasedTestCase tc : testCases) {
-			if (blacklistedTestCases.contains(tc.getName())) {
-				System.out.println("Removing test case " + tc.getName() + " because it's blacklisted.");
-				continue;
-			}
-			if (!whitelistedTestCases.isEmpty() && !whitelistedTestCases.contains(tc.getName())) {
-				System.out.println("Removing test case " + tc.getName() + " because it's not whitelisted.");
-				continue;
-			}
-			if (filteredRequirements != null && !validTcNames.contains(tc.getName())) {
-				System.out.println("Removing test case " + tc.getName()
-						+ " because it's not linked to any of the relevant requirements.");
-				continue;
-			}
-			filteredTestCases.add(tc);
-		}
-		return filteredTestCases;
-	}
-
-	/**
-	 * Filters the given requirements by applying the whitelist & blacklist.
-	 *
-	 * @param requirements unfiltered requirements
-	 * @return the requirements that match the filter.
-	 */
-	public static List<Requirement> filterRequirements(List<Requirement> requirements,
-			List<String> blacklistedRequirements, List<String> whitelistedRequirements) {
-		List<Requirement> filteredRequirements = new ArrayList<>();
-		for (Requirement req : requirements) {
-			if (blacklistedRequirements.contains(req.getName())) {
-				continue;
-			}
-			if (whitelistedRequirements.isEmpty() || whitelistedRequirements.contains(req.getName())) {
-				filteredRequirements.add(req);
-			}
-		}
-		return filteredRequirements;
-	}
-
-	/**
-	 * Returns true, if the scopeName matches the filter.
-	 *
-	 * @param scopeName the scope name
-	 * @return true, if the scopeName matches the filter
-	 */
-	public static boolean matchesScopeFilter(String scopeName, List<String> blacklistedScopes,
-			List<String> whitelistedScopes) {
-		if (blacklistedScopes.contains(scopeName)) {
-			return false;
-		}
-		return whitelistedScopes.isEmpty() || whitelistedScopes.contains(scopeName);
-	}
 
 	/**
 	 * Returns the toplevel scope.
@@ -533,47 +371,18 @@ public class Util {
 	}
 
 	/**
-	 * Returns the content of the file as a String.
+	 * Returns the content of the file as a String expecting utf8 encoded files.
 	 *
 	 * @param path path to the file
 	 * @return the content of the file as a String or an empty String if the file is
 	 *         not available.
+	 * @throws UnsupportedEncodingException 
 	 */
-	public static String readStringFromFile(String path) {
-		StringBuilder sb = new StringBuilder();
-		// Read file line by line using uft-8 encoding
-		try (InputStreamReader isr = new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8);
-				BufferedReader reader = new BufferedReader(isr);) {
-			while (reader.ready()) {
-				sb.append(reader.readLine()).append("\n");
-			}
-			isr.close();
-			reader.close();
-		} catch (IOException e) {
-			logger.error(e.getMessage(), e);
-		}
-		return sb.toString();
+	public static String readStringFromStream(InputStream inputStream) throws UnsupportedEncodingException {
+		String content = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8.toString())).lines().collect(Collectors.joining("\n"));
+		return content;
 	}
 
-	/**
-	 * Writes the given String to the specified file. Existing files will be
-	 * overwritten.
-	 *
-	 * @param path    the path to the file
-	 * @param content the content to write
-	 */
-	public static void writeStringToFile(String path, String content) {
-		// write file using utf-8 encoding
-		try (OutputStreamWriter osr = new OutputStreamWriter(new FileOutputStream(path), StandardCharsets.UTF_8);
-				BufferedWriter writer = new BufferedWriter(osr)) {
-			writer.write(content);
-			writer.close();
-		} catch (IOException e) {
-			logger.error(e.getMessage(), e);
-			e.printStackTrace();
-		}
-	}
-	
 	/**
 	 * Extracts parts from a space separated string while ignoring quoted spaces.
 	 * This input:  "C:/Program Files/BTC something else 'another thing'

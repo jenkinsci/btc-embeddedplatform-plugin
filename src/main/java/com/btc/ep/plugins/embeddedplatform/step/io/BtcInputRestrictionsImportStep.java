@@ -11,7 +11,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -28,10 +27,6 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
 
 	private BtcInputRestrictionsImportStep step;
 
-	/*
-	 * This field can be used to indicate what's happening during the execution
-	 */
-	private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
 
 	/**
 	 * Constructor
@@ -44,22 +39,10 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
 		this.step = step;
 	}
 
-	private ProfilesApi profilesApi = new ProfilesApi();
+	private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
 
-	/*
-	 * Put the desired action here: - checking preconditions - access step
-	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
-	 * the Jenkins console (field: jenkinsConsole) - set response code (field:
-	 * response)
-	 */
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to run tests");
-		}
 		// Get the path
 		String xmlPath = toRemoteAbsolutePathString(step.getPath());
 

@@ -20,8 +20,8 @@ import org.openapitools.client.model.UpdateModelPath;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
+import com.btc.ep.plugins.embeddedplatform.util.CompilerHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -89,7 +89,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		 */
 		String compilerShortName = step.getCompilerShortName();
 		if (compilerShortName != null) {
-			Util.setCompiler(compilerShortName);
+			CompilerHelper.setCompiler(compilerShortName);
 		}
 		/*
 		 * Update architecture if required

@@ -20,6 +20,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
 
+import com.btc.ep.plugins.embeddedplatform.exception.ErrorOccurredException;
 import com.btc.ep.plugins.embeddedplatform.model.TestConfig;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.BasicStep;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStep;
@@ -40,7 +41,6 @@ import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsImportSte
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
-import com.btc.ep.plugins.embeddedplatform.util.ErrorOccurredException;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;

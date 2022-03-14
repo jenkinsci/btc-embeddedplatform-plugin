@@ -1,9 +1,5 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -19,7 +15,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.Configuration;
 
 import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
@@ -30,8 +25,10 @@ import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.ProcessHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
+import com.btc.ep.plugins.embeddedplatform.util.WindowsHelper;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -52,36 +49,32 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 
 	@Override
 	protected void performAction() throws Exception {
-		// don't add this step to the report
+		// don't add this step to the report...
 		noReporting();
+		// ...but prepare reporting for successive steps
+		Store.startDate = new Date();
+		initializeReporting();
 
 		// Prepare http connection
 		ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
 		Configuration.setDefaultApiClient(apiClient);
 		HttpRequester.port = step.getPort();
-		Store.startDate = new Date();
+		
+		// Connect or startup EP
 		boolean connected = HttpRequester.checkConnection("/test", 200);
 		if (connected) {
 			response = 201;
 		} else {
 			// start command call can be skipped if we only connect to a starting instance
-			// (e.g. in docker)
 			if (!step.isSimplyConnect()) {
 				// prepare ep start command
 				List<String> command = createStartCommand();
-
 				// start process and save it for future use (e.g. to destroy it)
 				try {
 					log("Starting BTC EmbeddedPlatform: " + String.join(" ", command));
-					Store.epProcess = spawnManagedProcess(command);
+					Store.epProcess = ProcessHelper.spawnManagedProcess(command, getContext());
 				} catch (Exception e) {
-					log("ERROR. Failed to start BTC! " + e.getMessage());
-					try {
-						log(((ApiException) e).getResponseBody());
-					} catch (Exception idc) {
-					}
-					;
-					error();
+					error("Failed to start BTC EmbeddedPlatform.", e);
 					Store.epProcess.kill();
 					return;
 				}
@@ -93,13 +86,12 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 				log("Successfully connected to BTC EmbeddedPlatform " + epVersion + " on port " + step.getPort());
 				response = 200;
 			} else {
-				log("Connection timed out after " + step.getTimeout() + " seconds.");
+				error("Connection timed out after " + step.getTimeout() + " seconds.");
 				failed();
 				response = 400;
 				return;
 			}
 		}
-		initializeReporting();
 	}
 
 	/**
@@ -132,13 +124,17 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 			return createStartCommand_LINUX(licensingPackage);
 		} else {
 			// prepare data for process call
-			epVersion = new File(step.getInstallPath()).getName().trim().substring(2); // D:/Tools/BTC/ep2.9p0 -> 2.9p0
-			String jreDirectory = getJreDir();
+			String epInstallPath = getEpInstallPath().replaceAll("\\\\", "/");
+			epVersion = epInstallPath.substring(epInstallPath.lastIndexOf("/") + 1).substring(2);
+			return createStartCommand_WINDOWS(epVersion, epInstallPath, licensingPackage, port);
+		}
+	}
 
-			// Check preconditions
-			checkArgument(step.getInstallPath() != null && new File(step.getInstallPath()).exists(),
-					"Provided installPath '" + step.getInstallPath() + "' cannot be resolved.");
-			return createStartCommand_WINDOWS(epVersion, jreDirectory, licensingPackage, port);
+	private String getEpInstallPath() throws Exception {
+		if (step.getInstallPath() != null) {
+			return step.getInstallPath();
+		} else {
+			return WindowsHelper.getEpInstallPathFromRegistry(getContext());
 		}
 	}
 
@@ -146,27 +142,21 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 	 * Creates the ep start command for windows
 	 *
 	 * @param epVersion        ep version string
-	 * @param jreDirectory     jreDirectory
+	 * @param epInstallPath    epInstallPath
 	 * @param licensingPackage license package
 	 * @param port             the port to use
 	 * @return the ep start command
 	 * @throws IOException path issues...
 	 */
-	private List<String> createStartCommand_WINDOWS(String epVersion, String jreDirectory, String licensingPackage,
+	private List<String> createStartCommand_WINDOWS(String epVersion, String epInstallPath, String licensingPackage,
 			int port) throws IOException {
-
-		File epExecutable = new File(step.getInstallPath() + "/rcp/ep.exe");
-		checkArgument(epExecutable.exists(),
-				"BTC EmbeddedPlatform executable cannot be found in " + epExecutable.getCanonicalPath());
-
+		String epExecutable = epInstallPath + "/rcp/ep.exe";
 		List<String> command = new ArrayList<>();
-		command.add("\"" + epExecutable.getCanonicalPath() + "\"");
+		command.add("\"" + epExecutable + "\"");
 		command.add("-clearPersistedState");
 		command.add("-application");
 		command.add("ep.application.headless");
 		command.add("-nosplash");
-		command.add("-vm");
-		command.add("\"" + jreDirectory + "\"");
 		command.add("-vmargs");
 		command.add("-Dep.runtime.batch=ep");
 		command.add("-Dosgi.configuration.area.default=@user.home/AppData/Roaming/BTC/ep/" + epVersion + "/" + port
@@ -190,15 +180,15 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 	 * @return the ep start command
 	 * @throws IOException path issues...
 	 * 
-	 *                     ["/opt/Export/ep", "-clearPersistedState",
-	 *                     "-application", "ep.application.headless", "-nosplash",
-	 *                     "-console", "-consoleLog", "-vmargs",
-	 *                     "-Dep.linux.config=/opt/.eplinuxregistry",
-	 *                     "-Dep.licensing.package=EP_FULL"]
+	 *	["/opt/Export/ep", "-clearPersistedState",
+	 *	"-application", "ep.application.headless", "-nosplash",
+	 *	"-console", "-consoleLog", "-vmargs",
+	 * 	"-Dep.linux.config=/opt/.eplinuxregistry",
+	 *  "-Dep.licensing.package=EP_FULL"]
 	 */
 	private List<String> createStartCommand_LINUX(String licensingPackage) throws IOException {
 		List<String> command = new ArrayList<>();
-		command.add("/opt/Export/ep"); // fixed based on docker image
+		command.add("/opt/Export/ep"); // path to ep is fixed based on docker image
 		command.add("-clearPersistedState");
 		command.add("-application");
 		command.add("ep.application.headless");
@@ -211,23 +201,6 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 			command.add(step.getAdditionalJvmArgs());
 		}
 		return command;
-	}
-
-	private String getJreDir() {
-		File jreParentDir = new File(step.getInstallPath() + "/jres");
-		File[] javaDirs = jreParentDir.listFiles(new FilenameFilter() {
-
-			@Override
-			public boolean accept(File dir, String name) {
-				return name.startsWith("jdk");
-
-			}
-		});
-		checkArgument(javaDirs != null,
-				"Failed to find the Java directory in the EP installation ('" + jreParentDir + "')");
-		checkArgument(javaDirs.length > 0, "Failed to find the Java runtime in " + jreParentDir.getPath());
-		String jreBinPath = javaDirs[0].getPath() + "/bin";
-		return jreBinPath;
 	}
 
 }

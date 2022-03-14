@@ -26,13 +26,7 @@ import hudson.model.TaskListener;
 class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
-
 	private BtcToleranceImportStep step;
-
-	/*
-	 * This field can be used to indicate what's happening during the execution
-	 */
-	private TolerancesApi tolerancesApi = new TolerancesApi();
 
 	/**
 	 * Constructor
@@ -45,12 +39,8 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
 		this.step = step;
 	}
 
-	/*
-	 * Put the desired action here: - checking preconditions - access step
-	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
-	 * the Jenkins console (field: jenkinsConsole) - set response code (field:
-	 * response)
-	 */
+	private TolerancesApi tolerancesApi = new TolerancesApi();
+
 	@Override
 	protected void performAction() throws Exception {
 

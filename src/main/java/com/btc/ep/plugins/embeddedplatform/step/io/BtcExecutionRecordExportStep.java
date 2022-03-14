@@ -14,7 +14,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionRecordsApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestExecutionRecordExportInfo;
 
@@ -39,16 +38,9 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 	}
 
 	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
-	private ProfilesApi profilesApi = new ProfilesApi();
 
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to run tests");
-		}
 		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
 		List<String> uids = null;
 		try {

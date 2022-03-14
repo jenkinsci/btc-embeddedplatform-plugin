@@ -1,7 +1,5 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +35,7 @@ import org.openapitools.client.model.Scope;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
+import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -62,14 +61,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 	@Override
 	protected void performAction() throws Exception {
 		// Preparation
-		List<Scope> scopesList = null;
-		try {
-			scopesList = scopeApi.getScopesByQuery1(null, true);
-			checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-		} catch (Exception e) {
-			warning("Failed to retrieve scopes for the vector generation.", e);
-			return;
-		}
+		Scope toplevelScope = Util.getToplevelScope();
 		
 		// Vector Generation
 		try {
@@ -81,7 +73,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 		}
 
 		// Reporting
-		reporting(scopesList.get(0));
+		reporting(toplevelScope);
 	}
 
 	private void reporting(Scope toplevel) throws ApiException {

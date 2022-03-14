@@ -15,7 +15,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.FoldersApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.ImportResult;
@@ -40,7 +39,6 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 	private BtcVectorImportStep step;
 	private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
 
-	private ProfilesApi profilesApi = new ProfilesApi();
 	private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
 	private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
 	private FoldersApi foldersApi = new FoldersApi();
@@ -52,14 +50,6 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			response = 500;
-			result("ERROR");
-			throw new IllegalStateException("You need an active profile for the current command");
-		}
 		// TODO: EP-2735
 		String fileSuffix = deriveSuffix(step.getVectorFormat());
 		// vectorFiles will be an array of files or null

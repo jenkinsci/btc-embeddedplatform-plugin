@@ -20,8 +20,8 @@ import org.openapitools.client.model.Job;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
+import com.btc.ep.plugins.embeddedplatform.util.CompilerHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -59,7 +59,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * Create the profile based on the code model
 		 */
-		Util.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
+		CompilerHelper.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
 		CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
 		Job job = null;
 		String msg;
@@ -75,7 +75,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 			info(msg);
 			log(msg);
 		} catch (Exception e) {
-			error("Failed to import C-Code architecture. ", e);
+			error("Failed to import C-Code architecture.", e);
 			return;
 		}
 	}

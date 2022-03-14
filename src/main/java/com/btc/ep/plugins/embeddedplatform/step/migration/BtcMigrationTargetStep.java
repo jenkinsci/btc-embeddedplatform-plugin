@@ -77,22 +77,7 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 	 */
 	@Override
 	protected void performAction() throws Exception {
-		try {
-			initializeReporting();
-		} catch (Exception e) {
-			log("WARNING reporting may not work for this step: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
-		}
-
-		// TODO: Check interfaces on relevant scopes
-		// ------> detect if outputs are removed
-		// ------> (1) before/after arch update or
-		// ------> (2) if profile created from scratch: messages during ER import
+		initializeReporting();
 
 		/*
 		 * 0. Startup
@@ -254,11 +239,12 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 	}
 
 	/**
-	 * Loads the source-part of the migration report so it can be continued. *
+	 * Loads the source-part of the migration report so it can be continued. 
 	 */
-	private void initializeReporting() {
+	private void initializeReporting() throws Exception {
 		Store.globalSuffix = "_target"; // set prefix for profile names
-		String reportDataJson = Util.readStringFromFile(Store.exportPath + "/reportData.json");
+		FilePath reportDataFile = getContext().get(FilePath.class).child(Store.exportPath + "/reportData.json");
+		String reportDataJson = Util.readStringFromStream(reportDataFile.read());
 		SerializableReportingContainer reportingContainer = new Gson().fromJson(reportDataJson,
 				SerializableReportingContainer.class);
 		Store.reportData = new JenkinsAutomationReport();

@@ -15,13 +15,11 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ExecutionRecordsApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ExecutionRecordImportInfo;
 import org.openapitools.client.model.Job;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
-import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -41,17 +39,10 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
 	}
 
 	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
-	private ProfilesApi profilesApi = new ProfilesApi();
 	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
 
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to run tests");
-		}
 		FilePath exportDir = resolveInAgentWorkspace(step.getDir());
 
 		List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));

@@ -39,6 +39,7 @@ import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.FilterHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
@@ -252,7 +253,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 		if (!blacklistedRequirements.isEmpty() || !whitelistedRequirements.isEmpty()) {
 			List<Requirement> allRequirements = Util.getAllRequirements();
 			if (!allRequirements.isEmpty()) {
-				filteredRequirements = Util.filterRequirements(allRequirements, blacklistedRequirements,
+				filteredRequirements = FilterHelper.filterRequirements(allRequirements, blacklistedRequirements,
 						whitelistedRequirements);
 			}
 		}
@@ -261,11 +262,11 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 
 		List<RequirementBasedTestCase> filteredTestCases = new ArrayList<>();
 		for (Scope scope : scopes) {
-			if (Util.matchesScopeFilter(scope.getName(), blacklistedScopes, whitelistedScopes)) {
+			if (FilterHelper.matchesScopeFilter(scope.getName(), blacklistedScopes, whitelistedScopes)) {
 				try {
 					List<RequirementBasedTestCase> testCasesByScope = testCasesApi
 							.getRBTestCasesByScope(scope.getUid());
-					filteredTestCases = Util.filterTestCases(testCasesByScope, filteredRequirements,
+					filteredTestCases = FilterHelper.filterTestCases(testCasesByScope, filteredRequirements,
 							blacklistedTestCases, whitelistedTestCases);
 				} catch (ApiException e) {
 					// TODO: can be removed once the GET request return an empty list instead of an

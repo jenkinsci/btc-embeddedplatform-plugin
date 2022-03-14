@@ -72,7 +72,9 @@ public class HttpRequester {
 	}
 
 	public static GenericResponse post(String route, String json) throws IOException {
-		CloseableHttpClient httpClient = HttpClients.createDefault();
+		if (httpClient == null) {
+			httpClient = createHttpClient();
+		}
 		HttpPost post = new HttpPost(getBasePath() + route);
 		post.setHeader("Content-Type", "application/json");
 		post.setHeader("Accept", "application/json");

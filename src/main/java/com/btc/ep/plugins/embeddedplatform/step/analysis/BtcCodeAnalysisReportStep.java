@@ -4,7 +4,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -16,13 +15,13 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
 import org.openapitools.client.api.CodeAnalysisReportsRbtApi;
 import org.openapitools.client.api.ReportsApi;
-import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
+import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -36,7 +35,6 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 	private BtcCodeAnalysisReportStep step;
 	private CodeAnalysisReportsRbtApi rbtReportApi = new CodeAnalysisReportsRbtApi();
 	private CodeAnalysisReportsB2BApi b2bReportApi = new CodeAnalysisReportsB2BApi();
-	private ScopesApi scopeApi = new ScopesApi();
 	private ReportsApi reportApi = new ReportsApi();
 	
 	public BtcCodeAnalysisReportStepExecution(BtcCodeAnalysisReportStep step, StepContext context) {
@@ -47,19 +45,11 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 	@Override
 	protected void performAction() throws Exception {
 		// Check preconditions
-		List<Scope> scopes = null;
-		try {
-			scopes = scopeApi.getScopesByQuery1(null, true);
-		} catch (Exception e) {
-			error("Failed to get scopes.", e);
-			return;
-		}
-		checkArgument(!scopes.isEmpty(), "ERROR: no top-level scope in selected profile");
-		Scope toplevel = scopes.get(0);
 		String useCase = step.getUseCase();
 		checkArgument("B2B".equals(useCase) || "RBT".equals(useCase),
 				"ERROR: valid useCase for CodeAnalysisReport is RBT or B2B, not " + useCase);
 
+		Scope toplevel = Util.getToplevelScope();
 		Report report = null;
 		try {
 			log("Creating Code Analysis Report (%s)...", useCase);
@@ -73,7 +63,7 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 			info.setExportPath(Store.exportPath);
 			try {
 				reportApi.exportReport(report.getUid(), info);
-				String msg = "--> Exported the " + useCase + " coverage report.";
+				String msg = "Exported the " + useCase + " coverage report.";
 				detailWithLink("Code Coverage Report", step.getReportName() + ".html");
 				info(msg);
 				log(msg);

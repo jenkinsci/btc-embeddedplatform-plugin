@@ -12,7 +12,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -45,23 +44,8 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
 		this.step = step;
 	}
 
-	private ProfilesApi profilesApi = new ProfilesApi();
-
-	/*
-	 * Put the desired action here: - checking preconditions - access step
-	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
-	 * the Jenkins console (field: jenkinsConsole) - set response code (field:
-	 * response)
-	 */
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			throw new IllegalStateException("You need an active profile to run tests");
-		}
-		// Get the path
 		String path = toRemoteAbsolutePathString(step.getPath());
 
 		InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();

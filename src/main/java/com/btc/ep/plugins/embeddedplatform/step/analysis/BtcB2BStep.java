@@ -32,6 +32,7 @@ import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
+import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -59,15 +60,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	@Override
 	protected void performAction() throws Exception {
 		// Check preconditions, retrieve scopes
-		Scope toplevelScope;
-		try {
-			List<Scope> scopes = scopesApi.getScopesByQuery1(null, true);
-			checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-			toplevelScope = scopes.get(0);
-		} catch (Exception e) {
-			error("Failed to retrieve scopes.", e);
-			return;
-		}
+		Scope toplevelScope = Util.getToplevelScope();
 
 		// Prepare data for B2B test and execute B2B test
 		BackToBackTestExecutionData data = prepareInfoObject();

@@ -1,4 +1,4 @@
-package com.btc.ep.plugins.embeddedplatform.util;
+package com.btc.ep.plugins.embeddedplatform.exception;
 
 public class ErrorOccurredException extends RuntimeException {
 

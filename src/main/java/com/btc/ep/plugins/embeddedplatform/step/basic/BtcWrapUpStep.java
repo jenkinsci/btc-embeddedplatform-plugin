@@ -15,7 +15,6 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.Configuration;
 import org.openapitools.client.api.ApplicationApi;
 import org.openapitools.client.api.ProfilesApi;
@@ -56,8 +55,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 		try {
 			assembleProjectReport();
 		} catch (Exception e) {
-			info("Failed to generate project report. See Log file for more details: " + e.getMessage());
-			e.printStackTrace();
+			warning("Failed to create the project report.", e);
 		}
 
 		/*
@@ -76,13 +74,8 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 			try {
 				applicationApi.exitApplication(true);
 			} catch (Exception e) { // doesn't really matter what we do, as long as we dont crash
-				log("Warning: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
 			}
+			// hard kill to be on the save side
 			if (Store.epProcess != null && Store.epProcess.isAlive()) {
 				// ... und bist du nicht willig, so brauch ich Gewalt!
 				Store.epProcess.kill();

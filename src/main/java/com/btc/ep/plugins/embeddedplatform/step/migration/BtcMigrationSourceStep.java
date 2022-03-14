@@ -1,6 +1,8 @@
 package com.btc.ep.plugins.embeddedplatform.step.migration;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -185,8 +187,10 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 	 * file.
 	 *
 	 * @throws ApiException
+	 * @throws InterruptedException 
+	 * @throws IOException 
 	 */
-	private void saveProfileAndReportData(String profilePath) throws ApiException {
+	private void saveProfileAndReportData(String profilePath) throws ApiException, IOException, InterruptedException {
 		// Save Profile
 		ProfilesApi profileApi = new ProfilesApi();
 		profileApi.saveProfile(new ProfilePath().path(profilePath));
@@ -213,7 +217,7 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		json.getSections().add(Store.metaInfoSection);
 
 		// dump to file (so it can be reused by the MigrationTarget step
-		Util.writeStringToFile(Store.exportPath + "/reportData.json", new Gson().toJson(json));
+		getContext().get(FilePath.class).child(Store.exportPath + "/reportData.json").write(new Gson().toJson(json), StandardCharsets.UTF_8.toString());
 	}
 
 	/**

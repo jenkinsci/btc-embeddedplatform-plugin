@@ -2,7 +2,6 @@ package com.btc.ep.plugins.embeddedplatform.step;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -10,9 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.TimerTask;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -33,8 +30,6 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 import htmlpublisher.HtmlPublisher;
 import htmlpublisher.HtmlPublisherTarget;
 import hudson.FilePath;
-import hudson.Launcher;
-import hudson.Proc;
 import hudson.model.Computer;
 import hudson.model.Result;
 import hudson.model.Run;
@@ -42,7 +37,6 @@ import hudson.model.TaskListener;
 
 public abstract class AbstractBtcStepExecution extends StepExecution {
 
-	private static final String JENKINS_NODE_COOKIE = "JENKINS_NODE_COOKIE";
 	private static final long serialVersionUID = 1L;
 	protected Status status = Status.OK;
 	protected PrintStream jenkinsConsole;
@@ -81,19 +75,11 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 
 					getContext().onSuccess(response); // return to context
 				} catch (Exception e) {
-					if (e instanceof ApiException && jenkinsConsole != null) {
-						String responseBody = ((ApiException) e).getResponseBody();
-						String msg = "Error during call of " + functionName + "(): " + responseBody;
-						log(msg);
-						info(msg);
-					} else {
-						info("Error: " + e.getMessage());
-						e.printStackTrace(jenkinsConsole); // print stack trace to Jenkins Console
-					}
-					error();
+					error("Error during call of " + functionName + "():", e);
 					getContext().onFailure(e); // return to context
 				} finally {
 					if (!reportingDisabled) {
+						//FIXME: This is not called for some reason!
 						addStepToReportData(t1);
 					}
 				}
@@ -263,12 +249,17 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	 * jenkinsConsole
 	 */
 	public AbstractBtcStepExecution error(String message, Throwable t) {
-		log("Error: " + message);
+		String reportingInfo = message;
 		if (t != null) {
 			// print response if available
 			if (t instanceof ApiException) {
-				log(((ApiException) t).getResponseBody());
+				String responseBody = ((ApiException) t).getResponseBody();
+				reportingInfo += String.format(" (%s)", responseBody);
 			}
+		}
+		log("Error: " + reportingInfo);
+		info(reportingInfo);
+		if (t != null) {
 			// print full stack trace
 			t.printStackTrace(jenkinsConsole);
 		}
@@ -281,9 +272,10 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	public AbstractBtcStepExecution warning(String message) {
 		return warning(message, null);
 	}
-	
+
 	/**
-	 * Sets the status to warning, logs the given message and prints the stack trace.
+	 * Sets the status to warning, logs the given message and prints the stack
+	 * trace.
 	 */
 	public AbstractBtcStepExecution warning(String message, Throwable t) {
 		log("Warning: " + message);
@@ -297,7 +289,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 		}
 		return warning();
 	}
-	
+
 	/**
 	 * Sets the status to warning
 	 */
@@ -338,35 +330,6 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	 */
 	protected void log(String message, Object... formatArgs) {
 		log(String.format(message, formatArgs));
-	}
-
-	/**
-	 * Launches a process with the given command using hudson.Launcher.class, starts
-	 * it and returns the process. The process inherits the environment from Jenkins
-	 * which allows Jenkins to kill processes when the run finishes/aborts/exits
-	 * prematurely, etc.
-	 * 
-	 * @param command the command to run
-	 * @return the process object
-	 * @throws IOException
-	 * @throws InterruptedException
-	 */
-	protected Proc spawnManagedProcess(List<String> command) throws IOException, InterruptedException {
-		// Use magical "get(...)" command from context to get the Launcher
-		Launcher launcher = getContext().get(Launcher.class);
-
-		// Use magical "get(...)" command from context to get the set of EnvVars that
-		// contains the required cookie
-		// This cookie is some sort of hash that jenkins needs to be able to kill a
-		// spawned process
-		Map<String, String> taskHandle = new HashMap<>();
-		String cookie = getContext().get(hudson.EnvVars.class).get(JENKINS_NODE_COOKIE);
-		taskHandle.put(JENKINS_NODE_COOKIE, cookie);
-
-		// Start external process with the identifying cookie and return the process
-		// object
-		Proc process = launcher.launch().cmds(command).envs(taskHandle).quiet(true).start();
-		return process;
 	}
 
 	/**
@@ -417,15 +380,20 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	/**
 	 * Returns the file or directory name.
 	 * 
-	 * @param path must not be null
+	 * @param path            must not be null
+	 * @param removeExtension only returns the name, removing anything after the
+	 *                        last . (incl. the dot)
 	 * @return the file or directory name
 	 */
-	protected String getFileName(String path) {
+	protected String getFileName(String path, boolean removeExtension) {
 		String[] parts = path.replace("\\", "/").split("/");
 		String name = parts[parts.length - 1];
+		if (removeExtension && name.contains(".")) {
+			name = name.substring(0, name.lastIndexOf(".") - 1);
+		}
 		return name;
 	}
-	
+
 	/**
 	 * Returns a resolved profilePath that uses the give profilePath (may be
 	 * relative) if not null. Otherwise it derives the path from the model path or,
@@ -463,7 +431,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 		HtmlPublisher.publishReports(getContext().get(Run.class), getContext().get(FilePath.class),
 				getContext().get(TaskListener.class), Collections.singletonList(target), HtmlPublisher.class);
 	}
-	
+
 	/**
 	 * Configures the ML connection and runs the startup script (if specified)
 	 * 
@@ -471,26 +439,35 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	 */
 	protected void prepareMatlab(MatlabAwareStep step) throws Exception {
 		String matlabVersionOrEmptyString = step.getMatlabVersion() == null ? "" : step.getMatlabVersion();
-		log("Preparing Matlab " + matlabVersionOrEmptyString + "...");
+		// this is only needed if we have a startup script or the user specified a Matlab version
+		if (step.getMatlabVersion() != null || step.getStartupScriptPath() != null) {
+			log("Preparing Matlab " + matlabVersionOrEmptyString + "...");
+			Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+			runMatlabStartupScript(step);
+			log("Successfully prepared Matlab " + matlabVersionOrEmptyString);
+		}
 		
-		Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+	}
+
+	/*
+	 * Runs the matlab startup script.
+	 * 
+	 * Input matches this pattern: <scriptPath> <arg0> <arg1> ... <argN>. Script
+	 * path can be absolute or relative to the workspace
+	 * 
+	 * "myscript.m" - "folder/myscript.m" - "E:/folder/myscript.m" -
+	 * "/home/thabok/myscript.m"
+	 * 
+	 * and possibly with args
+	 * 
+	 * - "myscript.m arg0 arg1 arg2"
+	 */
+	private void runMatlabStartupScript(MatlabAwareStep step) throws Exception, ApiException {
 		MatlabScriptExecutionApi mlApi = new MatlabScriptExecutionApi();
 		MatlabScriptInput input = new MatlabScriptInput();
-
-		/*
-		 * Input matches this pattern: <scriptPath> <arg0> <arg1> ... <argN>.
-		 * Script path can be absolute or relative to the workspace
-		 * 
-		 * "myscript.m" - "folder/myscript.m" - "E:/folder/myscript.m" -
-		 * "/home/thabok/myscript.m"
-		 * 
-		 * and possibly with args
-		 * 
-		 * - "myscript.m arg0 arg1 arg2"
-		 */
 		String startupScriptPath = step.getStartupScriptPath();
 		if (startupScriptPath != null) {
-			String scriptDirectory ;
+			String scriptDirectory;
 			String scriptName;
 			List<String> parts = Util.extractSpaceSeparatedParts(startupScriptPath);
 			String scriptPath = parts.remove(0);
@@ -498,26 +475,25 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 			List<Object> inArgs = new ArrayList<>(parts);
 			// we need to resolve an absolute path to use in Matlab
 			if (isPathAbsolute(scriptPath)) {
-				scriptName = getFileName(scriptPath);
+				scriptName = getFileName(scriptPath, true);
 				scriptDirectory = scriptPath.replace(scriptName, "");
 			} else {
 				FilePath resolvedScriptPath = resolveInAgentWorkspace(scriptPath);
-				scriptName = resolvedScriptPath.getName();
+				scriptName = resolvedScriptPath.getBaseName(); // baseName: file name w/o extension
 				scriptDirectory = resolvedScriptPath.getParent().getRemote();
 			}
 
 			// add script parent directory to ml path
 			input = new MatlabScriptInput().scriptName("addpath").inArgs(Arrays.asList(scriptDirectory)).outArgs(0);
 			mlApi.executeMatlabScriptShort(input); // short -> finishes instantly
-			
+
 			// call script: long -> need to query result
 			input = new MatlabScriptInput().scriptName(scriptName).inArgs(inArgs).outArgs(0);
 			Job job = mlApi.executeMatlabScriptLong(input);
 			HttpRequester.waitForCompletion(job.getJobID());
 		}
-		log("Successfully prepared Matlab " + matlabVersionOrEmptyString);
 	}
-	
+
 	/**
 	 * Implemented by the individual btc step executors.
 	 * 

@@ -16,13 +16,11 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.Architecture;
 import org.openapitools.client.model.B2BStimuliVector;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.Profile;
 import org.openapitools.client.model.RestStimuliVectorExportInfo;
 import org.openapitools.client.model.RestVectorExportDetails;
 
@@ -47,14 +45,8 @@ import hudson.model.TaskListener;
 class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
-
 	private BtcVectorExportStep step;
 
-	/*
-	 * This field can be used to indicate what's happening during the execution
-	 */
-	private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
-	private RequirementBasedTestCasesApi rbTestCaseApi = new RequirementBasedTestCasesApi();
 
 	/**
 	 * Constructor
@@ -67,27 +59,13 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 		this.step = step;
 	}
 
-	/*
-	 * Put the desired action here: - checking preconditions - access step
-	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
-	 * the Jenkins console (field: jenkinsConsole) - set response code (field:
-	 * response)
-	 */
-	private ProfilesApi profilesApi = new ProfilesApi();
+	private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
+	private RequirementBasedTestCasesApi rbTestCaseApi = new RequirementBasedTestCasesApi();
 	private StimuliVectorsApi vectorApi = new StimuliVectorsApi();
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	@Override
 	protected void performAction() throws Exception {
-		// Check preconditions
-		try {
-			Profile p = profilesApi.getCurrentProfile(); // throws Exception if no profile is active
-		} catch (Exception e) {
-			response = 500;
-			error();
-			log("ERROR: could not load a profile. Did you call btcProfileLoad? " + e.getMessage());
-			throw new IllegalStateException("You need an active profile for the current command");
-		}
 		// TODO: EP-2735
 		String format = step.getVectorFormat();
 		checkArgument(format == "CSV" || format == "Excel", "Error: valid vectorFormat is csv or excel, not " + format);
