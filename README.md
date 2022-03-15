@@ -103,6 +103,7 @@ Migration Suite below).
     + [Step "xmlReport"](#step-xmlreport)
     + [Step "codeAnalysisReport"](#step-codeanalysisreport)
     + [Step "modelCoverageReport"](#step-modelcoveragereport)
+    + [Step "interfaceReport"](#step-interfacereport)
     + [Overall Report](#overallreport)
   - [Misc](#misc)
     + [Step "getStatusSummary"](#step-getstatussummary)
