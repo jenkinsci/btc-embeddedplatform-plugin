@@ -1285,6 +1285,26 @@ This is a somewhat special step that requires some preparation:
 | 200              | Success          |
 | 500              | Unexpected Error |
 
+#### Step "interfaceReport"
+
+DSL Command: btc.interfaceReport{...}
+
+**Description**
+
+Creates the Interface Report and exports it to the "exportDir"
+specified in the "profileLoad" / "profileCreate" step. The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+reportName | The filename (String) for the resulting html file.<br>(default: "InterfaceReport.html") | "report.html", "BTCInterfaceReport.html"
+scopeNameRegex | String with regular expression. The report will be created for the first scope that matches this name.<br>(default: undefined -> report is created for the toplevel scope) | "some_expression.*"
+
+**Possible Return values**
+
+| Return Value     | Description      |
+|------------------|------------------|
+| 200              | Success          |
+| 500              | Unexpected Error |
 
 ### Misc
 
