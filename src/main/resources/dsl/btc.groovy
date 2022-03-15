@@ -290,6 +290,16 @@ def modelCoverageReport(body) {
     return r.status
 }
 
+def interfaceReport(body) {
+    // evaluate the body block, and collect configuration into the object
+    def config = resolveConfig(body)
+    def reqString = createReqString(config, 'interfaceReport')
+    // call EP to invoke test execution
+    def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/interfaceReport", validResponseCodes: '100:500'
+    printToConsole(" -> (${r.status}) ${r.content}")
+    return r.status
+}
+
 def xmlReport(body) {
     // evaluate the body block, and collect configuration into the object
     def config = resolveConfig(body)
@@ -1116,8 +1126,18 @@ def createReqString(config, methodName) {
         reqString += '"configFilePath": "' + toAbsPath("${config.configFilePath}") + '", '
     if (config.tolerancesFilePath != null)
         reqString += '"tolerancesFilePath": "' + toAbsPath("${config.tolerancesFilePath}") + '", '
-    
-    
+    // Interface Report
+    if (config.scopeNameRegex != null)
+        reqString += '"scopeNameRegex": "' + "${config.scopeNameRegex}" + '", '
+    // Remove Incompatible Vectors
+    if (config.checkRanges != null)
+        reqString += '"checkRanges": "' + "${config.checkRanges}" + '", '
+    if (config.checkResolution != null)
+        reqString += '"checkResolution": "' + "${config.checkResolution}" + '", '
+    if (config.checkTestCases != null)
+        reqString += '"checkTestCases": "' + "${config.checkTestCases}" + '", '
+
+
     reqString = reqString.trim()
     if (reqString.endsWith(','))
         reqString = reqString.substring(0, reqString.length() - 1)
