@@ -46,6 +46,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	protected Object response = 200;
 	private String functionName;
 	private BasicStep reportingStep;
+	private Date t1 = null;
 
 	public AbstractBtcStepExecution(Step step, StepContext context) {
 		super(context);
@@ -62,7 +63,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 
 			@Override
 			public void run() {
-				Date t1 = new Date();
+				t1 = new Date();
 				try {
 					jenkinsConsole = getContext().get(TaskListener.class).getLogger();
 					// set default print stream to jenkinsConsole, relevant for waitForCompletion
@@ -72,75 +73,20 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 					 * Main action (implemented by the individual steps)
 					 */
 					performAction();
-
 					getContext().onSuccess(response); // return to context
 				} catch (Exception e) {
 					error("Error during call of " + functionName + "():", e);
 					getContext().onFailure(e); // return to context
-				} finally {
-					if (!reportingDisabled) {
-						//FIXME: This is not called for some reason!
-						addStepToReportData(t1);
-					}
 				}
-
 			}
-
 		};
 		t.run();
+		// invoke report stuff from here (the finally block inside
+		// the run() method won't be executed if the thread is interrupted
+		reporting();
 		return false;
 	}
-
-	/**
-	 * Invokes all getters (0-parameter methods that start with "get" or "is") of
-	 * the data object and adds the respective values to the test step's argument
-	 * list.
-	 *
-	 * @param data     the data object containing the step arguments
-	 * @param testStep the test step for reporting (hint: A {@link BasicStep} should
-	 *                 usually also be a {@link TestStep} and can be cast
-	 *                 accordingly)
-	 */
-	private void recordStepArguments(Step step) {
-		for (Method method : step.getClass().getDeclaredMethods()) {
-			String methodName = method.getName();
-			if (method.getParameterCount() == 0) {
-				String argName;
-				Object value = null;
-				if (methodName.startsWith("get")) {
-					argName = methodName.substring(3, methodName.length());
-				} else if (methodName.startsWith("is")) {
-					argName = methodName.substring(2, methodName.length());
-				} else {
-					continue;
-				}
-				try {
-					value = method.invoke(step);
-				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-					e.printStackTrace();
-				}
-				if (value != null) {
-					((TestStep) reportingStep).addArgument(argName, value.toString());
-				}
-			}
-		}
-	}
-
-	/**
-	 * Adds the step to the stored testStepSection
-	 * 
-	 * @param t1 the starting time used to calculate the total runtime
-	 */
-	private void addStepToReportData(Date t1) {
-		checkArgument(reportingStep.getDetails().size() == reportingStep.getDetailsLinks().size(),
-				"Reporting: All details must have a corresponding link.");
-
-		reportingStep.setStatusOK(status == Status.OK);
-		reportingStep.setStatusWARNING(status == Status.WARNING);
-		reportingStep.setTime(Util.getTimeDiffAsString(t1, new Date()));
-		Store.testStepSection.addStep(reportingStep);
-	}
-
+	
 	/**
 	 * Updates the step's status to the given value. The status is initially OK and
 	 * can only be made worse. If the status is ERROR, a call of status(Status.OK)
@@ -193,6 +139,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	 */
 	public AbstractBtcStepExecution passed() {
 		this.reportingStep.setPassed(true);
+		this.reportingStep.setFailed(false);
 		return this;
 	}
 
@@ -220,6 +167,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	 */
 	public AbstractBtcStepExecution failed() {
 		this.reportingStep.setPassed(false);
+		this.reportingStep.setFailed(true);
 		return this;
 	}
 
@@ -492,6 +440,66 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 			Job job = mlApi.executeMatlabScriptLong(input);
 			HttpRequester.waitForCompletion(job.getJobID());
 		}
+	}
+
+	/**
+	 * Make sure reporting for this step is done
+	 * (finally doesn't work as it seems to be ignored due to success callback)
+	 */
+	private void reporting() {
+		if (!reportingDisabled && t1 != null) {
+			addStepToReportData(t1);
+		}
+	}
+
+	/**
+	 * Invokes all getters (0-parameter methods that start with "get" or "is") of
+	 * the data object and adds the respective values to the test step's argument
+	 * list.
+	 *
+	 * @param data     the data object containing the step arguments
+	 * @param testStep the test step for reporting (hint: A {@link BasicStep} should
+	 *                 usually also be a {@link TestStep} and can be cast
+	 *                 accordingly)
+	 */
+	private void recordStepArguments(Step step) {
+		for (Method method : step.getClass().getDeclaredMethods()) {
+			String methodName = method.getName();
+			if (method.getParameterCount() == 0) {
+				String argName;
+				Object value = null;
+				if (methodName.startsWith("get")) {
+					argName = methodName.substring(3, methodName.length());
+				} else if (methodName.startsWith("is")) {
+					argName = methodName.substring(2, methodName.length());
+				} else {
+					continue;
+				}
+				try {
+					value = method.invoke(step);
+				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					e.printStackTrace();
+				}
+				if (value != null) {
+					((TestStep) reportingStep).addArgument(argName, value.toString());
+				}
+			}
+		}
+	}
+
+	/**
+	 * Adds the step to the stored testStepSection
+	 * 
+	 * @param t1 the starting time used to calculate the total runtime
+	 */
+	private void addStepToReportData(Date t1) {
+		checkArgument(reportingStep.getDetails().size() == reportingStep.getDetailsLinks().size(),
+				"Reporting: All details must have a corresponding link.");
+	
+		reportingStep.setStatusOK(status == Status.OK);
+		reportingStep.setStatusWARNING(status == Status.WARNING);
+		reportingStep.setTime(Util.getTimeDiffAsString(t1, new Date()));
+		Store.testStepSection.addStep(reportingStep);
 	}
 
 	/**

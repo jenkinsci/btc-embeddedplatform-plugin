@@ -39,6 +39,7 @@ import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
+import com.btc.ep.plugins.embeddedplatform.util.MigrationSuiteHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 import com.google.gson.Gson;
@@ -62,12 +63,18 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 
 	}
 
-	/*
-	 * Migration Source Step 0. Starts up / connects to EP 1. Loads an existing
-	 * profile or creates a new one 2. Imports existing vectors (optional) 3.
-	 * Creates Domain Check goals (optional) 4. Generates vectors for structural
-	 * coverage 5. Simulates on the desired execution configs 6. Exports the
-	 * execution records 7. Saves the profile
+	/**
+	 * Migration Source Step
+	 * <ul>
+	 * <li>0. Starts up / connects to EP</li>
+	 * <li>1. Loads an existing profile or creates a new one 2. Imports existing
+	 * vectors (optional)</li>
+	 * <li>3.Creates Domain Check goals (optional)</li>
+	 * <li>4. Generates vectors for structural coverage</li>
+	 * <li>5. Simulates on the desired execution configs</li>
+	 * <li>6. Exports the execution records</li>
+	 * <li>7. Saves the profile</li>
+	 * </ul>
 	 */
 	@Override
 	protected void performAction() throws Exception {
@@ -149,36 +156,18 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * 7. Export/Store Execution Records
 		 */
-		try {
-			storeExecutionRecords();
-		} catch (Exception e) {
-			log("WARNING saving execution records: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
-		}
+		storeExecutionRecords();
 
 		/*
 		 * 8. Save profile and wrap up
 		 */
 		// save the epp to the designated location
-		try {
-			saveProfileAndReportData(profilePath.toString());
-		} catch (Exception e) {
-			log("WARNING saving profile: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
-		}
+		saveProfileAndReportData(profilePath.toString());
 
 		// print success message and return response code
-		log("--> [200] Migration Source successfully executed.");
+		String msg = "[200] Migration Source successfully executed.";
+		log(msg);
+		info(msg);
 		response = 200;
 	}
 
@@ -187,10 +176,10 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 	 * file.
 	 *
 	 * @throws ApiException
-	 * @throws InterruptedException 
-	 * @throws IOException 
+	 * @throws InterruptedException
+	 * @throws IOException
 	 */
-	private void saveProfileAndReportData(String profilePath) throws ApiException, IOException, InterruptedException {
+	private void saveProfileAndReportData(String profilePath) throws Exception {
 		// Save Profile
 		ProfilesApi profileApi = new ProfilesApi();
 		profileApi.saveProfile(new ProfilePath().path(profilePath));
@@ -217,7 +206,9 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		json.getSections().add(Store.metaInfoSection);
 
 		// dump to file (so it can be reused by the MigrationTarget step
-		getContext().get(FilePath.class).child(Store.exportPath + "/reportData.json").write(new Gson().toJson(json), StandardCharsets.UTF_8.toString());
+		getContext().get(FilePath.class).child(Store.exportPath + "/reportData.json").write(new Gson().toJson(json),
+				StandardCharsets.UTF_8.toString());
+		MigrationSuiteHelper.stashFiles("*.epp, *.mdf", getContext());
 	}
 
 	/**
@@ -234,7 +225,6 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		FoldersApi folderApi = new FoldersApi();
 
 		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords2();
-		// TODO: query all Execution configs if nothing is specified (requires EP-2536)
 		for (String config : executionConfigs) {
 			if (step.isCreateProfilesFromScratch()) {
 				// Export Execution Records to be imported in the target profile
@@ -244,12 +234,15 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 				erExportStep.setFolderName(config);
 				erExportStep.start(getContext()).start();
 			} else {
-				// Move Execution Records to user-defined folder for the regression test
+				// Default-case: Move Execution Records to user-defined folder for the
+				// regression test
 				List<String> erUids = executionRecords.stream()
 						.filter(er -> config.equals(er.getExecutionConfig()) && config.equals(er.getFolderName()))
 						.map(er -> er.getUid()).collect(Collectors.toList());
-				FolderTransmisionObject folderKind = new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
-				Folder folder = folderApi.addFolder(folderKind);
+				String folderName = MigrationSuiteHelper.getExecutionRecordSourceFolderName(config);
+				FolderTransmisionObject folderInfo = new FolderTransmisionObject().folderKind(EXECUTION_RECORD)
+						.folderName(folderName);
+				Folder folder = folderApi.addFolder(folderInfo);
 				ExecutionRecordsMoveData moveData = new ExecutionRecordsMoveData().uiDs(erUids);
 				erApi.moveExecutionRecords(folder.getUid(), moveData);
 			}
@@ -354,9 +347,8 @@ public class BtcMigrationSourceStep extends Step implements Serializable {
 	private String scopesBlacklist;
 
 	@DataBoundConstructor
-	public BtcMigrationSourceStep(String profilePath) {
+	public BtcMigrationSourceStep() {
 		super();
-		this.profilePath = profilePath;
 	}
 
 	@Override
@@ -661,6 +653,11 @@ public class BtcMigrationSourceStep extends Step implements Serializable {
 	@DataBoundSetter
 	public void setLicensePackage(String licensePackage) {
 		this.licensePackage = licensePackage;
+	}
+	
+	@DataBoundSetter
+	public void setProfilePath(String profilePath) {
+		this.profilePath = profilePath;
 	}
 
 	@DataBoundSetter

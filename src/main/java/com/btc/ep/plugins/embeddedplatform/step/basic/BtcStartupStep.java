@@ -53,7 +53,9 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 		noReporting();
 		// ...but prepare reporting for successive steps
 		Store.startDate = new Date();
-		initializeReporting();
+		if (!step.isSkipReportInitialization()) {
+			initializeReporting();
+		}
 
 		// Prepare http connection
 		ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
@@ -224,6 +226,7 @@ public class BtcStartupStep extends Step implements Serializable {
 	private int timeout = 120;
 	private int port = 29267;
 	private boolean simplyConnect;
+	private boolean skipReportInitialization;
 
 	@DataBoundConstructor
 	public BtcStartupStep() {
@@ -338,6 +341,15 @@ public class BtcStartupStep extends Step implements Serializable {
 	public void setLicenseLocationString(String licenseLocationString) {
 		this.licenseLocationString = licenseLocationString;
 
+	}
+
+	public boolean isSkipReportInitialization() {
+		return skipReportInitialization;
+	}
+
+	@DataBoundSetter
+	public void setSkipReportInitialization(boolean skipReportInitialization) {
+		this.skipReportInitialization = skipReportInitialization;
 	}
 
 	/*

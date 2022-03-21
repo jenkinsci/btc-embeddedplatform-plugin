@@ -1,7 +1,5 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -11,7 +9,6 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.TolerancesApi;
 import org.openapitools.client.model.TolerancesImportConfig;
 
@@ -48,30 +45,19 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
 		String path = toRemoteAbsolutePathString(step.getPath());
 		TolerancesImportConfig info = new TolerancesImportConfig();
 		info.setPath(path);
-		if (step.getUseCase().equals("RBT")) {
+		if ("RBT".equals(step.getUseCase())) {
 			// Requirements-based Test
 			info.setToleranceUseCase("RBT");
-		} else if (step.getUseCase().equals("B2B")) {
+		} else if ("B2B".equals(step.getUseCase())) {
 			// Back-to-Back Test
 			info.setToleranceUseCase("B2B");
 		} else {
-			checkArgument(false, "Valid use cases for Tolerance Import are B2B or RBT");
+			error("Valid use cases for Tolerance Import are B2B or RBT, not " + step.getUseCase());
 		}
-		try {
-			tolerancesApi.setGlobalTolerances(info);
-		} catch (Exception e) {
-			log("ERROR: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
+		// Import
+		tolerancesApi.setGlobalTolerances(info);
 		info("Imported Tolerances.");
-
-		// HttpRequester.waitForCompletion(job.getJobID());
-
+		
 	}
 
 }

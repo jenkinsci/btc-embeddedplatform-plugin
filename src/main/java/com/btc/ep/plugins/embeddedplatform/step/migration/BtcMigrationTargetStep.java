@@ -6,7 +6,6 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,7 +25,6 @@ import org.openapitools.client.model.Folder;
 import org.openapitools.client.model.FolderTransmisionObject;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RegressionTest;
-import org.openapitools.client.model.RegressionTest.VerdictStatusEnum;
 import org.openapitools.client.model.RegressionTestExecutionData;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
@@ -46,6 +44,8 @@ import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcWrapUpStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordImportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
+import com.btc.ep.plugins.embeddedplatform.util.MigrationSuiteHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
@@ -70,20 +70,26 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 
 	}
 
-	/*
-	 * Migration Target Step 0. Starts up / connects to EP 1. Loads an existing
-	 * profile or creates a new one 2. Import Execution Records (if new profile) 3.
-	 * Tolerances 4. Runs the regression test 5. Saves the profile
+	/**
+	 * Migration Target Step
+	 * <ul>
+	 * <li>0. Starts up / connects to EP</li>
+	 * <li>1. Loads an existing profile or creates a new one</li>
+	 * <li>2. Import Execution Records (if new profile)</li>
+	 * <li>3. Tolerances</li>
+	 * <li>4. Runs the regression test</li>
+	 * <li>5. Saves the profile</li>
+	 * </ul>
 	 */
 	@Override
 	protected void performAction() throws Exception {
-		initializeReporting();
-
 		/*
 		 * 0. Startup
 		 */
 		BtcStartupStep startup = new BtcStartupStep();
 		Util.applyMatchingFields(step, startup).start(getContext()).start();
+		MigrationSuiteHelper.unstashFiles(getContext());
+		initializeReporting();
 
 		/*
 		 * 1. Load or create the profile
@@ -114,9 +120,9 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 		FoldersApi folderApi = new FoldersApi();
 		if (step.getImportDir() != null) {
 			for (String config : executionConfigs) {
-				FolderTransmisionObject folderKind = new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
+				FolderTransmisionObject folderInfo = new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
 				try {
-					Folder folder = folderApi.addFolder(folderKind);
+					Folder folder = folderApi.addFolder(folderInfo);
 					BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir());
 					importStep.setFolderName(folder.getName());
 					importStep.start(getContext()).start();
@@ -136,92 +142,53 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * 3. Tolerances
 		 */
-//        if (step.getTolerancesXmlPath() != null) {
-//            BtcToleranceImportStep toleranceImport = new BtcToleranceImportStep(step.getTolerancesXmlPath());
-//            toleranceImport.setUseCase("B2B");
-//            toleranceImport.start(getContext()).start();
-//        }
+		if (step.getTolerancesXmlPath() != null) {
+			BtcToleranceImportStep toleranceImport = new BtcToleranceImportStep(step.getTolerancesXmlPath());
+			toleranceImport.setUseCase("B2B");
+			toleranceImport.start(getContext()).start();
+		}
 
 		for (String config : executionConfigs) {
 			RegressionTestsApi regressionTestApi = new RegressionTestsApi();
-			List<Folder> erFolders = null;
-			try {
-				erFolders = folderApi.getFoldersByQuery(null, EXECUTION_RECORD).stream().filter(f -> !f.getIsDefault())
-						.collect(Collectors.toList());
-			} catch (Exception e) {
-				log("ERROR querying folderApi: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				error();
-			}
-			checkArgument(!erFolders.isEmpty(), "No user-defined Execution Record Folders available.");
+			String refFolderName = MigrationSuiteHelper.getExecutionRecordSourceFolderName(config);
+			List<Folder> erFolders = folderApi.getFoldersByQuery(refFolderName, EXECUTION_RECORD);
+			checkArgument(!erFolders.isEmpty(), "The expected folder with the reference simulations is not available.");
 			RegressionTestExecutionData data = new RegressionTestExecutionData();
-			FolderTransmisionObject folderKind = new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
-			Folder targetFolder = null;
-			try {
-				targetFolder = folderApi.addFolder(folderKind);
-			} catch (Exception e) {
-				log("ERROR adding folder " + folderKind.getFolderName() + e.getMessage());
-				log("folder will not be processed!");
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				error();
-			}
+			String targetFolderName = MigrationSuiteHelper.getExecutionRecordSourceFolderName(config);
+			FolderTransmisionObject folderKind = new FolderTransmisionObject().folderKind(EXECUTION_RECORD)
+					.folderName(targetFolderName);
+			Folder targetFolder = folderApi.addFolder(folderKind);
 			data.setCompFolderUID(targetFolder.getUid());
 			data.setCompMode(config);
-			// TODO: Need naming rule for folders incl. the execution config (EP-2578)
-			Job job = null;
-			try {
-				job = regressionTestApi.executeRegressionTestOnFolder(erFolders.get(0).getUid(), data);
-			} catch (Exception e) {
-				log("ERROR executing regression test: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				error();
-			}
-			Map<?, ?> resultMap = (Map<?, ?>) HttpRequester.waitForCompletion(job.getJobID(), "result");
-			String regressionTestId = (String) resultMap.get("uid");
-			RegressionTest regressionTest = null;
-			try {
-				regressionTest = regressionTestApi.getTestByUID1(regressionTestId);
-			} catch (Exception e) {
-				log("ERROR querying folderApi: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				error();
-			}
+			Job job = regressionTestApi.executeRegressionTestOnFolder(erFolders.get(0).getUid(), data);
+			RegressionTest regressionTest = HttpRequester.waitForCompletion(job.getJobID(), "result",
+					RegressionTest.class);
+
 			// status, etc.
 			String info = regressionTest.getComparisons().size() + " comparison(s), " + regressionTest.getPassed()
 					+ " passed, " + regressionTest.getFailed() + " failed, " + regressionTest.getError() + " error(s)";
 			info(info);
-			String verdictStatus = regressionTest.getVerdictStatus().toString();
-			if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
-				status(Status.OK).passed().result(verdictStatus);
+			switch (regressionTest.getVerdictStatus()) {
+			case PASSED:
+				status(Status.OK).passed().result("Passed");
 				response = 200;
-			} else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
-				status(Status.OK).passed().result(verdictStatus);
+				break;
+			case FAILED_ACCEPTED:
+				status(Status.OK).passed().result("Failed accepted");
 				response = 201;
-			} else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
-				status(Status.OK).failed().result(verdictStatus);
+				break;
+			case FAILED:
+				status(Status.OK).failed().result("Failed");
 				response = 300;
-			} else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
-				status(Status.ERROR).result(verdictStatus);
+				break;
+			case ERROR:
+				status(Status.ERROR).result("Error");
 				response = 400;
-			} else {
-				status(Status.ERROR).result(verdictStatus);
+				break;
+			default:
+				status(Status.ERROR).result("Unexpected Error");
 				response = 500;
+				break;
 			}
 		}
 
@@ -230,16 +197,17 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 		 */
 		BtcWrapUpStep wrapUp = new BtcWrapUpStep();
 		Util.applyMatchingFields(step, wrapUp);
-		wrapUp.setCloseEp(false);
 		wrapUp.start(getContext()).start();
 
 		// print success message and return response code
-		log("--> [200] Migration Target successfully executed.");
+		String msg = "[200] Migration Target successfully executed.";
+		log(msg);
+		info(msg);
 		response = 200;
 	}
 
 	/**
-	 * Loads the source-part of the migration report so it can be continued. 
+	 * Loads the source-part of the migration report so it can be continued.
 	 */
 	private void initializeReporting() throws Exception {
 		Store.globalSuffix = "_target"; // set prefix for profile names
@@ -321,12 +289,14 @@ public class BtcMigrationTargetStep extends Step implements Serializable {
 	/*
 	 * Each parameter of the step needs to be listed here as a field
 	 */
-	// startup
+	// startup & wrapUp
 	private Integer port;
 	private Integer timeout;
 	private String licensePackage;
 	private String installPath;
 	private String additionalJvmArgs;
+	private boolean closeEp = true;
+	private String uniqueName;
 
 	// profile
 	private String profilePath;
@@ -376,9 +346,8 @@ public class BtcMigrationTargetStep extends Step implements Serializable {
 	private String scopesBlacklist;
 
 	@DataBoundConstructor
-	public BtcMigrationTargetStep(String profilePath) {
+	public BtcMigrationTargetStep() {
 		super();
-		this.profilePath = profilePath;
 	}
 
 	@Override
@@ -650,6 +619,11 @@ public class BtcMigrationTargetStep extends Step implements Serializable {
 	}
 
 	@DataBoundSetter
+	public void setProfilePath(String profilePath) {
+		this.profilePath = profilePath;
+	}
+
+	@DataBoundSetter
 	public void setEnvironmentXmlPath(String environmentXmlPath) {
 		this.environmentXmlPath = environmentXmlPath;
 	}
@@ -779,6 +753,24 @@ public class BtcMigrationTargetStep extends Step implements Serializable {
 	public void setImportDir(String importDir) {
 		this.importDir = importDir;
 
+	}
+
+	public boolean isCloseEp() {
+		return closeEp;
+	}
+
+	@DataBoundSetter
+	public void setCloseEp(boolean closeEp) {
+		this.closeEp = closeEp;
+	}
+
+	public String getUniqueName() {
+		return uniqueName;
+	}
+
+	@DataBoundSetter
+	public void setUniqueName(String uniqueName) {
+		this.uniqueName = uniqueName;
 	}
 
 	/*

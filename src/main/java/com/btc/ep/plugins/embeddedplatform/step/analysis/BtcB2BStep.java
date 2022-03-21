@@ -1,7 +1,5 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -119,28 +117,34 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	}
 
 	private void parseResult(BackToBackTest b2bTest) {
-		String verdictStatus = b2bTest.getVerdictStatus().toString();
+		VerdictStatusEnum verdictStatus = b2bTest.getVerdictStatus();
 		log("Back-to-Back Test finished with result: " + verdictStatus);
 		// status, etc.
 		String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
 				+ b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
 		info(info);
 
-		if (VerdictStatusEnum.PASSED.name().equalsIgnoreCase(verdictStatus)) {
-			status(Status.OK).passed().result(verdictStatus);
+		switch (verdictStatus) {
+		case PASSED:
+			status(Status.OK).passed().result("Passed");
 			response = 200;
-		} else if (VerdictStatusEnum.FAILED_ACCEPTED.name().equalsIgnoreCase(verdictStatus)) {
-			status(Status.OK).passed().result(verdictStatus);
+			break;
+		case FAILED_ACCEPTED:
+			status(Status.OK).passed().result("Failed accepted");
 			response = 201;
-		} else if (VerdictStatusEnum.FAILED.name().equalsIgnoreCase(verdictStatus)) {
-			status(Status.OK).failed().result(verdictStatus);
+			break;
+		case FAILED:
+			status(Status.OK).failed().result("Failed");
 			response = 300;
-		} else if (VerdictStatusEnum.ERROR.name().equalsIgnoreCase(verdictStatus)) {
-			status(Status.ERROR).result(verdictStatus);
+			break;
+		case ERROR:
+			status(Status.ERROR).result("Error");
 			response = 400;
-		} else {
-			status(Status.ERROR).result(verdictStatus);
+			break;
+		default:
+			status(Status.ERROR).result("Unexpected Error");
 			response = 500;
+			break;
 		}
 	}
 

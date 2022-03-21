@@ -40,6 +40,7 @@ import org.openapitools.client.model.Scope;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.FilterHelper;
+import com.btc.ep.plugins.embeddedplatform.util.Result;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
@@ -184,7 +185,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	 *                       filter (false if no tests were run)
 	 */
 	private void analyzeResults(RBTestCaseExecutionResultMapData testResultData, boolean zeroTestCases) {
-		String overallResult = "PASSED";
+		Result overallResult = Result.PASSED;
 		String infoText = "";
 		for (Entry<String, RBTestCaseExecutionResultSetData> entry : testResultData.getTestResults().entrySet()) {
 			String executionConfig = entry.getKey();
@@ -193,11 +194,11 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 			int errors = Integer.parseInt(resultData.getErrorneousTests());
 			int total = Integer.parseInt(resultData.getTotalTests());
 			if (errors > 0) {
-				overallResult = "ERROR";
+				overallResult = Result.ERROR;
 			} else if (Integer.parseInt(resultData.getFailedTests()) > 0) {
-				overallResult = "FAILED";
+				overallResult = Result.FAILED;
 			} else if (noVerdict == total) {
-				overallResult = "NO_VERDICT"; // all test cases have "no verdict"
+				overallResult = Result.NO_VERDICT; // all test cases have "no verdict"
 			}
 			if (!infoText.isEmpty()) {
 				infoText += "\n";
@@ -213,20 +214,20 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 		}
 		info(infoText);
 		log("Requirements-based Test finished with result: " + overallResult);
-		if ("PASSED".equalsIgnoreCase(overallResult)) {
-			status(Status.OK).passed().result(overallResult);
+		if (Result.PASSED.equals(overallResult)) {
+			status(Status.OK).passed().result("Passed");
 			response = 200;
-		} else if ("FAILED".equalsIgnoreCase(overallResult)) {
-			status(Status.OK).failed().result(overallResult);
+		} else if (Result.FAILED.equals(overallResult)) {
+			status(Status.OK).failed().result("Failed");
 			response = 300;
 		} else if (zeroTestCases) {
-			status(Status.OK).skipped().result(overallResult);
+			status(Status.OK).skipped().result("Skipped");
 			response = 300;
-		} else if ("ERROR".equalsIgnoreCase(overallResult)) {
-			status(Status.ERROR).result(overallResult);
+		} else if (Result.ERROR.equals(overallResult)) {
+			status(Status.ERROR).result("Error");
 			response = 400;
 		} else {
-			status(Status.ERROR).result(overallResult);
+			status(Status.ERROR).result("Error");
 			response = 500;
 		}
 	}
