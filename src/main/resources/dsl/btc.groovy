@@ -194,7 +194,7 @@ def killEp(body = {}) {
  * e.g. 2.10p3
  */
 def compareVersions(v1, v2) {
-    def regex = /.*(\d+)\.(\d+)p(\d+).*/
+    def regex = /(\d+)\.(\d+)p(\d+)/
     int v1_1 = v1.replaceAll(regex, '$1')
     int v2_1 = v2.replaceAll(regex, '$1')
     int comparison = v1_1.compareTo(v2_1)
