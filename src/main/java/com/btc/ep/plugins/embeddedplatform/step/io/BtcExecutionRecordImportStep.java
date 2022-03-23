@@ -48,10 +48,9 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
 		List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
 		List<String> paths = files.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
 		ExecutionRecordImportInfo data = new ExecutionRecordImportInfo();
-		data.setFormat("MDF");
 		// execution config can be user-defined, so there's no check to make
 		String kind = step.getExecutionConfig() != null ? step.getExecutionConfig()
-				: ecApi.getExecutionRecords().getExecConfigNames().get(0);
+				: ecApi.getExecutionConfigs().getExecConfigNames().get(0);
 		data.setKind(kind);
 		data.setPaths(paths);
 		data.setFolderName(step.getFolderName());

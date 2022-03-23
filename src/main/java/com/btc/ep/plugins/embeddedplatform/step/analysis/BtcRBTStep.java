@@ -6,6 +6,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,6 +29,7 @@ import org.openapitools.client.model.RBTExecutionDataExtendedNoReport;
 import org.openapitools.client.model.RBTExecutionDataNoReport;
 import org.openapitools.client.model.RBTExecutionReportCreationInfo;
 import org.openapitools.client.model.RBTExecutionReportCreationInfoData;
+import org.openapitools.client.model.RBTestCaseExecutionResultData;
 import org.openapitools.client.model.RBTestCaseExecutionResultMapData;
 import org.openapitools.client.model.RBTestCaseExecutionResultSetData;
 import org.openapitools.client.model.Report;
@@ -40,6 +42,7 @@ import org.openapitools.client.model.Scope;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.FilterHelper;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Result;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
@@ -89,6 +92,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 				RBTestCaseExecutionResultMapData.class);
 
 		// results + repo
+		JUnitXMLHelper.addSuite("Requirements-Based-Tests");
 		parseResultsAndCreateReport(tcUids, testResults);
 	}
 
@@ -110,6 +114,20 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 			} catch (Exception e) {
 				warning("Failed to create the report.", e);
 			}
+			Map<String, RBTestCaseExecutionResultSetData> tr = testResults.getTestResults();
+			for (String key: tr.keySet()) {
+				for(RBTestCaseExecutionResultData result : tr.get(key).getTestResults()) {
+					JUnitXMLHelper.Status testStatus = JUnitXMLHelper.Status.PASSED;
+					switch(result.getVerdictStatus()) {
+						case "FAILED":
+							testStatus = JUnitXMLHelper.Status.FAILED;
+							break;
+						default:
+							break;
+					}
+					JUnitXMLHelper.addTest("RBT", result.getRbTestCaseUID(), testStatus, result.getComment());
+				}
+			}
 		}
 	}
 
@@ -121,7 +139,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 		RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
 		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
 		if (executionConfigNames.isEmpty()) {
-			executionConfigNames = ecApi.getExecutionRecords().getExecConfigNames();
+			executionConfigNames = ecApi.getExecutionConfigs().getExecConfigNames();
 		}
 		log("Executing Requirements-based Tests on %s...", executionConfigNames);
 		data.setForceExecute(false);

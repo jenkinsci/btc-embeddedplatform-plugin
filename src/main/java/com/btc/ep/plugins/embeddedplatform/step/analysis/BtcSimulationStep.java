@@ -62,7 +62,7 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
 				.collect(Collectors.toList());
 		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
 		if (executionConfigNames.isEmpty()) {
-			executionConfigNames = ecApi.getExecutionRecords().getExecConfigNames();
+			executionConfigNames = ecApi.getExecutionConfigs().getExecConfigNames();
 		}
 		log("Simulating on %s...", executionConfigNames);
 		info.setExecConfigNames(executionConfigNames);

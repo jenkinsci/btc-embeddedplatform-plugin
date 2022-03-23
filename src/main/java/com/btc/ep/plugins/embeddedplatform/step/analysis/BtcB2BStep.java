@@ -21,6 +21,7 @@ import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.BackToBackTest;
 import org.openapitools.client.model.BackToBackTest.VerdictStatusEnum;
 import org.openapitools.client.model.BackToBackTestExecutionData;
+import org.openapitools.client.model.Comparison;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
@@ -28,6 +29,7 @@ import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
@@ -49,6 +51,8 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	private ScopesApi scopesApi = new ScopesApi();
 	private ReportsApi reportingApi = new ReportsApi();
 	private ExecutionConfigsApi execConfigApi = new ExecutionConfigsApi();
+	
+	private String suitename;
 
 	public BtcB2BStepExecution(BtcB2BStep step, StepContext context) {
 		super(step, context);
@@ -74,6 +78,9 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		}
 
 		// results and stuff
+		suitename = "Back-to-Back-"+data.getRefMode()+"-vs-"+
+				data.getCompMode()+"-"+Long.toString(System.currentTimeMillis());
+		JUnitXMLHelper.addSuite(suitename);
 		parseResultsAndCreateReport(b2bTestUid);
 
 	}
@@ -106,7 +113,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	 */
 	private BackToBackTestExecutionData prepareInfoObject() throws ApiException {
 		BackToBackTestExecutionData data = new BackToBackTestExecutionData();
-		List<String> executionConfigs = execConfigApi.getExecutionRecords().getExecConfigNames();
+		List<String> executionConfigs = execConfigApi.getExecutionConfigs().getExecConfigNames();
 		if (step.getReference() != null && step.getComparison() != null) {
 			data.refMode(step.getReference()).compMode(step.getComparison());
 		} else if (executionConfigs.size() >= 2) {
@@ -123,6 +130,27 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		String info = b2bTest.getComparisons().size() + " comparison(s), " + b2bTest.getPassed() + " passed, "
 				+ b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
 		info(info);
+		
+		for (Comparison comp : b2bTest.getComparisons()) {
+			JUnitXMLHelper.Status testStatus = JUnitXMLHelper.Status.PASSED;
+			switch(comp.getVerdictStatus()) {
+				case ERROR:
+					testStatus = JUnitXMLHelper.Status.ERROR;
+					break;
+				case FAILED:
+					testStatus = JUnitXMLHelper.Status.FAILED;
+					break;
+				case FAILED_ACCEPTED:
+					// not really sure what to do here? just treat it as failed i guess
+					testStatus = JUnitXMLHelper.Status.FAILED;
+					break;
+			default:
+				break;
+			}
+			JUnitXMLHelper.addTest(suitename, comp.getName(), testStatus, comp.getComment());
+			
+			
+		}
 
 		switch (verdictStatus) {
 		case PASSED:

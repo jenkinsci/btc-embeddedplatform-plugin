@@ -2,7 +2,10 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
@@ -23,6 +26,7 @@ import org.openapitools.client.model.ProfilePath;
 import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
 import com.btc.ep.plugins.embeddedplatform.reporting.ReportService;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -56,6 +60,12 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 			assembleProjectReport();
 		} catch (Exception e) {
 			warning("Failed to create the project report.", e);
+		}
+		try {
+			Path filename = Paths.get("JUnit.xml");
+			JUnitXMLHelper.parse(filename);
+		} catch (Exception e) {
+			warning("Failed to create JUnit xml. ", e);
 		}
 
 		/*
