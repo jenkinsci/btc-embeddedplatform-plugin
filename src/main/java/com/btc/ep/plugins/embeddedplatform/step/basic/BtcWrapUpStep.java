@@ -7,6 +7,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
@@ -62,8 +63,13 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 			warning("Failed to create the project report.", e);
 		}
 		try {
-			Path filename = Paths.get("JUnit.xml");
-			JUnitXMLHelper.parse(filename);
+			File file = new File("JUnit.xml");
+			file.createNewFile();
+			String txt = JUnitXMLHelper.parse();
+			log(txt);
+			try (PrintWriter pw = new PrintWriter(file)) {
+				pw.println(txt);
+			}
 		} catch (Exception e) {
 			warning("Failed to create JUnit xml. ", e);
 		}
