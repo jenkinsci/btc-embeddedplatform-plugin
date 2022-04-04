@@ -92,7 +92,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 				RBTestCaseExecutionResultMapData.class);
 
 		// results + repo
-		JUnitXMLHelper.addSuite("Requirements-Based-Tests");
+		JUnitXMLHelper.addSuite("RBT");
 		parseResultsAndCreateReport(tcUids, testResults);
 	}
 
@@ -119,13 +119,19 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 				for(RBTestCaseExecutionResultData result : tr.get(key).getTestResults()) {
 					JUnitXMLHelper.Status testStatus = JUnitXMLHelper.Status.PASSED;
 					switch(result.getVerdictStatus()) {
-						case "FAILED":
+						case "Failed":
 							testStatus = JUnitXMLHelper.Status.FAILED;
 							break;
 						default:
 							break;
 					}
-					JUnitXMLHelper.addTest("RBT", result.getRbTestCaseUID(), testStatus, result.getComment());
+					String testname = null;
+					try {
+						testname = testCasesApi.getRBTestCase(result.getRbTestCaseUID()).getName();
+					} catch (ApiException e) {
+						warning("Couldn't get test-case name for UID " + result.getRbTestCaseUID());
+					}
+					JUnitXMLHelper.addTest("RBT", key+"-"+testname, testStatus, result.getComment());
 				}
 			}
 		}

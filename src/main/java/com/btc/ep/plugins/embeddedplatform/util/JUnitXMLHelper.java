@@ -16,17 +16,18 @@ class TestCase {
 public class JUnitXMLHelper {
 	public enum Status {PASSED, FAILED, ERROR, SKIPPED}
 	
-	public static Map<String, List<TestCase>> suites;
-	private static Map<String, Integer> passedTests;
-	private static Map<String, Integer> failedTests;
-	private static Map<String, Integer> errorTests;
-	private static Map<String, Integer> skippedTests;
+	public static Map<String, List<TestCase>> suites = new HashMap<>();
+	private static Map<String, Integer> passedTests = new HashMap<>();
+	private static Map<String, Integer> failedTests = new HashMap<>();
+	private static Map<String, Integer> errorTests = new HashMap<>();
+	private static Map<String, Integer> skippedTests = new HashMap<>();
 	
 	public static int addSuite(String suitename) {
 		if (suites.containsKey(suitename)) {
 			return -1; // key already contained
 		}
-		suites.put(suitename, null);
+		List<TestCase> l = new ArrayList<>();
+		suites.put(suitename, l);
 		passedTests.put(suitename, 0);
 		failedTests.put(suitename, 0);
 		errorTests.put(suitename, 0);
@@ -36,6 +37,9 @@ public class JUnitXMLHelper {
 	
 	public static int addTest(String suitename, String testname, Status testStatus, String message) {
 		List<TestCase> list = suites.get(suitename);
+		/*if (list == null) {
+			return -1;
+		}*/
 		TestCase TC = new TestCase();
 		TC.name = testname;
 		TC.message = message;
@@ -80,7 +84,6 @@ public class JUnitXMLHelper {
 				default:
 					break;
 				}
-				txt += "    </testcase>\n";
 			}
 			txt += "  </testsuite>\n";
 		}

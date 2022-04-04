@@ -69,6 +69,9 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		String b2bTestUid;
 		try {
 			log("Executing Back-to-Back Test %s vs. %s...", data.getRefMode(), data.getCompMode());
+			suitename = "Back-to-Back-"+data.getRefMode()+"-vs-"+
+					data.getCompMode()+"-"+Long.toString(System.currentTimeMillis());
+			JUnitXMLHelper.addSuite(suitename);
 			Job job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
 			Map<?, ?> resultMap = (Map<?, ?>) HttpRequester.waitForCompletion(job.getJobID(), "result");
 			b2bTestUid = (String) resultMap.get("uid");
@@ -78,9 +81,6 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		}
 
 		// results and stuff
-		suitename = "Back-to-Back-"+data.getRefMode()+"-vs-"+
-				data.getCompMode()+"-"+Long.toString(System.currentTimeMillis());
-		JUnitXMLHelper.addSuite(suitename);
 		parseResultsAndCreateReport(b2bTestUid);
 
 	}
