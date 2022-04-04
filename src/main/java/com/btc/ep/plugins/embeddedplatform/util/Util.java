@@ -67,6 +67,11 @@ public class Util {
 		return map;
 	}
 
+	/**
+	 * Returns true if none of the given objects are null. False if a null object is found.
+	 * @param objects
+	 * @return
+	 */
 	public static boolean notNull(Object... objects) {
 		for (Object object : objects) {
 			if (object == null) {

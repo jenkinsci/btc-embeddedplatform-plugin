@@ -1,12 +1,10 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+
+import hudson.FilePath;
 
 
 class TestCase {
@@ -60,25 +58,25 @@ public class JUnitXMLHelper {
 		}
 		return 0;
 	}
-	public static void parse(Path filename) {
+	public static void dumpToFile(FilePath file) throws Exception {
 		String txt = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites>\n";
 		for(String suitename: suites.keySet()) {
 			// 2 indent
-			txt += "  <testsuite name=\""+suitename + "\" tests=\"" + String.valueOf(
+			txt += "  <testsuite name=\""+suitename + "\" tests=\"" + (
 					passedTests.get(suitename) + failedTests.get(suitename) + 
-					errorTests.get(suitename) + skippedTests.get(suitename)
-					) + "\" errors=\"" + String.valueOf(errorTests.get(suitename)) +
-					"\" failures= \"" + String.valueOf(failedTests.get(suitename)) + "\">\n";
+					errorTests.get(suitename) + skippedTests.get(suitename))
+					+ "\" errors=\"" + errorTests.get(suitename) +
+					"\" failures= \"" + failedTests.get(suitename) + "\">\n";
 			List<TestCase> testCases = suites.get(suitename);
-			for(TestCase TC : testCases) {
+			for(TestCase tc : testCases) {
 				// 4 indent
-				txt += "    <testcase name=\"" + TC.name + "\" status=\"" + TC.status.toString() + "\">\n";
+				txt += "    <testcase name=\"" + tc.name + "\" status=\"" + tc.status + "\">\n";
 				// if we're in a failed test case, add extra layer. 6 indent.
-				switch(TC.status) {
+				switch(tc.status) {
 					case FAILED:
 					case ERROR:
 					case SKIPPED:
-						txt += "      <"+TC.status.toString()+ " message=\""+TC.message+"\"/>\n";
+						txt += "      <" + tc.status + " message=\"" + tc.message+"\"/>\n";
 				default:
 					break;
 				}
@@ -88,12 +86,6 @@ public class JUnitXMLHelper {
 		}
 		txt += "</testsuites>\n";
 		System.out.println(txt);
-		try {
-			OpenOption[] options = new OpenOption[] { StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW };
-			Files.writeString(filename, txt, options);
-		} catch (IOException e) {
-			// failed to write XML file.
-			// TODO: right now we just silently fail
-		}
+		file.write(txt, StandardCharsets.UTF_8.toString());
 	}
 }

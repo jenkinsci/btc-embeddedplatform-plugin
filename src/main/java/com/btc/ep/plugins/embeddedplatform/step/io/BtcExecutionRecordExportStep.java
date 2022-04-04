@@ -44,7 +44,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
 		List<String> uids = null;
 		try {
-			uids = erApi.getExecutionRecords1().stream()
+			uids = erApi.getExecutionRecords().stream()
 					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
 							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
 					.map(er -> er.getUid()).collect(Collectors.toList());

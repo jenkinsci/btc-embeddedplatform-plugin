@@ -2,10 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-
 import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
@@ -31,6 +28,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /**
@@ -62,8 +60,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 			warning("Failed to create the project report.", e);
 		}
 		try {
-			Path filename = Paths.get("JUnit.xml");
-			JUnitXMLHelper.parse(filename);
+			JUnitXMLHelper.dumpToFile(getContext().get(FilePath.class).child("JUnit.xml"));
 		} catch (Exception e) {
 			warning("Failed to create JUnit xml. ", e);
 		}

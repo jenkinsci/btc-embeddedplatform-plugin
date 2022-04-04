@@ -2,7 +2,6 @@ package com.btc.ep.plugins.embeddedplatform.step;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.FileInputStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -68,7 +67,7 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 		log("Applying specified test config file " + step.getTestConfigPath());
 		FilePath testConfigFilePath = resolveInAgentWorkspace(step.getTestConfigPath());
 		Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
-		TestConfig testConfig = yaml.loadAs(new FileInputStream(testConfigFilePath.getRemote()), TestConfig.class);
+		TestConfig testConfig = yaml.loadAs(testConfigFilePath.read(), TestConfig.class);
 
 		// Initial sanity checks
 		checkTestConfig(testConfig);

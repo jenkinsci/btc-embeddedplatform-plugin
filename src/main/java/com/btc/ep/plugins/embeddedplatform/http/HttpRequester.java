@@ -20,6 +20,8 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.Configuration;
+import org.openapitools.client.api.ProgressApi;
+import org.openapitools.client.model.LongRunningResponse;
 
 import com.google.gson.Gson;
 
@@ -120,7 +122,7 @@ public class HttpRequester {
 		int statusCode = r.getStatus().getStatusCode();
 		responseObject.put("statusCode", statusCode);
 		switch (statusCode) {
-		case 200:
+		case 200: // still running... wait a while
 			break;
 		case 201: // 201 -> 'uid' -> string (operation complete + object id)
 		case 202: // 202 -> 'message' -> string, 'progressDone' -> int
@@ -166,9 +168,10 @@ public class HttpRequester {
 	 *
 	 * @param jobId the job to wait for
 	 * @return the created object (if available) or null
+	 * @throws ApiException 
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> T waitForCompletion(String jobId) {
+	public static <T> T waitForCompletion(String jobId) throws ApiException {
 		return (T) waitForCompletion(jobId, printStream, null, Object.class);
 	}
 
@@ -185,9 +188,10 @@ public class HttpRequester {
 	 * @param out             the print stream to use to report information
 	 * @param resultFieldName name of the topic being processed (may be null)
 	 * @return the created object (if available) or null
+	 * @throws ApiException 
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> T waitForCompletion(String jobId, String resultFieldName) {
+	public static <T> T waitForCompletion(String jobId, String resultFieldName) throws ApiException {
 		return (T) waitForCompletion(jobId, printStream, resultFieldName, Object.class);
 	}
 
@@ -204,8 +208,9 @@ public class HttpRequester {
 	 * @param resultFieldName       name of the topic being processed (may be null)
 	 * @param expectedResponseClass the class that you expect for the return type
 	 * @return the created object (if available) or null
+	 * @throws ApiException 
 	 */
-	public static <T> T waitForCompletion(String jobId, String resultFieldName, Class<T> expectedResponseClass) {
+	public static <T> T waitForCompletion(String jobId, String resultFieldName, Class<T> expectedResponseClass) throws ApiException {
 		return (T) waitForCompletion(jobId, printStream, resultFieldName, expectedResponseClass);
 	}
 
@@ -222,9 +227,10 @@ public class HttpRequester {
 	 * @param out             the print stream to use to report information
 	 * @param resultFieldName name of the topic being processed (may be null)
 	 * @return the created object (if available) or null
+	 * @throws ApiException 
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> T waitForCompletion(String jobId, PrintStream out, String resultFieldName) {
+	public static <T> T waitForCompletion(String jobId, PrintStream out, String resultFieldName) throws ApiException {
 		return (T) waitForCompletion(jobId, out, resultFieldName, Object.class);
 	}
 
@@ -242,18 +248,15 @@ public class HttpRequester {
 	 * @param resultFieldName       name of the topic being processed (may be null)
 	 * @param expectedResponseClass the class that you expect for the return type
 	 * @return the created object (if available) or null
+	 * @throws ApiException 
 	 */
 	public static <T> T waitForCompletion(String jobId, PrintStream out, String resultFieldName,
-			Class<T> expectedResponseClass) {
+			Class<T> expectedResponseClass) throws ApiException {
 		Object createdObject = null;
 		double oldProgressDone = 0d;
 		while (true) {
 			Map<String, Object> progress;
-			try {
-				progress = getProgress(jobId);
-			} catch (ApiException e) {
-				break;
-			}
+			progress = getProgress(jobId);
 			if (progress != null) {
 				int statusCode = (int) progress.get("statusCode");
 				if (Arrays.asList(CREATED, SUCCESS).contains(statusCode)) {
