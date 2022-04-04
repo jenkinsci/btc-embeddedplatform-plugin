@@ -4,7 +4,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
@@ -31,6 +30,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.TaskListener;
+import hudson.tasks.junit.pipeline.JUnitResultsStep;
 
 /**
  * This class defines what happens when the above step is executed
@@ -62,6 +62,9 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 		}
 		try {
 			JUnitXMLHelper.dumpToFile(getContext().get(FilePath.class).child("JUnit.xml"));
+			JUnitResultsStep junitStep = new JUnitResultsStep("JUnit.xml");
+			junitStep.setAllowEmptyResults(true);
+			junitStep.start(getContext()).start();
 		} catch (Exception e) {
 			warning("Failed to create JUnit xml. ", e);
 		}
