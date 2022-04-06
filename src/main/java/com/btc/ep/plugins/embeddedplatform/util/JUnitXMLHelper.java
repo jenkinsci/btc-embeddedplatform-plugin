@@ -76,16 +76,17 @@ public class JUnitXMLHelper {
 			List<TestCase> testCases = suites.get(suitename);
 			for(TestCase tc : testCases) {
 				// 4 indent
-				txt += "    <testcase name=\"" + tc.name + "\" status=\"" + tc.status + "\">\n";
+				txt += "    <testcase name=\"" + tc.name + "\" status=\"" + tc.status + "\">";
 				// if we're in a failed test case, add extra layer. 6 indent.
 				switch(tc.status) {
 					case FAILED:
 					case ERROR:
 					case SKIPPED:
-						txt += "      <" + tc.status + " message=\"" + tc.message+"\"/>\n";
-				default:
-					break;
+						txt += "\n      <" + tc.status + " message=\"" + tc.message+"\"/>\n";
+					default:
+						break;
 				}
+				txt += "</testcase>\n";
 			}
 			txt += "  </testsuite>\n";
 		}

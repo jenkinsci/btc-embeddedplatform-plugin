@@ -29,6 +29,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.FilePath;
+import hudson.XmlFile;
 import hudson.model.TaskListener;
 import hudson.tasks.junit.pipeline.JUnitResultsStep;
 
