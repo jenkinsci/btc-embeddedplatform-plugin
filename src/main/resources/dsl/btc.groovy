@@ -195,22 +195,22 @@ def killEp(body = {}) {
  */
 def compareVersions(v1, v2) {
     def regex = /(\d+)\.(\d+)p(\d+)/
-    int v1_1 = v1.replaceAll(regex, '$1')
-    int v2_1 = v2.replaceAll(regex, '$1')
+    int v1_1 = Integer.parseInt(v1.replaceAll(regex, '$1'))
+    int v2_1 = Integer.parseInt(v2.replaceAll(regex, '$1'))
     int comparison = v1_1.compareTo(v2_1)
     if (comparison != 0) {
         return comparison
     }
 
-    int v1_2 = v1.replaceAll(regex, '$2')
-    int v2_2 = v2.replaceAll(regex, '$2')
+    int v1_2 = Integer.parseInt(v1.replaceAll(regex, '$2'))
+    int v2_2 = Integer.parseInt(v2.replaceAll(regex, '$2'))
     comparison = v1_2.compareTo(v2_2)
     if (comparison != 0) {
         return comparison
     }
 
-    int v1_3 = v1.replaceAll(regex, '$3')
-    int v2_3 = v2.replaceAll(regex, '$3')
+    int v1_3 = Integer.parseInt(v1.replaceAll(regex, '$3'))
+    int v2_3 = Integer.parseInt(v2.replaceAll(regex, '$3'))
     comparison = v1_3.compareTo(v2_3)
     return comparison
 }
