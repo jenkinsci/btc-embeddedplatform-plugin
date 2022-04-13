@@ -1122,10 +1122,8 @@ def createReqString(config, methodName) {
     if (config.reportName != null)
         reqString += '"reportName": "' + "${config.reportName}" + '", '
     // default tolerances
-    if (config.configFilePath != null)
-        reqString += '"configFilePath": "' + toAbsPath("${config.configFilePath}") + '", '
-    if (config.tolerancesFilePath != null)
-        reqString += '"tolerancesFilePath": "' + toAbsPath("${config.tolerancesFilePath}") + '", '
+    if (config.variant != null)
+        reqString += '"variant": "' + "${config.variant}" + '", '
     // Interface Report
     if (config.scopeNameRegex != null)
         reqString += '"scopeNameRegex": "' + "${config.scopeNameRegex}" + '", '
