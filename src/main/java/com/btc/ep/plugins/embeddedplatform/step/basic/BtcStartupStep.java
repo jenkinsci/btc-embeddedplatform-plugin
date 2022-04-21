@@ -59,11 +59,12 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 
 		// Prepare http connection
 		ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
+		apiClient.setReadTimeout(10000);
 		Configuration.setDefaultApiClient(apiClient);
 		HttpRequester.port = step.getPort();
 		
 		// Connect or startup EP
-		boolean connected = HttpRequester.checkConnection("/test", 200);
+		boolean connected = HttpRequester.checkConnection("/ep/test", 200, jenkinsConsole);
 		if (connected) {
 			response = 201;
 		} else {
@@ -83,7 +84,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 			}
 
 			// wait for ep rest service to respond
-			connected = HttpRequester.checkConnection("/test", 200, step.getTimeout(), 2);
+			connected = HttpRequester.checkConnection("/ep/test", 200, step.getTimeout(), 2, jenkinsConsole);
 			if (connected) {
 				log("Successfully connected to BTC EmbeddedPlatform " + epVersion + " on port " + step.getPort());
 				response = 200;

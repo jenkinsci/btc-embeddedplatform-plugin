@@ -1,11 +1,9 @@
 package com.btc.ep.plugins.embeddedplatform.reporting;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+import java.io.FileInputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -16,6 +14,8 @@ import com.btc.ep.plugins.embeddedplatform.reporting.overview.OverviewReportSect
 import com.btc.ep.plugins.embeddedplatform.reporting.project.JenkinsAutomationReport;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.JenkinsAutomationReportSection;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
+
+import hudson.FilePath;
 
 /**
  * This class implements the {@link ReportService} interface for the Jenkins
@@ -94,6 +94,7 @@ public class ReportService {
 				config.addTemplateForMainData(Paths.get(templates.getAbsolutePath(), section.getTemplateFile()));
 			}
 			File report = config.create();
+			report.deleteOnExit();
 			return report;
 
 		} catch (Exception e) {
@@ -105,11 +106,20 @@ public class ReportService {
 
 	}
 
-	public void exportReport(File report, String destinationFolder) throws IOException {
-		File dest = new File(destinationFolder);
-		Files.createDirectories(dest.toPath()); // creates the folder if it doesn't exist
-		Files.move(report.toPath(), Paths.get(dest.getAbsolutePath() + "/" + report.getName()),
-				StandardCopyOption.REPLACE_EXISTING);
+	public void exportReport(File report, String destinationFolder, FilePath workspace) throws Exception {
+		// transfer local file content into remote object
+		FilePath destFile = workspace.child(destinationFolder + "/" + report.getName());
+		FileInputStream fis = null;
+		try {
+			fis = new FileInputStream(report);
+			Util.transfer(fis, destFile.write(), true);
+		} finally {
+			if (fis != null) {
+				fis.close();
+			}
+		}
+		// delete local file
+		report.delete();
 	}
 
 }

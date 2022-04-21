@@ -13,7 +13,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ECImportInfo;
 import org.openapitools.client.model.ECImportInfo.ParameterHandlingEnum;
 import org.openapitools.client.model.ECImportInfo.TestModeEnum;
@@ -36,7 +35,6 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateECStep step;
-	private ProfilesApi profilesApi = new ProfilesApi();
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public BtcProfileCreateECStepExecution(BtcProfileCreateECStep step, StepContext context) {
@@ -61,7 +59,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 		preliminaryChecks();
 		Store.epp = resolveInAgentWorkspace(profilePath);
 		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports");
-		profilesApi.createProfile(true);
+		createEmptyProfile();
 
 
 		// Matlab stuff

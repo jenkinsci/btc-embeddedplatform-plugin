@@ -66,6 +66,7 @@ public class HtmlReportCreator {
 		File renderDir;
 		try {
 			renderDir = Files.createTempDirectory(null).toFile();
+			renderDir.deleteOnExit();
 		} catch (IOException e) {
 			e.printStackTrace();
 			return null;

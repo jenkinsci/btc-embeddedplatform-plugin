@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,6 +18,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.MatlabScriptExecutionApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.MatlabScriptInput;
 
@@ -487,6 +489,25 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 		}
 	}
 
+	protected void createEmptyProfile() {
+		try {
+			new ProfilesApi().createProfile(true);
+		} catch (ApiException ignored) {
+			// ignored, this is often slow and throws a SocketTimeoutException
+		}
+	}
+	
+	protected void openProfile(String profilePath) throws ApiException {
+		try {
+			new ProfilesApi().openProfile(profilePath, true);
+		} catch (ApiException e) {
+			// ignored, this is often slow and throws a SocketTimeoutException
+			if (!(e.getCause() instanceof SocketTimeoutException)) {
+				throw e;
+			}
+		}
+	}
+	
 	/**
 	 * Adds the step to the stored testStepSection
 	 * 

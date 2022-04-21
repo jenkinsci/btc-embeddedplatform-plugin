@@ -20,8 +20,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.Configuration;
-import org.openapitools.client.api.ProgressApi;
-import org.openapitools.client.model.LongRunningResponse;
 
 import com.google.gson.Gson;
 
@@ -38,16 +36,32 @@ public class HttpRequester {
 	private static CloseableHttpClient httpClient;
 	public static PrintStream printStream;
 
+	
 	public static GenericResponse get(String route) {
+		return get(route, null);
+	}
+	public static GenericResponse get(String route, PrintStream out) {
 		if (httpClient == null) {
 			httpClient = createHttpClient();
 		}
 		HttpGet get = new HttpGet(getBasePath() + route);
-		get.setHeader("Accept", "application/json");
+		if ("/ep/test".equals(route)) {
+			get.setHeader("Accept", "text/plain");
+		} else {
+			get.setHeader("Accept", "application/json");
+		}
 		try (CloseableHttpResponse response = httpClient.execute(get)) {
+			
+			if (out != null) {
+				out.println(response);
+			}
+			
 			HttpEntity entity = response.getEntity();
 			if (entity != null) {
 				String responseString = EntityUtils.toString(entity);
+				if (out != null) {
+					out.println(responseString);
+				}
 				GenericResponse r = new GenericResponse();
 				r.setContent(responseString);
 				r.setStatus(response.getStatusLine());
@@ -310,6 +324,7 @@ public class HttpRequester {
 		}
 	}
 
+	
 	/**
 	 * Attempts GET requests to the specified route. Returns true if successful
 	 * (expected status) or false on timeout.
@@ -321,10 +336,10 @@ public class HttpRequester {
 	 * @throws Exception
 	 */
 	public static boolean checkConnection(String route, int expectedStatusCode, int timeoutInSeconds,
-			int delayInSeconds) throws Exception {
+			int delayInSeconds, PrintStream out) throws Exception {
 		long startingTime = System.currentTimeMillis();
 		while (true) {
-			if (checkConnection(route, expectedStatusCode)) {
+			if (checkConnection(route, expectedStatusCode, out)) {
 				return true;
 			}
 			// try again after 2 seconds
@@ -337,9 +352,9 @@ public class HttpRequester {
 		}
 	}
 
-	public static boolean checkConnection(String route, int expectedStatusCode) {
+	public static boolean checkConnection(String route, int expectedStatusCode, PrintStream out) {
 		try {
-			GenericResponse response = get(route);
+			GenericResponse response = get(route, out);
 			if (response.getStatus().getStatusCode() == expectedStatusCode) {
 				// System.out.println("Successfully connected to " + getBasePath() + route);
 				return true;
@@ -347,7 +362,11 @@ public class HttpRequester {
 		} catch (Exception e) {
 			// ignore
 		}
-		return false;
+		return false; 
+	}
+	
+	public static boolean checkConnection(String route, int expectedStatusCode) {
+		return checkConnection(route, expectedStatusCode, null);
 	}
 
 	public static void closeHttpClient() {

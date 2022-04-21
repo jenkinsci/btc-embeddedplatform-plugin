@@ -291,8 +291,8 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 				try {
 					List<RequirementBasedTestCase> testCasesByScope = testCasesApi
 							.getRBTestCasesByScope(scope.getUid());
-					filteredTestCases = FilterHelper.filterTestCases(testCasesByScope, filteredRequirements,
-							blacklistedTestCases, whitelistedTestCases);
+					filteredTestCases.addAll(FilterHelper.filterTestCases(testCasesByScope, filteredRequirements,
+							blacklistedTestCases, whitelistedTestCases));
 				} catch (ApiException e) {
 					// TODO: can be removed once the GET request return an empty list instead of an
 					// error

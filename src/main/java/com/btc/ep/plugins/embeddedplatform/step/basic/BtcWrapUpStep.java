@@ -29,7 +29,6 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.FilePath;
-import hudson.XmlFile;
 import hudson.model.TaskListener;
 import hudson.tasks.junit.pipeline.JUnitResultsStep;
 
@@ -110,7 +109,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 		Store.reportData.setDuration(durationString);
 		File report = ReportService.getInstance().generateProjectReport(Store.reportData);
 		try {
-			ReportService.getInstance().exportReport(report, Store.exportPath);
+			ReportService.getInstance().exportReport(report, Store.exportPath, getContext().get(FilePath.class));
 		} catch (IOException e) {
 			throw new IOException("Failed to export project report to " + Store.exportPath + ": " + e.getMessage());
 		}

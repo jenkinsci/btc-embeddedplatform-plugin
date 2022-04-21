@@ -13,7 +13,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.UpdateModelPath;
 
@@ -39,7 +38,6 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		this.step = step;
 	}
 
-	private ProfilesApi profilesApi = new ProfilesApi();
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	@Override
@@ -58,7 +56,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		log("Loading profile '" + Store.epp.getName() + "'");
 		String msg = null;
 		try {
-			profilesApi.openProfile(step.getProfilePath(), true);
+			openProfile(step.getProfilePath());
 			updateModelPaths();
 			msg = "Successfully loaded the profile";
 			response = 200;

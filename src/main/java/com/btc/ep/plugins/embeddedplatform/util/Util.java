@@ -374,6 +374,24 @@ public class Util {
 		}
 		return false;
 	}
+	
+	public static void transfer(InputStream source, OutputStream target, boolean closeStreams) throws IOException {
+	    try {
+			byte[] buf = new byte[8192];
+			int length;
+			while ((length = source.read(buf)) > 0) {
+			    target.write(buf, 0, length);
+			}
+		} finally {
+			if (closeStreams) {
+				try {
+					if (source != null) source.close();
+					if (target != null) target.close();
+				} catch(Exception ignored) {
+				}
+			}			
+		}
+	}
 
 	/**
 	 * Returns the content of the file as a String expecting utf8 encoded files.

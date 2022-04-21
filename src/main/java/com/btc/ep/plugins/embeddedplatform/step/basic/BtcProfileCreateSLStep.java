@@ -11,7 +11,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.SLImportInfo;
 
@@ -30,7 +29,6 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateSLStep step;
-	private ProfilesApi profilesApi = new ProfilesApi();
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public BtcProfileCreateSLStepExecution(BtcProfileCreateSLStep step, StepContext context) {
@@ -50,7 +48,7 @@ class BtcProfileCreateSLStepExecution extends AbstractBtcStepExecution {
 		Store.epp = resolveInAgentWorkspace(profilePath);
 		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports")
 				.toString();
-		profilesApi.createProfile(true);
+		createEmptyProfile();
 		
 		/*
 		 * Prepare Matlab

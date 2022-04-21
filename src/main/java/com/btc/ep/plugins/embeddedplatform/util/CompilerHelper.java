@@ -99,10 +99,11 @@ public class CompilerHelper {
 		} else {
 			arbitraryCompiler = setArbitraryCompiler();
 		}
-		if (arbitraryCompiler == null) {
-			throw new RuntimeException(
-					"No compiler could not be set. Please verify if a supported compiler is installed (see BTC EmbeddedPlatform Install Guide)");
-		}
+		// skipping this because it doesn't work on linux yet
+//		if (arbitraryCompiler == null) {
+//			throw new RuntimeException(
+//					"No compiler could not be set. Please verify if a supported compiler is installed (see BTC EmbeddedPlatform Install Guide)");
+//		}
 	}
 	
 }

@@ -145,7 +145,12 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 
 	private void prepareAndExecuteVectorGeneration() throws ApiException {
 		Config config = vectorGenerationApi.getConfiguration();
-		config.setTargetDefinitions(Collections.emptyList());
+		// diable all target definitions -> use pll
+//		List<TargetDefinition> targetDefinitions = config.getTargetDefinitions().stream()
+//				.map(def -> def.enabled(false))
+//				.collect(Collectors.toList());
+//		config.setTargetDefinitions(targetDefinitions);
+		config.getTargetDefinitions().forEach(def -> def.enabled(false));
 		config.setPllString(step.getPll());
 		config.setCheckUnreachableProperties(step.isRecheckUnreachable());
 		config.setIsSubscopesGoalsConsidered(step.isConsiderSubscopes());
@@ -158,12 +163,12 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 		case "ATG":
 			addAtgEngine(step, engineSettings);
 			// disable cv
-			engineSettings.setEngineCv(new EngineCv().use(false));
+			engineSettings.getEngineCv().use(false);
 			break;
 		case "CV":
 			addCvEngine(step, engineSettings);
 			// disable atg
-			engineSettings.setEngineAtg(new EngineAtg().use(false));
+			engineSettings.getEngineAtg().use(false);
 			break;
 		default:
 			break;

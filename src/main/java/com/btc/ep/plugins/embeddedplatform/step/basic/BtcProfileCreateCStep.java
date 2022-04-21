@@ -13,7 +13,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
-import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
 
@@ -33,7 +32,6 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateCStep step;
-	private ProfilesApi profilesApi = new ProfilesApi();
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public BtcProfileCreateCStepExecution(BtcProfileCreateCStep step, StepContext context) {
@@ -51,7 +49,7 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 		preliminaryChecks(codeModelPath);
 		Store.epp = resolveInAgentWorkspace(profilePath);
 		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath());
-		profilesApi.createProfile(true);
+		createEmptyProfile();
 
 		// Matlab stuff
 		prepareMatlab(step);
@@ -79,7 +77,6 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 			return;
 		}
 	}
-
 
 	/**
 	 * Checks if the profilePath and codeModelPath are valid (!= null), discards any
