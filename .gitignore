@@ -14,3 +14,4 @@ buildNumber.properties
 !/.mvn/wrapper/maven-wrapper.jar
 *.lnk
 .vscode/settings.json
+.settings/org.eclipse.core.resources.prefs
