@@ -39,6 +39,7 @@ import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsExportSte
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
+import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceResetStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
@@ -198,6 +199,9 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 		case "toleranceExport":
 			run(testStep, new BtcToleranceExportStep());
 			break;
+		case "toleranceReset":
+			run(testStep, new BtcToleranceResetStep());
+			break;
 		case "vectorImport":
 			String vectorImportDir = (String) testStep.get("importDir");
 			checkArgument(vectorImportDir != null, "No directory was provided for the Vector Import step");
@@ -207,6 +211,11 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 //			run(testStep, new BtcVectorExportStep());
 //			break;
 
+		case "custom":
+			// special step to invoke plugins, etc.
+			checkArgument(testStep.get("apiPath") != null, "No apiPath was provided");
+			run(testStep, new BtcVectorImportStep(null));
+			break;
 		default:
 			log("Test Step '%s' is not a supported step. Please refer to the docs and verify the spelling.", stepName);
 			break;
