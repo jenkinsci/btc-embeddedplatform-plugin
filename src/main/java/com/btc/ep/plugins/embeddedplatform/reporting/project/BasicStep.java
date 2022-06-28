@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.reporting.project;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,8 +15,9 @@ import java.util.Map;
  * 
  * @author thabok
  */
-public class BasicStep {
+public class BasicStep implements Serializable {
 
+	private static final long serialVersionUID = 1L;
 	/*
 	 * FIELDS
 	 */

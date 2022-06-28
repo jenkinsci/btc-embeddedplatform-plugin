@@ -1,17 +1,27 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiClient;
@@ -31,7 +41,15 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 import com.btc.ep.plugins.embeddedplatform.util.WindowsHelper;
 
 import hudson.Extension;
+import hudson.FilePath;
+import hudson.Launcher;
+import hudson.model.Computer;
+import hudson.model.ComputerPinger;
 import hudson.model.TaskListener;
+import hudson.remoting.Callable;
+import hudson.remoting.VirtualChannel;
+import jenkins.model.Jenkins;
+import jenkins.security.MasterToSlaveCallable;
 
 /**
  * This class defines what happens when the above step is executed
@@ -53,18 +71,31 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 		noReporting();
 		// ...but prepare reporting for successive steps
 		Store.startDate = new Date();
+		Store.matlabVersion = step.getMatlabVersion();
 		if (!step.isSkipReportInitialization()) {
 			initializeReporting();
 		}
-
+		
 		// Prepare http connection
-		ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
+		List<String> hostNames = getContext().get(Computer.class).getChannel().call(new ListPossibleNames());
+		String address = null;
+		for (String hostName : hostNames) {
+			InetAddress ia = InetAddress.getByName(hostName);
+			if (ComputerPinger.checkIsReachable(ia, 3)) {
+				address = hostName;
+				break;
+			}
+		}
+		checkArgument(address != null, "Cannot resolve agent IP address for remote connection.");
+//		String hostName = getContext().get(Computer.class).getHostName();
+		ApiClient apiClient = new EPApiClient().setBasePath("http://" + address + ":" + step.getPort());
+//		ApiClient apiClient = new EPApiClient().setBasePath("http://localhost:" + step.getPort());
 		apiClient.setReadTimeout(10000);
 		Configuration.setDefaultApiClient(apiClient);
 		HttpRequester.port = step.getPort();
 		
 		// Connect or startup EP
-		boolean connected = HttpRequester.checkConnection("/ep/test", 200, jenkinsConsole);
+		boolean connected = HttpRequester.checkConnection("/ep/test", 200);
 		if (connected) {
 			response = 201;
 		} else {
@@ -74,7 +105,6 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 				List<String> command = createStartCommand();
 				// start process and save it for future use (e.g. to destroy it)
 				try {
-					log("Starting BTC EmbeddedPlatform: " + String.join(" ", command));
 					Store.epProcess = ProcessHelper.spawnManagedProcess(command, getContext());
 				} catch (Exception e) {
 					error("Failed to start BTC EmbeddedPlatform.", e);
@@ -84,7 +114,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 			}
 
 			// wait for ep rest service to respond
-			connected = HttpRequester.checkConnection("/ep/test", 200, step.getTimeout(), 2, jenkinsConsole);
+			connected = HttpRequester.checkConnection("/ep/test", 200, step.getTimeout(), 2, null);
 			if (connected) {
 				log("Successfully connected to BTC EmbeddedPlatform " + epVersion + " on port " + step.getPort());
 				response = 200;
@@ -95,6 +125,57 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 				return;
 			}
 		}
+	}
+
+	private boolean checkConnectionWithTimeout() throws IOException, InterruptedException, Exception {
+		boolean connected = false;
+		Callable<Boolean, Exception> exec = new Callable<Boolean, Exception>() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Boolean call() throws Exception {
+				return HttpRequester.checkConnection("/ep/test", 200, step.getTimeout(), 2, HttpRequester.printStream);
+			}
+
+			@Override
+			public void checkRoles(RoleChecker checker) throws SecurityException {
+			}
+		};
+		Launcher launcher = getContext().get(Launcher.class);
+		if (launcher != null) {
+			VirtualChannel channel = launcher.getChannel();
+			if (channel == null) {
+				throw new IllegalStateException("Launcher doesn't support remoting but it is required");
+			}
+			connected = channel.call(exec);
+		}
+		return connected;
+	}
+	private boolean checkConnectionOnce() throws IOException, InterruptedException, Exception {
+		boolean connected = false;
+		Callable<Boolean, Exception> exec = new Callable<Boolean, Exception>() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Boolean call() throws Exception {
+				return HttpRequester.checkConnection("/ep/test", 200, HttpRequester.printStream);
+			}
+
+			@Override
+			public void checkRoles(RoleChecker checker) throws SecurityException {
+			}
+		};
+		Launcher launcher = getContext().get(Launcher.class);
+		if (launcher != null) {
+			VirtualChannel channel = launcher.getChannel();
+			if (channel == null) {
+				throw new IllegalStateException("Launcher doesn't support remoting but it is required");
+			}
+			connected = channel.call(exec);
+		}
+		return connected;
 	}
 
 	/**
@@ -121,14 +202,16 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 		int port = step.getPort();
 		/*
 		 * IMPORTANT: Don't use something like System.getProperty("os.name"), it will
-		 * return the operating system of the Jenkins controller
+		 * return the operating system of the Jenkins controller, not that of the agent
 		 */
 		if (isUnix()) {
+			log("Starting BTC EmbeddedPlatform on Linux...");
 			return createStartCommand_LINUX(licensingPackage);
 		} else {
 			// prepare data for process call
 			String epInstallPath = getEpInstallPath().replaceAll("\\\\", "/");
 			epVersion = epInstallPath.substring(epInstallPath.lastIndexOf("/") + 1).substring(2);
+			log("Starting BTC EmbeddedPlatform on Windows...");
 			return createStartCommand_WINDOWS(epVersion, epInstallPath, licensingPackage, port);
 		}
 	}
@@ -160,6 +243,13 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 		command.add("-application");
 		command.add("ep.application.headless");
 		command.add("-nosplash");
+		
+		/*
+		 * Try to find the jre/jdk and add the bin folder to the path
+		 * Effect: only one process (ep.exe) is started, not ep.exe + javaw.exe
+		 */
+		addJreString(epInstallPath, command);
+		
 		command.add("-vmargs");
 		command.add("-Dep.runtime.batch=ep");
 		command.add("-Dosgi.configuration.area.default=@user.home/AppData/Roaming/BTC/ep/" + epVersion + "/" + port
@@ -172,9 +262,32 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 		command.add("-Dep.rest.port=" + port);
 		if (step.getAdditionalJvmArgs() != null) {
 			command.add(step.getAdditionalJvmArgs());
+		} else {
+			command.add("-Xmx1g");
 		}
 		return command;
 	}
+	
+	/**
+	 * Tries to find the jdk/jre that is shipped with BTC EmbeddedPlatform. If successful, adds the bin folder explicitly as -vm
+	 * 
+	 * @param epInstallPath the ep install dir
+	 * @param command the command to add to
+	 */
+	private void addJreString(String epInstallPath, List<String> command) {
+		try {
+			FilePath epInstallPathResolved = resolveInAgentWorkspace(epInstallPath);
+			FilePath jreParentDir = epInstallPathResolved.child("jres");
+			checkArgument(jreParentDir != null, "Failed to find the Java directory in the EP installation ('" + jreParentDir + "')");
+			Optional<FilePath> jdkBinDir = jreParentDir.listDirectories().stream().filter(dir -> dir.getName().startsWith("jdk")).findFirst();
+			// may fail, then we get a warning
+			String jreBinPath = jdkBinDir.get().getRemote() + "/bin";
+			command.add("-vm");
+			command.add("\"" + jreBinPath + "\"");
+		} catch (Exception e) {
+			warning("Could not determine proper jdk path for btc-embeddedplatform.");
+		}
+    }
 
 	/**
 	 * Creates the ep start command for linux (docker)
@@ -191,20 +304,72 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 	 */
 	private List<String> createStartCommand_LINUX(String licensingPackage) throws IOException {
 		List<String> command = new ArrayList<>();
-		command.add("/opt/Export/ep"); // path to ep is fixed based on docker image
-		command.add("-clearPersistedState");
-		command.add("-application");
-		command.add("ep.application.headless");
-		command.add("-nosplash");
-		command.add("-vmargs");
-		command.add("-Dep.runtime.batch=ep");
-		command.add("-Dep.linux.config=/opt/.eplinuxregistry");
-		command.add("-Dep.licensing.package=" + licensingPackage);
+		command.add("sh"); // path to ep is fixed based on docker image
+		command.add("-c");
+		StringBuilder sb = new StringBuilder();
+		sb.append("\"\\${EP_INSTALL_PATH}/ep"); // path to ep is fixed based on docker image
+		sb.append(" -clearPersistedState");
+		sb.append(" -application");
+		sb.append(" ep.application.headless");
+		sb.append(" -nosplash");
+		sb.append(" -vmargs");
+		sb.append(" -Dep.runtime.batch=ep");
+		sb.append(" -Dep.linux.config=\\${EP_REGISTRY}");
+		sb.append(" -Dlogback.configurationFile=\\${EP_LOG_CONFIG}");
+		sb.append(" -Dep.configuration.logpath=\\${WORKSPACE}/logs");
+		sb.append(" -Dep.runtime.workdir=\\${WORK_DIR}");
+		sb.append(" -Dct.root.temp.dir=\\${TMP_DIR}");
+		sb.append(" -Dep.licensing.location=\\${LICENSE_LOCATION}");
+		sb.append(" -Dep.licensing.package=" + licensingPackage);
+		sb.append(" -Dep.rest.port=\\${REST_PORT}");
 		if (step.getAdditionalJvmArgs() != null) {
-			command.add(step.getAdditionalJvmArgs());
+			sb.append(" ").append(step.getAdditionalJvmArgs());
 		}
+		sb.append("\"");
+		command.add(sb.toString());
 		return command;
 	}
+	
+	private static class ListPossibleNames extends MasterToSlaveCallable<List<String>,IOException> {
+        /**
+         * In the normal case we would use {@link Computer} as the logger's name, however to
+         * do that we would have to send the {@link Computer} class over to the remote classloader
+         * and then it would need to be loaded, which pulls in {@link Jenkins} and loads that
+         * and then that fails to load as you are not supposed to do that. Another option
+         * would be to export the logger over remoting, with increased complexity as a result.
+         * Instead we just use a logger based on this class name and prevent any references to
+         * other classes from being transferred over remoting.
+         */
+        private static final Logger LOGGER = Logger.getLogger(ListPossibleNames.class.getName());
+
+        public List<String> call() throws IOException {
+            List<String> names = new ArrayList<>();
+
+            Enumeration<NetworkInterface> nis = NetworkInterface.getNetworkInterfaces();
+            while (nis.hasMoreElements()) {
+                NetworkInterface ni =  nis.nextElement();
+                LOGGER.log(Level.FINE, "Listing up IP addresses for {0}", ni.getDisplayName());
+                Enumeration<InetAddress> e = ni.getInetAddresses();
+                while (e.hasMoreElements()) {
+                    InetAddress ia =  e.nextElement();
+                    if(ia.isLoopbackAddress()) {
+                        LOGGER.log(Level.FINE, "{0} is a loopback address", ia);
+                        continue;
+                    }
+
+                    if(!(ia instanceof Inet4Address)) {
+                        LOGGER.log(Level.FINE, "{0} is not an IPv4 address", ia);
+                        continue;
+                    }
+
+                    LOGGER.log(Level.FINE, "{0} is a viable candidate", ia);
+                    names.add(ia.getHostAddress());
+                }
+            }
+            return names;
+        }
+        private static final long serialVersionUID = 1L;
+    }
 
 }
 
@@ -221,6 +386,7 @@ public class BtcStartupStep extends Step implements Serializable {
 	 * Each parameter of the step needs to be listed here as a field
 	 */
 	private String installPath;
+	private String matlabVersion;
 	private String licensingPackage = "ET_COMPLETE";
 	private String licenseLocationString;
 	private String additionalJvmArgs;
@@ -351,6 +517,15 @@ public class BtcStartupStep extends Step implements Serializable {
 	@DataBoundSetter
 	public void setSkipReportInitialization(boolean skipReportInitialization) {
 		this.skipReportInitialization = skipReportInitialization;
+	}
+
+	public String getMatlabVersion() {
+		return matlabVersion;
+	}
+
+	@DataBoundSetter
+	public void setMatlabVersion(String matlabVersion) {
+		this.matlabVersion = matlabVersion;
 	}
 
 	/*

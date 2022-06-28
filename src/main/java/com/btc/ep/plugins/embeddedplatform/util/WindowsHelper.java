@@ -20,7 +20,7 @@ public class WindowsHelper {
 		
 		// Use ProcessBuilder to run the script with powershell
 		List<String> cmd = Arrays.asList("powershell", "-Command", psSingleLineCommand);
-		Proc proc = ProcessHelper.spawnManagedProcess(cmd, stepContext);
+		Proc proc = ProcessHelper.spawnManagedProcess(cmd, stepContext, false);
 		String epInstallDir = Util.readStringFromStream(proc.getStdout());
 		
 		// Check feasability (should be something like "C:\Program Files\BTC\ep22.1p0"

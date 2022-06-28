@@ -26,5 +26,6 @@ public class Store {
 	public static StepArgSection testStepArgumentSection;
 	public static Date startDate;
 	public static MetaInfoSection metaInfoSection;
+	public static String matlabVersion;
 
 }

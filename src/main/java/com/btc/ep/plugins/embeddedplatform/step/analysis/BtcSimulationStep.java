@@ -58,7 +58,7 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
 
 	private TestCaseSimulationOnListParams prepareInfoObject() throws ApiException {
 		TestCaseSimulationOnListParams info = new TestCaseSimulationOnListParams();
-		List<String> scopeUids = scopeApi.getScopesByQuery1(null, false).stream().map(scope -> scope.getUid())
+		List<String> scopeUids = scopeApi.getScopesByQuery1(null, FALSE).stream().map(scope -> scope.getUid())
 				.collect(Collectors.toList());
 		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
 		if (executionConfigNames.isEmpty()) {

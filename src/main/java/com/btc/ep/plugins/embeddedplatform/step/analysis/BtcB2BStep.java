@@ -18,13 +18,13 @@ import org.openapitools.client.api.BackToBackTestsApi;
 import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
-import org.openapitools.client.model.BackToBackTest;
-import org.openapitools.client.model.BackToBackTest.VerdictStatusEnum;
 import org.openapitools.client.model.BackToBackTestExecutionData;
-import org.openapitools.client.model.Comparison;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
+import org.openapitools.client.model.RestBackToBackTest;
+import org.openapitools.client.model.RestBackToBackTest.VerdictStatusEnum;
+import org.openapitools.client.model.RestComparison;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
@@ -43,7 +43,7 @@ import hudson.model.TaskListener;
 class BtcB2BStepExecution extends AbstractBtcStepExecution {
 
 	private static final String REPORT_LINK_NAME_B2B = "Back-to-Back Test Report";
-	private static final String REPORT_NAME_B2B = "BackToBackTestReport";
+	private static final String REPORT_NAME_B2B = "RestBackToBackTestReport";
 	private static final long serialVersionUID = 1L;
 	private BtcB2BStep step;
 	private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
@@ -91,7 +91,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	private void parseResultsAndCreateReport(String b2bTestUid) {
 		// parse results
 		try {
-			BackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
+			RestBackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
 			parseResult(b2bTest);
 		} catch (Exception e) {
 			warning("Failed to parse the B2B test results.", e);
@@ -123,7 +123,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		return data;
 	}
 
-	private void parseResult(BackToBackTest b2bTest) {
+	private void parseResult(RestBackToBackTest b2bTest) {
 		VerdictStatusEnum verdictStatus = b2bTest.getVerdictStatus();
 		log("Back-to-Back Test finished with result: " + verdictStatus);
 		// status, etc.
@@ -131,7 +131,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 				+ b2bTest.getFailed() + " failed, " + b2bTest.getError() + " error(s)";
 		info(info);
 		
-		for (Comparison comp : b2bTest.getComparisons()) {
+		for (RestComparison comp : b2bTest.getComparisons()) {
 			JUnitXMLHelper.Status testStatus = JUnitXMLHelper.Status.PASSED;
 			switch(comp.getVerdictStatus()) {
 				case ERROR:

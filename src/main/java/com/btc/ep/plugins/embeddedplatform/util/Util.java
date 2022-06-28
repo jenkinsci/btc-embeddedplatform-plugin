@@ -43,6 +43,8 @@ import org.openapitools.client.model.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+
 public class Util {
 
 	private static Logger logger = LoggerFactory.getLogger(Util.class);
@@ -251,7 +253,7 @@ public class Util {
 	 */
 	public static Scope getToplevelScope() throws ApiException {
 		try {
-			return new ScopesApi().getScopesByQuery1(null, true).get(0);
+			return new ScopesApi().getScopesByQuery1(null, AbstractBtcStepExecution.TRUE).get(0);
 		} catch (Exception e) {
 			throw new ApiException("Could not determine the toplevel scope");
 		}

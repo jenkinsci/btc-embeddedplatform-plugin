@@ -55,12 +55,11 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 
 	private static final String EXECUTION_RECORD = "EXECUTION_RECORD";
 	private static final long serialVersionUID = 1L;
-	private BtcMigrationSourceStep step;
+	private transient BtcMigrationSourceStep step;
 
 	public BtcMigrationSourceStepExecution(BtcMigrationSourceStep step, StepContext context) {
 		super(step, context);
 		this.step = step;
-
 	}
 
 	/**
@@ -224,7 +223,7 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 		FoldersApi folderApi = new FoldersApi();
 
-		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords();
+		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords1();
 		for (String config : executionConfigs) {
 			if (step.isCreateProfilesFromScratch()) {
 				// Export Execution Records to be imported in the target profile

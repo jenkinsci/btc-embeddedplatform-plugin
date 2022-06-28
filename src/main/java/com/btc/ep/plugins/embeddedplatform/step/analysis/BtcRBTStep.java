@@ -75,7 +75,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	@Override
 	protected void performAction() throws Exception {
 		// Prepare data
-		List<String> tcUids = getRelevantTestCaseUIDs();
+		Set<String> tcUids = getRelevantTestCaseUIDs();
 
 		// skip rbt execution if there are no test cases
 		if (tcUids.isEmpty()) {
@@ -102,7 +102,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	 * @param tcUids
 	 * @param testResults
 	 */
-	private void parseResultsAndCreateReport(List<String> tcUids, RBTestCaseExecutionResultMapData testResults) {
+	private void parseResultsAndCreateReport(Set<String> tcUids, RBTestCaseExecutionResultMapData testResults) {
 		if (testResults != null) {
 			try {
 				analyzeResults(testResults, tcUids.isEmpty());
@@ -140,7 +140,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	/**
 	 * Prepares the info object for rbt execution
 	 */
-	private RBTExecutionDataExtendedNoReport prepareInfoObject(List<String> tcUids) throws ApiException {
+	private RBTExecutionDataExtendedNoReport prepareInfoObject(Set<String> tcUids) throws ApiException {
 		RBTExecutionDataExtendedNoReport info = new RBTExecutionDataExtendedNoReport();
 		RBTExecutionDataNoReport data = new RBTExecutionDataNoReport();
 		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
@@ -150,7 +150,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 		log("Executing Requirements-based Tests on %s...", executionConfigNames);
 		data.setForceExecute(false);
 		data.setExecConfigNames(executionConfigNames);
-		info.setUiDs(tcUids);
+		info.setUiDs(new ArrayList<>(tcUids));
 		info.setData(data);
 		return info;
 	}
@@ -263,9 +263,8 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	 * @return a list with the matching test cases UIDs
 	 * @throws ApiException
 	 */
-	private List<String> getRelevantTestCaseUIDs() throws ApiException {
-		// List<RequirementBasedTestCase> testCases = new ArrayList<>();
-		List<Scope> scopes = scopesApi.getScopesByQuery1(null, false);
+	private Set<String> getRelevantTestCaseUIDs() throws ApiException {
+		List<Scope> scopes = scopesApi.getScopesByQuery1(null, FALSE);
 
 		List<String> blacklistedRequirements = Util.getValuesFromCsv(step.getRequirementsBlacklist());
 		List<String> whitelistedRequirements = Util.getValuesFromCsv(step.getRequirementsWhitelist());
@@ -304,7 +303,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 				}
 			}
 		}
-		List<String> tcUids = filteredTestCases.stream().map(tc -> tc.getUid().toString()).collect(Collectors.toList());
+		Set<String> tcUids = filteredTestCases.stream().map(tc -> tc.getUid().toString()).collect(Collectors.toSet());
 		return tcUids;
 	}
 

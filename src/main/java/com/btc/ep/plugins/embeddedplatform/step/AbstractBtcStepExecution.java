@@ -2,7 +2,6 @@ package com.btc.ep.plugins.embeddedplatform.step;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.SocketTimeoutException;
@@ -41,7 +40,6 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	protected Status status = Status.OK;
-	protected PrintStream jenkinsConsole;
 	/**
 	 * Response returned to Jenkins (may be overwritten by implementation)
 	 */
@@ -49,6 +47,9 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	private String functionName;
 	private BasicStep reportingStep;
 	private Date t1 = null;
+	
+	public static final String TRUE  = "TRUE";
+	public static final String FALSE = "FALSE";
 
 	public AbstractBtcStepExecution(Step step, StepContext context) {
 		super(context);
@@ -58,23 +59,21 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	}
 
 	private boolean reportingDisabled = false;
-	public TimerTask t;
-
+	
 	public boolean start() {
+		
 		TimerTask t = new TimerTask() {
 
 			@Override
 			public void run() {
 				t1 = new Date();
 				try {
-					jenkinsConsole = getContext().get(TaskListener.class).getLogger();
 					// set default print stream to jenkinsConsole, relevant for waitForCompletion
 					// method
-					HttpRequester.printStream = jenkinsConsole;
-					/*
-					 * Main action (implemented by the individual steps)
-					 */
+					HttpRequester.printStream = getContext().get(TaskListener.class).getLogger();
+					
 					performAction();
+					
 					getContext().onSuccess(response); // return to context
 				} catch (Exception e) {
 					error("Error during call of " + functionName + "():", e);
@@ -88,7 +87,6 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 		reporting();
 		return false;
 	}
-	
 	/**
 	 * Updates the step's status to the given value. The status is initially OK and
 	 * can only be made worse. If the status is ERROR, a call of status(Status.OK)
@@ -179,7 +177,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	public AbstractBtcStepExecution error() {
 		this.reportingStep.setStatusOK(false);
 		status(Status.ERROR);
-		// also set the build result to failure
+		// also set the build result to failu)re
 		try {
 			getContext().get(Run.class).setResult(Result.FAILURE);
 		} catch (Exception e) {
@@ -211,7 +209,11 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 		info(reportingInfo);
 		if (t != null) {
 			// print full stack trace
-			t.printStackTrace(jenkinsConsole);
+			try {
+				t.printStackTrace(HttpRequester.printStream);
+			} catch (Exception e) {
+				t.printStackTrace();
+			}
 		}
 		return error();
 	}
@@ -235,7 +237,12 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 				log(((ApiException) t).getResponseBody());
 			}
 			// print full stack trace
-			t.printStackTrace(jenkinsConsole);
+			try {
+				t.printStackTrace(HttpRequester.printStream);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		return warning();
 	}
@@ -267,8 +274,8 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	 * @param message
 	 */
 	protected void log(String message) {
-		jenkinsConsole.print("[BTC] ");
-		jenkinsConsole.println(message);
+		HttpRequester.printStream.print("[BTC] ");
+		HttpRequester.printStream.println(message);
 	}
 
 	/**
@@ -388,11 +395,14 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 	 * @throws Exception
 	 */
 	protected void prepareMatlab(MatlabAwareStep step) throws Exception {
-		String matlabVersionOrEmptyString = step.getMatlabVersion() == null ? "" : step.getMatlabVersion();
+		String matlabVersionOrEmptyString = step.getMatlabVersion();
+		if (matlabVersionOrEmptyString == null) {
+			matlabVersionOrEmptyString = Store.matlabVersion == null ? "" : Store.matlabVersion;
+		}
 		// this is only needed if we have a startup script or the user specified a Matlab version
-		if (step.getMatlabVersion() != null || step.getStartupScriptPath() != null) {
+		if (Store.matlabVersion != null || step.getMatlabVersion() != null || step.getStartupScriptPath() != null) {
 			log("Preparing Matlab " + matlabVersionOrEmptyString + "...");
-			Util.configureMatlabConnection(step.getMatlabVersion(), step.getMatlabInstancePolicy());
+			Util.configureMatlabConnection(matlabVersionOrEmptyString, step.getMatlabInstancePolicy());
 			runMatlabStartupScript(step);
 			log("Successfully prepared Matlab " + matlabVersionOrEmptyString);
 		}

@@ -20,8 +20,9 @@ import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.ImportResult;
 import org.openapitools.client.model.ImportStatus;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.RBTestCaseImportInfo;
-import org.openapitools.client.model.StimuliVectorImportInfo;
+import org.openapitools.client.model.RestRBTestCaseImportInfo;
+import org.openapitools.client.model.RestRBTestCaseImportInfo.OverwritePolicyEnum;
+import org.openapitools.client.model.RestStimuliVectorImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -77,8 +78,8 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 		Job job = null;
 		if (step.getVectorKind().equals("TC")) {
 			// import test cases
-			RBTestCaseImportInfo info = new RBTestCaseImportInfo();
-			info.setOverwritePolicy(OVERWRITE);
+			RestRBTestCaseImportInfo info = new RestRBTestCaseImportInfo();
+			info.setOverwritePolicy(OverwritePolicyEnum.OVERWRITE);
 			info.setPaths(vectorFilePaths);
 			// no format? http://jira.osc.local:8080/browse/EP-2534 --> format is
 			// auto-detected based on file extension
@@ -96,8 +97,8 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 			}
 		} else { // excel
 			// import stimuli vectors
-			StimuliVectorImportInfo info = new StimuliVectorImportInfo();
-			info.setOverwritePolicy(OVERWRITE);
+			RestStimuliVectorImportInfo info = new RestStimuliVectorImportInfo();
+			info.setOverwritePolicy(org.openapitools.client.model.RestStimuliVectorImportInfo.OverwritePolicyEnum.OVERWRITE);
 			info.setPaths(vectorFilePaths);
 			/*
 			 * info.setVectorKind(step.getVectorKind());
@@ -115,7 +116,6 @@ class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
 					log(((ApiException) e).getResponseBody());
 				} catch (Exception idc) {
 				}
-				;
 				error();
 			}
 		}

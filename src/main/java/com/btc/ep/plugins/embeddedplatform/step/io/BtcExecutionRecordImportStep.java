@@ -15,8 +15,8 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionConfigsApi;
 import org.openapitools.client.api.ExecutionRecordsApi;
-import org.openapitools.client.model.ExecutionRecordImportInfo;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.model.RestExecutionRecordImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -47,7 +47,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
 
 		List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
 		List<String> paths = files.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
-		ExecutionRecordImportInfo data = new ExecutionRecordImportInfo();
+		RestExecutionRecordImportInfo data = new RestExecutionRecordImportInfo();
 		// execution config can be user-defined, so there's no check to make
 		String kind = step.getExecutionConfig() != null ? step.getExecutionConfig()
 				: ecApi.getExecutionConfigs().getExecConfigNames().get(0);

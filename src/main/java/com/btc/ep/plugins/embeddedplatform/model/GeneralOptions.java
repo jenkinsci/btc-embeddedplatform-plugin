@@ -1,6 +1,13 @@
 package com.btc.ep.plugins.embeddedplatform.model;
 
 public class GeneralOptions {
+	
+	/*
+	 * IMPORTANT:
+	 * 
+	 * - need to use non-primitive objects (e.g., Integer, Boolean instead of int, boolean)
+	 * - Getters for Boolean fields need to be called "isFieldName" instead of "getFieldName"
+	 */
 
 	private Integer port;
 	private String installPath;
@@ -9,6 +16,7 @@ public class GeneralOptions {
 	private String licensingPackage;
 	private String licenseLocation;
 	private Boolean simplyConnect;
+	private String matlabVersion;
 
 	public Integer getPort() {
 		return port;
@@ -58,12 +66,23 @@ public class GeneralOptions {
 		this.licenseLocation = licenseLocation;
 	}
 
-	public Boolean getSimplyConnect() {
+	/*
+	 * See comment on top: needs to be isSimplyConnect (not getSimplyConnect)
+	 */
+	public Boolean isSimplyConnect() {
 		return simplyConnect;
 	}
 
 	public void setSimplyConnect(Boolean simplyConnect) {
 		this.simplyConnect = simplyConnect;
+	}
+
+	public String getMatlabVersion() {
+		return matlabVersion;
+	}
+
+	public void setMatlabVersion(String matlabVersion) {
+		this.matlabVersion = matlabVersion;
 	}
 
 }

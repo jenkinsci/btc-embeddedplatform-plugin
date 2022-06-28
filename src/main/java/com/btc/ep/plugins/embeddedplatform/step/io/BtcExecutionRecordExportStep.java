@@ -16,6 +16,7 @@ import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionRecordsApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestExecutionRecordExportInfo;
+import org.openapitools.client.model.RestExecutionRecordExportInfo.ExportFormatEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -44,7 +45,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
 		List<String> uids = null;
 		try {
-			uids = erApi.getExecutionRecords().stream()
+			uids = erApi.getExecutionRecords1().stream()
 					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
 							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
 					.map(er -> er.getUid()).collect(Collectors.toList());
@@ -66,7 +67,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 		RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
 		data.setUiDs(uids);
 		data.setExportDirectory(exportDir);
-		data.setExportFormat("MDF");
+		data.setExportFormat(ExportFormatEnum.MDF);
 		try {
 			Job job = erApi.exportExecutionRecords(data);
 			Object response = HttpRequester.waitForCompletion(job.getJobID());

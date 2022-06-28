@@ -15,9 +15,11 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.DomainChecksApi;
 import org.openapitools.client.api.ScopesApi;
+import org.openapitools.client.model.DomainChecksIOInfo;
+import org.openapitools.client.model.DomainChecksRangesInput;
+import org.openapitools.client.model.DomainChecksRangesInput.ApplyBoundaryChecksEnum;
+import org.openapitools.client.model.DomainChecksRangesInput.ApplyInvalidRangesChecksEnum;
 import org.openapitools.client.model.Job;
-import org.openapitools.client.model.RestDomainChecksIOInfo;
-import org.openapitools.client.model.RestDomainChecksRangesInput;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
@@ -59,7 +61,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 		if (step.getScopePath() != "*") { // find a specific scope
 			List<Scope> scopesList = null;
 			try {
-				scopesList = scopesApi.getScopesByQuery1(null, true);
+				scopesList = scopesApi.getScopesByQuery1(null, TRUE);
 			} catch (Exception e) {
 				error("Could not query scopes.", e);
 				return;
@@ -70,7 +72,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 			if (step.getScopePath() != null) { // scope given. use it.
 				List<Scope> scopes = null;
 				try {
-					scopes = scopesApi.getScopesByQuery1(step.getScopePath(), false);
+					scopes = scopesApi.getScopesByQuery1(step.getScopePath(), FALSE);
 				} catch (Exception e) {
 					error("Failed to retrieve scope " + step.getScopePath(), e);
 					return;
@@ -84,7 +86,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 		} else { // else step.getScopePath() == "*". iterate over all scopes
 			List<Scope> allScopes = null;
 			try {
-				allScopes = scopesApi.getScopesByQuery1(null, false);
+				allScopes = scopesApi.getScopesByQuery1(null, FALSE);
 			} catch (Exception e) {
 				error("Failed to retrieve all scopes", e);
 				return;
@@ -111,7 +113,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 				error();
 				return;
 			}
-			RestDomainChecksIOInfo r = new RestDomainChecksIOInfo();
+			DomainChecksIOInfo r = new DomainChecksIOInfo();
 			r.setScopeUid(scopeuid);
 			r.setFilePath(dcXmlPath);
 			try {
@@ -126,10 +128,10 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 			}
 		} else { // no config file given-- use our input variables
 			// create API object
-			RestDomainChecksRangesInput r = new RestDomainChecksRangesInput();
+			DomainChecksRangesInput r = new DomainChecksRangesInput();
 			r.setScopeUid(scopeuid);
-			r.setApplyBoundaryChecks(step.isActivateBoundaryCheck());
-			r.setApplyInvalidRangesChecks(step.isActivateRangeViolationCheck());
+			r.setApplyBoundaryChecks(step.isActivateBoundaryCheck() ? ApplyBoundaryChecksEnum.TRUE : ApplyBoundaryChecksEnum.FALSE);
+			r.setApplyInvalidRangesChecks(step.isActivateRangeViolationCheck() ? ApplyInvalidRangesChecksEnum.TRUE : ApplyInvalidRangesChecksEnum.FALSE);
 			r.setPercentage(Integer.parseInt(step.getRaster()));
 			try { // send API object
 				log("Creating Domain Check Goals...");

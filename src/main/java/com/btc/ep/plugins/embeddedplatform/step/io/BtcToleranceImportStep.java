@@ -10,7 +10,8 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.api.TolerancesApi;
-import org.openapitools.client.model.TolerancesImportConfig;
+import org.openapitools.client.model.TolerancesIOConfig;
+import org.openapitools.client.model.TolerancesIOConfig.ToleranceUseCaseEnum;
 
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
@@ -43,14 +44,14 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
 
 		// Get the path
 		String path = toRemoteAbsolutePathString(step.getPath());
-		TolerancesImportConfig info = new TolerancesImportConfig();
+		TolerancesIOConfig info = new TolerancesIOConfig();
 		info.setPath(path);
 		if ("RBT".equals(step.getUseCase())) {
 			// Requirements-based Test
-			info.setToleranceUseCase("RBT");
+			info.setToleranceUseCase(ToleranceUseCaseEnum.RBT);
 		} else if ("B2B".equals(step.getUseCase())) {
 			// Back-to-Back Test
-			info.setToleranceUseCase("B2B");
+			info.setToleranceUseCase(ToleranceUseCaseEnum.B2B);
 		} else {
 			error("Valid use cases for Tolerance Import are B2B or RBT, not " + step.getUseCase());
 		}

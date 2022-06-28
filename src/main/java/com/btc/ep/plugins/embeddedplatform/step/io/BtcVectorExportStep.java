@@ -22,7 +22,9 @@ import org.openapitools.client.model.Architecture;
 import org.openapitools.client.model.B2BStimuliVector;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestStimuliVectorExportInfo;
+import org.openapitools.client.model.RestStimuliVectorExportInfo.ExportFormatEnum;
 import org.openapitools.client.model.RestVectorExportDetails;
+import org.openapitools.client.model.RestVectorExportDetails.CsvDelimiterEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -31,13 +33,6 @@ import com.btc.ep.plugins.embeddedplatform.util.Store;
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-/*
- * ################################################################################################
- * #                                                                                              #
- * #     THIS IS A TEMPLATE: COPY THIS FILE AS A STARTING POINT TO IMPLEMENT FURTHER STEPS.       #
- * #                                                                                              # 
- * ################################################################################################
- */
 
 /**
  * This class defines what happens when the above step is executed
@@ -106,17 +101,18 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 					log(((ApiException) e).getResponseBody());
 				} catch (Exception idc) {
 				}
-				;
 				error();
 			}
 		} else if (step.getVectorFormat() == "CSV") {
-			r.setCsvDelimiter(step.getCsvDelimiter());
+			String csvDelimiter = step.getCsvDelimiter();
+			r.setCsvDelimiter(csvDelimiter != null ? CsvDelimiterEnum.fromValue(csvDelimiter.toUpperCase()) : CsvDelimiterEnum.SEMICOLON);
 			r.setSingleFile(step.isSingleFile());
 		}
 
 		// Stimuli Vector
 		RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
-		info.setExportFormat(step.getVectorFormat());
+		String vectorFormat = step.getVectorFormat();
+		info.setExportFormat(vectorFormat != null ? ExportFormatEnum.fromValue(vectorFormat.toUpperCase()) : ExportFormatEnum.CSV);
 		info.setExportDirectory(exportDir.toString());
 		info.setUiDs(allVectorNames);
 		info.additionalOptions(r);

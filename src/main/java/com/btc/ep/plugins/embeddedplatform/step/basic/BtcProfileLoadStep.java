@@ -13,7 +13,9 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
+import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.Job;
+import org.openapitools.client.model.ProfilePath;
 import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
@@ -56,7 +58,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		log("Loading profile '" + Store.epp.getName() + "'");
 		String msg = null;
 		try {
-			openProfile(step.getProfilePath());
+			openProfile(Store.epp.absolutize().getRemote());
 			updateModelPaths();
 			msg = "Successfully loaded the profile";
 			response = 200;
@@ -94,6 +96,9 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		 */
 		if (step.isUpdateRequired()) {
 			try {
+				// FIXME: workaround for EP-2752
+				new ProfilesApi().saveProfile(new ProfilePath().path(Store.epp.absolutize().getRemote()));
+				// ... end of workaround
 				Job archUpdate = archApi.architectureUpdate();
 				log("Updating architecture...");
 				HttpRequester.waitForCompletion(archUpdate.getJobID());

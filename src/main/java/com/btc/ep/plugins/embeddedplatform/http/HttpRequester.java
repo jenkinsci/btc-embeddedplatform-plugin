@@ -149,6 +149,12 @@ public class HttpRequester {
 				responseObject.putAll(map);
 				return responseObject;
 			}
+		case 404: // job id "not found". Since we don't use invalid jobIDs,
+				  // this means that the progress has finished and was queried more than once
+				  // EP is too stupid to deal with this atm :-(
+				  // see EP-2836
+				  // Note: if the caller attempts to use the responseObject, he will still be in trouble
+			throw new ApiException("The operation has completed but didn't return the expected response: EP-2836");
 		default:
 			String reasonPhrase = r.getStatus().getStatusCode() + ": " + r.getStatus().getReasonPhrase();
 			String msg = String.format("Request returned: %s, %s", reasonPhrase, r.getContent());
@@ -333,6 +339,7 @@ public class HttpRequester {
 	 * @param expectedStatusCode the status code to expect
 	 * @param timeoutInSeconds   the timeout after which to return false
 	 * @param delayInSeconds     the delay between the connection attempts
+	 * @param out				 the print stream to use, may be null
 	 * @throws Exception
 	 */
 	public static boolean checkConnection(String route, int expectedStatusCode, int timeoutInSeconds,

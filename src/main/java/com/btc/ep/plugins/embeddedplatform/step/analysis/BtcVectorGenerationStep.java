@@ -20,17 +20,24 @@ import org.openapitools.client.api.ReportsApi;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.model.CodeCoverageResult;
 import org.openapitools.client.model.Config;
+import org.openapitools.client.model.Config.CheckUnreachablePropertiesEnum;
+import org.openapitools.client.model.Config.IsSubscopesGoalsConsideredEnum;
 import org.openapitools.client.model.CoreEngine;
+import org.openapitools.client.model.CoreEngine.NameEnum;
+import org.openapitools.client.model.CoreEngine.UseEnum;
 import org.openapitools.client.model.EngineAtg;
 import org.openapitools.client.model.EngineAtg.ExecutionModeEnum;
 import org.openapitools.client.model.EngineCv;
 import org.openapitools.client.model.EngineCv.ParallelExecutionModeEnum;
 import org.openapitools.client.model.EngineCv.SearchFocusEnum;
 import org.openapitools.client.model.EngineSettings;
+import org.openapitools.client.model.EngineSettings.AllowDenormalizedFloatsEnum;
+import org.openapitools.client.model.EngineSettings.AnalyseSubScopesHierarchicallyEnum;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
+import org.openapitools.client.model.TargetDefinition.EnabledEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -78,7 +85,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 
 	private void reporting(Scope toplevel) throws ApiException {
 		String msg = "Successfully executed vectorGeneration";
-		CodeCoverageResult codeCoverageResult = coverageApi.getCodeCoverageResultByScope(toplevel.getUid(), "MCDC|STM");
+		CodeCoverageResult codeCoverageResult = coverageApi.getCodeCoverageResultByScope(toplevel.getUid(), Arrays.asList("MCDC","STM"));
 		double stmD = codeCoverageResult.getStatementCoverage().getCoveredCompletelyPercentage().doubleValue();
 		double mcdcD = codeCoverageResult.getMcDCCoverage().getCoveredCompletelyPercentage().doubleValue();
 		String info = stmD + "% Statement, " + mcdcD + "% MC/DC";
@@ -102,7 +109,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 
 	private boolean isDummyRoot(ScopesApi scopeApi) throws ApiException {
 		try {
-			scopeApi.getScopesByQuery1(null, true);
+			scopeApi.getScopesByQuery1(null, TRUE);
 		} catch (ApiException e) {
 			if (404 == e.getCode()) {
 				// no toplevel ? --> dummy root
@@ -131,7 +138,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 		cv.setLoopUnroll(step.getLoopUnroll());
 		// hard coded...
 		cv.setSearchFocus(SearchFocusEnum.BALANCED);
-		cv.setCoreEngines(Arrays.asList(new CoreEngine().name("ISAT").use(true)));
+		cv.setCoreEngines(Arrays.asList(new CoreEngine().name(NameEnum.ISAT).use(UseEnum.TRUE)));
 		// search focus
 		// assumption check
 		// core engines
@@ -150,10 +157,10 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 //				.map(def -> def.enabled(false))
 //				.collect(Collectors.toList());
 //		config.setTargetDefinitions(targetDefinitions);
-		config.getTargetDefinitions().forEach(def -> def.enabled(false));
+		config.getTargetDefinitions().forEach(def -> def.enabled(EnabledEnum.FALSE));
 		config.setPllString(step.getPll());
-		config.setCheckUnreachableProperties(step.isRecheckUnreachable());
-		config.setIsSubscopesGoalsConsidered(step.isConsiderSubscopes());
+		config.setCheckUnreachableProperties(step.isRecheckUnreachable() ? CheckUnreachablePropertiesEnum.TRUE : CheckUnreachablePropertiesEnum.FALSE);
+		config.setIsSubscopesGoalsConsidered(step.isConsiderSubscopes() ? IsSubscopesGoalsConsideredEnum.TRUE : IsSubscopesGoalsConsideredEnum.FALSE);
 		EngineSettings engineSettings = config.getEngineSettings();
 		switch (step.getEngine().toUpperCase()) {
 		case "ATG+CV":
@@ -163,25 +170,25 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 		case "ATG":
 			addAtgEngine(step, engineSettings);
 			// disable cv
-			engineSettings.getEngineCv().use(false);
+			engineSettings.getEngineCv().use(EngineCv.UseEnum.FALSE);
 			break;
 		case "CV":
 			addCvEngine(step, engineSettings);
 			// disable atg
-			engineSettings.getEngineAtg().use(false);
+			engineSettings.getEngineAtg().use(EngineAtg.UseEnum.FALSE);
 			break;
 		default:
 			break;
 		}
-		engineSettings.setAllowDenormalizedFloats(step.isAllowDenormalizedFloats());
-		engineSettings.setAnalyseSubScopesHierarchically(step.isAnalyzeSubscopesHierarchically());
+		engineSettings.setAllowDenormalizedFloats(step.isAllowDenormalizedFloats() ? AllowDenormalizedFloatsEnum.TRUE : AllowDenormalizedFloatsEnum.FALSE);
+		engineSettings.setAnalyseSubScopesHierarchically(step.isAnalyzeSubscopesHierarchically() ? AnalyseSubScopesHierarchicallyEnum.TRUE : AnalyseSubScopesHierarchicallyEnum.FALSE);
 		engineSettings.setHandlingRateThreshold(step.getHandlingRateThreshold());
 		engineSettings.setTimeoutSeconds(step.getGlobalTimeout());
 		config.setEngineSettings(engineSettings);
 
 		if (isDummyRoot(scopeApi)) {
 			// toplevel s a dummy scope
-			List<Scope> scopes = scopeApi.getScopesByQuery1(null, false);
+			List<Scope> scopes = scopeApi.getScopesByQuery1(null, TRUE);
 			for (Scope scope : scopes) {
 				config.setScope(scope);
 				Job vectorGeneration = vectorGenerationApi.execute(config);
@@ -189,7 +196,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 			}
 		} else {
 			// toplevel scope is part of the SUT
-			Scope toplevel = scopeApi.getScopesByQuery1(null, true).get(0);
+			Scope toplevel = Util.getToplevelScope();
 			config.setScope(toplevel);
 			Job vectorGeneration = vectorGenerationApi.execute(config);
 			HttpRequester.waitForCompletion(vectorGeneration.getJobID());

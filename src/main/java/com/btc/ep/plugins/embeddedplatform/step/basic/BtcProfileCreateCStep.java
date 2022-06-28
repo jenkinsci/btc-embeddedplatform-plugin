@@ -57,12 +57,12 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * Create the profile based on the code model
 		 */
-		CompilerHelper.setCompilerWithFallback(step.getCompilerShortName(), jenkinsConsole);
+		CompilerHelper.setCompilerWithFallback(step.getCompilerShortName(), HttpRequester.printStream);
 		CCodeImportInfo info = new CCodeImportInfo().modelFile(codeModelPath.toString());
 		Job job = null;
 		String msg;
 		try {
-			job = archApi.importArchitecture(info);
+			job = archApi.importCCodeArchitecture(info);
 			log("Importing C-Code architecture...");
 			HttpRequester.waitForCompletion(job.getJobID(), "result");
 			/*

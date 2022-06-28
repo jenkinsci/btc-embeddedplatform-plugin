@@ -14,6 +14,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.model.ECImportInfo;
+import org.openapitools.client.model.ECImportInfo.FixedStepSolverEnum;
 import org.openapitools.client.model.ECImportInfo.ParameterHandlingEnum;
 import org.openapitools.client.model.ECImportInfo.TestModeEnum;
 import org.openapitools.client.model.ECWrapperImportInfo;
@@ -90,7 +91,7 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * EC Architecture Import
 		 */
-		ECImportInfo info = new ECImportInfo().ecModelFile(modelPath).ecInitScript(scriptPath).fixedStepSolver(true);
+		ECImportInfo info = new ECImportInfo().ecModelFile(modelPath).ecInitScript(scriptPath).fixedStepSolver(FixedStepSolverEnum.TRUE);
 		if (step.getSubsystemMatcher() != null) {
 			info.setSubsystemMatcher(step.getSubsystemMatcher());
 		}

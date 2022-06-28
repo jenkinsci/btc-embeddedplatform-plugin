@@ -14,7 +14,9 @@ import org.openapitools.client.api.ArchitecturesApi;
 import org.openapitools.client.model.Job;
 import org.openapitools.client.model.TLImportInfo;
 import org.openapitools.client.model.TLImportInfo.CalibrationHandlingEnum;
+import org.openapitools.client.model.TLImportInfo.FixedStepSolverEnum;
 import org.openapitools.client.model.TLImportInfo.TestModeEnum;
+import org.openapitools.client.model.TLImportInfo.UseExistingCodeEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
@@ -63,7 +65,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 		// perform import
 		try {
 			TLImportInfo info = prepareInfoObject(tlModelPath, tlScriptPath);
-			Job job = archApi.importTargetLinkArchitecture1(info);
+			Job job = archApi.importTargetLinkArchitecture(info);
 			log("Importing TargetLink architecture...");
 			HttpRequester.waitForCompletion(job.getJobID());
 		} catch (Exception e) {
@@ -84,7 +86,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 	 */
 	private TLImportInfo prepareInfoObject(String tlModelPath, String tlScriptPath) throws Exception {
 		TLImportInfo info = new TLImportInfo().tlModelFile(tlModelPath).tlInitScript(tlScriptPath)
-				.fixedStepSolver(true);
+				.fixedStepSolver(FixedStepSolverEnum.TRUE);
 		// Calibration Handling
 		CalibrationHandlingEnum calibrationHandling = CalibrationHandlingEnum.EXPLICIT_PARAMETER;
 		if (step.getCalibrationHandling().equalsIgnoreCase("LIMITED BLOCKSET")) {
@@ -103,7 +105,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 		if (step.getEnvironmentXmlPath() != null) {
 			info.setEnvironment(toRemoteAbsolutePathString(step.getEnvironmentXmlPath()));
 		}
-		info.setUseExistingCode(step.isReuseExistingCode());
+		info.setUseExistingCode(step.isReuseExistingCode() ? UseExistingCodeEnum.TRUE : UseExistingCodeEnum.FALSE);
 		// TL Subsystem
 		if (step.getTlSubsystem() != null) {
 			info.setTlSubsystem(step.getTlSubsystem());

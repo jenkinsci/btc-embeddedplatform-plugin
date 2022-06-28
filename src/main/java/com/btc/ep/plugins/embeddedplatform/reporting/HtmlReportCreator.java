@@ -253,8 +253,14 @@ public class HtmlReportCreator {
 		String wholeCSS = getStringFromFile(baseTemplateStyle);
 		String wholeJS = getStringFromFile(baseTemplateScript);
 
-		File newBaseTemplateFile = new File(baseTemplate.getParentFile().getAbsolutePath() + "\\" + BASE_REPORT_FILE);
-
+		// FIXME: this file cannot be written to - Permission denied (on jenkins controller in Docker/linux) !!!!!!!!!!!!!!
+		//File newBaseTemplateFile = new File(baseTemplate.getParentFile().getAbsolutePath() + "\\" + BASE_REPORT_FILE);
+		File tmpFile = Files.createTempFile("btc-report-template", "").toFile();
+		File newBaseTemplateFile = new File(tmpFile.getParent() + "/" + BASE_REPORT_FILE); 
+		newBaseTemplateFile.deleteOnExit();
+		tmpFile.deleteOnExit();
+		newBaseTemplateFile.renameTo(new File(newBaseTemplateFile.getParent() + "/" + BASE_REPORT_FILE));
+				
 		checkState(newBaseTemplateFile != null);
 
 		replacedCSS += wholeBaseFTL.replaceAll("#addStyleHere",
