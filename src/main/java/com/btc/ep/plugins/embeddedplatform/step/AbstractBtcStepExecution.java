@@ -5,6 +5,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.SocketTimeoutException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,10 +33,12 @@ import com.btc.ep.plugins.embeddedplatform.util.Util;
 import htmlpublisher.HtmlPublisher;
 import htmlpublisher.HtmlPublisherTarget;
 import hudson.FilePath;
+import hudson.Launcher;
 import hudson.model.Computer;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.tasks.ArtifactArchiver;
 
 public abstract class AbstractBtcStepExecution extends StepExecution {
 
@@ -388,6 +392,22 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 		HtmlPublisher.publishReports(getContext().get(Run.class), getContext().get(FilePath.class),
 				getContext().get(TaskListener.class), Collections.singletonList(target), HtmlPublisher.class);
 	}
+	
+	protected void archiveArtifacts() throws Exception {
+		Run<?,?> build = getContext().get(Run.class);
+		FilePath workspace = getContext().get(FilePath.class);
+		Launcher launcher = getContext().get(Launcher.class);
+		TaskListener taskListener = getContext().get(TaskListener.class);
+		
+		Path wsPath = Paths.get(workspace.getRemote());
+		Path eppPath = Paths.get(Store.epp.getRemote());
+		Path relPath = wsPath.relativize(eppPath);
+		
+		ArtifactArchiver aa = new ArtifactArchiver(relPath.toString());
+		aa.setAllowEmptyArchive(true);
+		
+		aa.perform(build, workspace, launcher, taskListener);
+	}
 
 	/**
 	 * Configures the ML connection and runs the startup script (if specified)
@@ -404,7 +424,7 @@ public abstract class AbstractBtcStepExecution extends StepExecution {
 			log("Preparing Matlab " + matlabVersionOrEmptyString + "...");
 			Util.configureMatlabConnection(matlabVersionOrEmptyString, step.getMatlabInstancePolicy());
 			runMatlabStartupScript(step);
-			log("Successfully prepared Matlab " + matlabVersionOrEmptyString);
+//			log("Successfully prepared Matlab " + matlabVersionOrEmptyString);
 		}
 		
 	}

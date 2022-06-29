@@ -18,11 +18,19 @@ class TestCase {
 public class JUnitXMLHelper {
 	public enum Status {PASSED, FAILED, ERROR, SKIPPED}
 	
-	public static Map<String, List<TestCase>> suites = new HashMap<>();
-	private static Map<String, Integer> passedTests = new HashMap<>();
-	private static Map<String, Integer> failedTests = new HashMap<>();
-	private static Map<String, Integer> errorTests = new HashMap<>();
-	private static Map<String, Integer> skippedTests = new HashMap<>();
+	private static Map<String, List<TestCase>> suites;
+	private static Map<String, Integer> passedTests;
+	private static Map<String, Integer> failedTests;
+	private static Map<String, Integer> errorTests;
+	private static Map<String, Integer> skippedTests;
+	
+	public static void initialize() {
+		suites = new HashMap<>();
+		passedTests = new HashMap<>();
+		failedTests = new HashMap<>();
+		errorTests = new HashMap<>();
+		skippedTests = new HashMap<>();
+	}
 	
 	public static int addSuite(String suitename) {
 		if (suites.containsKey(suitename)) {

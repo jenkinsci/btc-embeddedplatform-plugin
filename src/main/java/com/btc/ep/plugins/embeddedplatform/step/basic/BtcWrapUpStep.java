@@ -86,10 +86,14 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 				applicationApi.exitApplication(true);
 			} catch (Exception e) { // doesn't really matter what we do, as long as we dont crash
 			}
-			// hard kill to be on the save side
-			if (Store.epProcess != null && Store.epProcess.isAlive()) {
-				// ... und bist du nicht willig, so brauch ich Gewalt!
-				Store.epProcess.kill();
+			try {
+				// hard kill to be on the save side
+				if (Store.epProcess != null && Store.epProcess.isAlive()) {
+					// ... und bist du nicht willig, so brauch ich Gewalt!
+					Store.epProcess.kill();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 			log("Successfully closed BTC EmbeddedPlatform.");
 		}
@@ -116,6 +120,8 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 		// Report file name must match report value of JenkinsAutomationReport
 		// constructor
 		publishHtml("Test Automation Report", "TestAutomationReport.html");
+		archiveArtifacts();
+		
 	}
 
 }

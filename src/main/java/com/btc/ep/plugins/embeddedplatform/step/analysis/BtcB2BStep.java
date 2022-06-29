@@ -91,7 +91,13 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	private void parseResultsAndCreateReport(String b2bTestUid) {
 		// parse results
 		try {
-			RestBackToBackTest b2bTest = b2bApi.getTestByUID(b2bTestUid);
+			RestBackToBackTest b2bTest;
+			if (b2bTestUid == null) {
+				List<RestBackToBackTest> allB2bTests = b2bApi.getAllTests();
+				b2bTest = allB2bTests.get(allB2bTests.size() - 1);
+			} else {
+				b2bTest = b2bApi.getTestByUID(b2bTestUid);
+			}
 			parseResult(b2bTest);
 		} catch (Exception e) {
 			warning("Failed to parse the B2B test results.", e);

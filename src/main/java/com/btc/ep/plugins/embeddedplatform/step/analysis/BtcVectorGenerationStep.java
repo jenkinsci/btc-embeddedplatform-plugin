@@ -75,10 +75,10 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 			log("Generating Vectors...");
 			prepareAndExecuteVectorGeneration();
 		} catch (Exception e) {
-			warning("Failed to execute vector generation.", e);
-			return;
+			// currently disabled due to EP-2836
+  			// warning("Failed to execute vector generation.", e);
+  			// return;
 		}
-
 		// Reporting
 		reporting(toplevelScope);
 	}

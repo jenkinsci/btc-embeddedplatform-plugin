@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.reporting;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -106,20 +107,35 @@ public class ReportService {
 
 	}
 
+	/**
+	 * Transfers the file located on the Jenkins controller to the agent workspace via a remote stream.
+	 */
 	public void exportReport(File report, String destinationFolder, FilePath workspace) throws Exception {
+		boolean errorOccurred = transferToRemoteStream(report, destinationFolder, workspace);
+		if (errorOccurred) {
+			// try one more time
+			transferToRemoteStream(report, destinationFolder, workspace);
+		}
+		// delete local file
+		report.delete();
+	}
+
+	private boolean transferToRemoteStream(File report, String destinationFolder, FilePath workspace) throws IOException {
+		boolean errorOccurred = false;
 		// transfer local file content into remote object
 		FilePath destFile = workspace.child(destinationFolder + "/" + report.getName());
 		FileInputStream fis = null;
 		try {
 			fis = new FileInputStream(report);
 			Util.transfer(fis, destFile.write(), true);
+		} catch (Exception e) {
+			errorOccurred = true;
 		} finally {
 			if (fis != null) {
 				fis.close();
 			}
 		}
-		// delete local file
-		report.delete();
+		return errorOccurred;
 	}
 
 }

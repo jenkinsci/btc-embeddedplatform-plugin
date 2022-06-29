@@ -110,7 +110,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 			}
 		}
 		log(msg + ".");
-		detailWithLink(Store.epp.getName(), profilePath.toString());
+		detailWithLink(Store.epp.getName(), "../artifact/" + Store.epp.getName());
 		info(msg + ".");
 		response = 200;
 	}

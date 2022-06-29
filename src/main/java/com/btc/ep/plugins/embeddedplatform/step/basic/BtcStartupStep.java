@@ -35,6 +35,7 @@ import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
 import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.ProcessHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
@@ -75,6 +76,7 @@ class BtcStartupStepExecution extends AbstractBtcStepExecution {
 		if (!step.isSkipReportInitialization()) {
 			initializeReporting();
 		}
+		JUnitXMLHelper.initialize();
 		
 		// Prepare http connection
 		List<String> hostNames = getContext().get(Computer.class).getChannel().call(new ListPossibleNames());
