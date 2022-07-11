@@ -1,6 +1,7 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -9,6 +10,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -22,8 +24,10 @@ import org.openapitools.client.model.ECWrapperResultInfo;
 import org.openapitools.client.model.Job;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -32,16 +36,45 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
+class BtcProfileCreateECStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateECStep step;
-	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public BtcProfileCreateECStepExecution(BtcProfileCreateECStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
+
+	@Override
+	protected Object run() throws Exception {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ProfileCreateECExecution exec = new ProfileCreateECExecution(step, logger, getContext());
+
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.matlabVersion = Store.matlabVersion;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+	
+}
+
+class ProfileCreateECExecution extends BtcExecution {
+	
+	private static final long serialVersionUID = 2387451531872732925L;
+	private BtcProfileCreateECStep step;
+
+	public ProfileCreateECExecution(BtcProfileCreateECStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
+		this.step = step;
+	}
+	
+	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	/*
 	 * Put the desired action here: - checking preconditions - access step
@@ -50,16 +83,17 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 	 * response)
 	 */
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		/*
 		 * Preparation
 		 */
-		String slModelPath = toRemoteAbsolutePathString(step.getSlModelPath());
-		String slScriptPath = toRemoteAbsolutePathString(step.getSlScriptPath());
+		String slModelPath = resolveToString(step.getSlModelPath());
+		String slScriptPath = resolveToString(step.getSlScriptPath());
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
 		preliminaryChecks();
-		Store.epp = resolveInAgentWorkspace(profilePath);
-		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports");
+		
+		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 		createEmptyProfile();
 
 
@@ -69,29 +103,27 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * EC Wrapper Model
 		 */
-		String modelPath = slModelPath.toString();
-		String scriptPath = slScriptPath == null ? null : slScriptPath.toString();
 		if (step.isCreateWrapperModel()) {
 			ECWrapperImportInfo wrapperInfo = new ECWrapperImportInfo();
-			wrapperInfo.setEcModelFile(modelPath);
-			wrapperInfo.setEcInitScript(scriptPath);
+			wrapperInfo.setEcModelFile(slModelPath);
+			wrapperInfo.setEcInitScript(slScriptPath);
 			try {
 				Job job = archApi.createEmbeddedCoderCWrapperModel(wrapperInfo);
 				log("Creating wrapper model for autosar component...");
 				ECWrapperResultInfo resultInfo = HttpRequester.waitForCompletion(job.getJobID(), "result", ECWrapperResultInfo.class);
-				modelPath = resultInfo.getEcModelFile();
-				scriptPath = resultInfo.getEcInitFile();
+				slModelPath = resultInfo.getEcModelFile();
+				slScriptPath = resultInfo.getEcInitFile();
 				log("EmbeddedCoder Autosar wrapper model creation succeeded.");
 			} catch (Exception e) {
 				error("Failed to create wrapper model.", e);
-				return;
+				return response(400);
 			}
 		}
 
 		/*
 		 * EC Architecture Import
 		 */
-		ECImportInfo info = new ECImportInfo().ecModelFile(modelPath).ecInitScript(scriptPath).fixedStepSolver(FixedStepSolverEnum.TRUE);
+		ECImportInfo info = new ECImportInfo().ecModelFile(slModelPath).ecInitScript(slScriptPath).fixedStepSolver(FixedStepSolverEnum.TRUE);
 		if (step.getSubsystemMatcher() != null) {
 			info.setSubsystemMatcher(step.getSubsystemMatcher());
 		}
@@ -106,19 +138,19 @@ class BtcProfileCreateECStepExecution extends AbstractBtcStepExecution {
 		configureTestMode(info, step.getTestMode());
 		try {
 			Job job = archApi.importEmbeddedCoderArchitecture(info);
-			log("Importing EmbeddedCoder architecture '" + new File(modelPath).getName() + "'...");
+			log("Importing EmbeddedCoder architecture '" + new File(slModelPath).getName() + "'...");
 			HttpRequester.waitForCompletion(job.getJobID());
 		} catch (Exception e) {
 			error("Failed to import architecture.", e);
-			return;
+			return response(400);
 		}
 		/*
 		 * Wrapping up, reporting, etc.
 		 */
 		String msg = "Architecture Import successful.";
-		detailWithLink(Store.epp.getName(), profilePath.toString());
+		detailWithLink(dataTransferObject.epp.getFileName().toString(), profilePath.toString());
 		log(msg);
-		info(msg);
+		return response(200);
 	}
 
 	/**
@@ -186,7 +218,7 @@ public class BtcProfileCreateECStep extends Step implements Serializable, Matlab
 	 * Each parameter of the step needs to be listed here as a field
 	 */
 	private String profilePath;
-	private String exportPath;
+	private String exportPath = "reports";
 
 	private String slModelPath;
 	private String slScriptPath;

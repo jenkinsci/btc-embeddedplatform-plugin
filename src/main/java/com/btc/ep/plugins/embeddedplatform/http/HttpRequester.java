@@ -28,6 +28,7 @@ public class HttpRequester {
 	private static final int SUCCESS = 200;
 	private static final int CREATED = 201;
 	private static final int IN_PROGRESS = 202;
+	private static final int NO_PROGRESS_INFO_COUNT_THRESHOLD = 5;
 	public static String host = "http://localhost";
 	public static int port = 29267;
 
@@ -274,10 +275,12 @@ public class HttpRequester {
 			Class<T> expectedResponseClass) throws ApiException {
 		Object createdObject = null;
 		double oldProgressDone = 0d;
+		int noProgressCounter = 0;
 		while (true) {
 			Map<String, Object> progress;
 			progress = getProgress(jobId);
 			if (progress != null) {
+				noProgressCounter = 0;
 				int statusCode = (int) progress.get("statusCode");
 				if (Arrays.asList(CREATED, SUCCESS).contains(statusCode)) {
 					createdObject = progress.get(resultFieldName);
@@ -296,6 +299,9 @@ public class HttpRequester {
 					}
 				}
 			} else { // progress == null -> error
+				if (noProgressCounter++ >= NO_PROGRESS_INFO_COUNT_THRESHOLD) {
+					throw new ApiException("Querying the progress repeatedly failed.");
+				}
 				System.out.println("[Debug output] No progress info available!");
 				sleep(2000);
 			}
@@ -339,13 +345,31 @@ public class HttpRequester {
 	 * @param expectedStatusCode the status code to expect
 	 * @param timeoutInSeconds   the timeout after which to return false
 	 * @param delayInSeconds     the delay between the connection attempts
+	 * @throws Exception
+	 */
+	public static boolean checkConnection(String route, int expectedStatusCode, int timeoutInSeconds,
+			int delayInSeconds) throws Exception {
+		return checkConnection(route, expectedStatusCode, timeoutInSeconds, delayInSeconds, null);
+	}
+	
+	/**
+	 * Attempts GET requests to the specified route. Returns true if successful
+	 * (expected status) or false on timeout.
+	 *
+	 * @param route              route to connect to
+	 * @param expectedStatusCode the status code to expect
+	 * @param timeoutInSeconds   the timeout after which to return false
+	 * @param delayInSeconds     the delay between the connection attempts
 	 * @param out				 the print stream to use, may be null
 	 * @throws Exception
 	 */
 	public static boolean checkConnection(String route, int expectedStatusCode, int timeoutInSeconds,
 			int delayInSeconds, PrintStream out) throws Exception {
+		if (out == null) out = System.out;
 		long startingTime = System.currentTimeMillis();
 		while (true) {
+			out.println("Attempting to connect to " + HttpRequester.getBasePath() + route + ", expecting status code " + expectedStatusCode);
+			out.println();
 			if (checkConnection(route, expectedStatusCode, out)) {
 				return true;
 			}

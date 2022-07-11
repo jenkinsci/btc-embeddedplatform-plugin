@@ -6,19 +6,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+
 import hudson.FilePath;
 
-
-class TestCase {
-	String name;
-	JUnitXMLHelper.Status status;
-	String message;
-}
 
 public class JUnitXMLHelper {
 	public enum Status {PASSED, FAILED, ERROR, SKIPPED}
 	
-	private static Map<String, List<TestCase>> suites;
+	private static Map<String, List<JUnitXmlTestCase>> suites;
 	private static Map<String, Integer> passedTests;
 	private static Map<String, Integer> failedTests;
 	private static Map<String, Integer> errorTests;
@@ -36,7 +32,7 @@ public class JUnitXMLHelper {
 		if (suites.containsKey(suitename)) {
 			return -1; // key already contained
 		}
-		List<TestCase> l = new ArrayList<>();
+		List<JUnitXmlTestCase> l = new ArrayList<>();
 		suites.put(suitename, l);
 		passedTests.put(suitename, 0);
 		failedTests.put(suitename, 0);
@@ -46,11 +42,11 @@ public class JUnitXMLHelper {
 	}
 	
 	public static int addTest(String suitename, String testname, Status testStatus, String message) {
-		List<TestCase> list = suites.get(suitename);
+		List<JUnitXmlTestCase> list = suites.get(suitename);
 		/*if (list == null) {
 			return -1;
 		}*/
-		TestCase TC = new TestCase();
+		JUnitXmlTestCase TC = new JUnitXmlTestCase();
 		TC.name = testname;
 		TC.message = message;
 		TC.status = testStatus;
@@ -72,6 +68,7 @@ public class JUnitXMLHelper {
 		}
 		return 0;
 	}
+	
 	public static void dumpToFile(FilePath file) throws Exception {
 		String txt = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites>\n";
 		for(String suitename: suites.keySet()) {
@@ -81,8 +78,8 @@ public class JUnitXMLHelper {
 					errorTests.get(suitename) + skippedTests.get(suitename))
 					+ "\" errors=\"" + errorTests.get(suitename) +
 					"\" failures= \"" + failedTests.get(suitename) + "\">\n";
-			List<TestCase> testCases = suites.get(suitename);
-			for(TestCase tc : testCases) {
+			List<JUnitXmlTestCase> testCases = suites.get(suitename);
+			for(JUnitXmlTestCase tc : testCases) {
 				// 4 indent
 				txt += "    <testcase name=\"" + tc.name + "\" status=\"" + tc.status + "\">";
 				// if we're in a failed test case, add extra layer. 6 indent.
@@ -102,4 +99,5 @@ public class JUnitXMLHelper {
 		System.out.println(txt);
 		file.write(txt, StandardCharsets.UTF_8.toString());
 	}
+	
 }

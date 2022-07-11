@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,6 +12,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -25,7 +27,13 @@ import org.openapitools.client.model.RestRBTestCaseImportInfo.OverwritePolicyEnu
 import org.openapitools.client.model.RestStimuliVectorImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.step.analysis.RBTExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -34,18 +42,52 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcVectorImportStepExecution extends AbstractBtcStepExecution {
+class BtcVectorImportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcVectorImportStep step;
-	private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
 
+	public BtcVectorImportStepExecution(BtcVectorImportStep step, StepContext context) {
+		super(context);
+		this.step = step;
+	}
+
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		RBTExecution exec = new RBTExecution(step, logger, getContext());
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// do JUnit stuff on jenkins controller
+		JUnitXMLHelper.addSuite(stepResult.testSuite.suiteName);
+		for (JUnitXmlTestCase tc : stepResult.testSuite.testCases) {
+			JUnitXMLHelper.addTest(stepResult.testSuite.suiteName, tc.name, tc.status, tc.message);
+		}
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class RBTExecution extends BtcExecution {
+
+	private static final long serialVersionUID = -140646999640558658L;
+	private BtcVectorImportStep step;
+
+	private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
+	
 	private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
 	private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
 	private FoldersApi foldersApi = new FoldersApi();
 
-	public BtcVectorImportStepExecution(BtcVectorImportStep step, StepContext context) {
-		super(step, context);
+	public RBTExecution(BtcVectorImportStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
 		this.step = step;
 	}
 

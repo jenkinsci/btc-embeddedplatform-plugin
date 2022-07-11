@@ -191,13 +191,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		try {
 			report = b2bReportingApi.createBackToBackReport(b2bTestUid);
 		} catch (Exception e) {
-			log("WARNING failed to create B2B report: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
+			warning("WARNING failed to create B2B report. ", e);
 		}
 		ReportExportInfo reportExportInfo = new ReportExportInfo();
 		reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_B2B);
@@ -206,13 +200,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 				reportingApi.exportReport(report.getUid(), reportExportInfo);
 				detailWithLink(REPORT_LINK_NAME_B2B, REPORT_NAME_B2B + ".html");
 			} catch (Exception e) {
-				log("WARNING failed to export report: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				warning();
+				warning("WARNING failed to export report. ", e);
 			}
 		}
 	}

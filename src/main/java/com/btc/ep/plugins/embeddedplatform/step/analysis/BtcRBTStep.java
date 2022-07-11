@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,6 +16,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -40,11 +42,15 @@ import org.openapitools.client.model.RequirementSource;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestSuite;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.util.FilterHelper;
 import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Result;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -54,11 +60,45 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcRBTStepExecution extends AbstractBtcStepExecution {
+class BtcRBTStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
+	private static final long serialVersionUID = 1L;
+	private BtcRBTStep step;
+	
+	public BtcRBTStepExecution(BtcRBTStep step, StepContext context) {
+		super(context);
+		this.step = step;
+	}
+
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		RBTExecution exec = new RBTExecution(step, logger, getContext());
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// do JUnit stuff on jenkins controller
+		JUnitXMLHelper.addSuite(stepResult.testSuite.suiteName);
+		for (JUnitXmlTestCase tc : stepResult.testSuite.testCases) {
+			JUnitXMLHelper.addTest(stepResult.testSuite.suiteName, tc.name, tc.status, tc.message);
+		}
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class RBTExecution extends BtcExecution {
+	
+	private static final long serialVersionUID = -6891468741557945109L;
 	private static final String REPORT_LINK_NAME_RBT = "Test Execution Report";
 	private static final String REPORT_NAME_RBT = "TestExecutionReport";
-	private static final long serialVersionUID = 1L;
+	
 	private BtcRBTStep step;
 	private RequirementBasedTestExecutionApi testExecutionApi = new RequirementBasedTestExecutionApi();
 	private RequirementBasedTestExecutionReportsApi testExecutionReportApi = new RequirementBasedTestExecutionReportsApi();
@@ -66,14 +106,14 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 	private ReportsApi reportingApi = new ReportsApi();
 	private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
 	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
-	
-	public BtcRBTStepExecution(BtcRBTStep step, StepContext context) {
-		super(step, context);
+
+	public RBTExecution(BtcRBTStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// Prepare data
 		Set<String> tcUids = getRelevantTestCaseUIDs();
 
@@ -82,7 +122,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 			log("Skipping Requirements-based Test execution. No test cases are matching the filters");
 			info("No test cases are matching the filters");
 			skipped();
-			return;
+			return response(300);
 		}
 
 		// RBT Execution
@@ -92,8 +132,9 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 				RBTestCaseExecutionResultMapData.class);
 
 		// results + repo
-		JUnitXMLHelper.addSuite("RBT");
+		dataTransferObject.testSuite = new JUnitXmlTestSuite("RBT");
 		parseResultsAndCreateReport(tcUids, testResults);
+		return response(200);
 	}
 
 	/**
@@ -115,6 +156,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 				warning("Failed to create the report.", e);
 			}
 			Map<String, RBTestCaseExecutionResultSetData> tr = testResults.getTestResults();
+			
 			for (String key: tr.keySet()) {
 				for(RBTestCaseExecutionResultData result : tr.get(key).getTestResults()) {
 					JUnitXMLHelper.Status testStatus = JUnitXMLHelper.Status.PASSED;
@@ -131,7 +173,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 					} catch (ApiException e) {
 						warning("Couldn't get test-case name for UID " + result.getRbTestCaseUID());
 					}
-					JUnitXMLHelper.addTest("RBT", key+"-"+testname, testStatus, result.getComment());
+					dataTransferObject.testSuite.testCases.add(new JUnitXmlTestCase(key+"-"+testname, testStatus, result.getComment()));
 				}
 			}
 		}
@@ -175,7 +217,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 						data.setUiDs(reqSourceUids);
 						Report report = testExecutionReportApi.createRBTExecutionReportOnRequirementsSourceList(data);
 						ReportExportInfo reportExportInfo = new ReportExportInfo();
-						reportExportInfo.exportPath(Store.exportPath)
+						reportExportInfo.exportPath(dataTransferObject.exportPath)
 								.newName(REPORT_NAME_RBT + "-" + executionConfig.replace(" ", "_"));
 						reportingApi.exportReport(report.getUid(), reportExportInfo);
 						detailWithLink(REPORT_LINK_NAME_RBT + " (" + executionConfig + ")",
@@ -189,7 +231,7 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 					data.setExecConfigName(executionConfig);
 					Report report = testExecutionReportApi.createRBTExecutionReportOnScope(toplevel.getUid(), data);
 					ReportExportInfo reportExportInfo = new ReportExportInfo();
-					reportExportInfo.exportPath(Store.exportPath)
+					reportExportInfo.exportPath(dataTransferObject.exportPath)
 							.newName(REPORT_NAME_RBT + "-" + executionConfig.replace(" ", "_"));
 					reportingApi.exportReport(report.getUid(), reportExportInfo);
 					detailWithLink(REPORT_LINK_NAME_RBT + " (" + executionConfig + ")",
@@ -240,19 +282,19 @@ class BtcRBTStepExecution extends AbstractBtcStepExecution {
 		log("Requirements-based Test finished with result: " + overallResult);
 		if (Result.PASSED.equals(overallResult)) {
 			status(Status.OK).passed().result("Passed");
-			response = 200;
+			response(200);
 		} else if (Result.FAILED.equals(overallResult)) {
 			status(Status.OK).failed().result("Failed");
-			response = 300;
+			response(300);
 		} else if (zeroTestCases) {
 			status(Status.OK).skipped().result("Skipped");
-			response = 300;
+			response(300);
 		} else if (Result.ERROR.equals(overallResult)) {
 			status(Status.ERROR).result("Error");
-			response = 400;
+			response(400);
 		} else {
 			status(Status.ERROR).result("Error");
-			response = 500;
+			response(500);
 		}
 	}
 

@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
@@ -19,9 +21,11 @@ import org.openapitools.client.model.ProfilePath;
 import org.openapitools.client.model.UpdateModelPath;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
 import com.btc.ep.plugins.embeddedplatform.util.CompilerHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -30,41 +34,74 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
+class BtcProfileLoadStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileLoadStep step;
 
 	public BtcProfileLoadStepExecution(BtcProfileLoadStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
+	@Override
+	protected Object run() throws Exception {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ProfileLoadExecution exec = new ProfileLoadExecution(step, logger, getContext());
+
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.matlabVersion = Store.matlabVersion;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+	
+}
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class ProfileLoadExecution extends BtcExecution {
+	
+	private static final long serialVersionUID = -3030236847736474862L;
+	private BtcProfileLoadStep step;
+
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
+	public ProfileLoadExecution(BtcProfileLoadStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
+		this.step = step;
+	}
+
+
+	
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		/*
 		 * Preliminary checks
 		 */
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
 		checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
-		Store.epp = resolveInAgentWorkspace(profilePath);
-		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports")
-				.toString();
+		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.exportPath = resolveToString(step.getExportPath());
+
 		/*
 		 * Load the profile
 		 */
-		log("Loading profile '" + Store.epp.getName() + "'");
+		log("Loading profile '" + dataTransferObject.epp.getFileName() + "'");
 		String msg = null;
 		try {
-			openProfile(Store.epp.absolutize().getRemote());
+			openProfile(dataTransferObject.epp.toString());
 			updateModelPaths();
 			msg = "Successfully loaded the profile";
-			response = 200;
+			response(200);
 		} catch (Exception e) {
 			error("Problem while opening the profile.", e);
-			return;
+			return response(400);
 		}
 
 		/*
@@ -81,7 +118,7 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 			}
 		} catch (Exception e) {
 			error("Failed to prepare Matlab.", e);
-			return;
+			return response (400);
 		}
 
 		/*
@@ -97,22 +134,22 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		if (step.isUpdateRequired()) {
 			try {
 				// FIXME: workaround for EP-2752
-				new ProfilesApi().saveProfile(new ProfilePath().path(Store.epp.absolutize().getRemote()));
+				new ProfilesApi().saveProfile(new ProfilePath().path(dataTransferObject.epp.toString()));
 				// ... end of workaround
 				Job archUpdate = archApi.architectureUpdate();
 				log("Updating architecture...");
 				HttpRequester.waitForCompletion(archUpdate.getJobID());
 				msg += " (incl. arch-update)";
-				response = 201;
+				response(201);
 			} catch (Exception e) {
 				error("Failed to update architecture.", e);
-				return;
+				return response(400);
 			}
 		}
 		log(msg + ".");
-		detailWithLink(Store.epp.getName(), "../artifact/" + Store.epp.getName());
+		detailWithLink(dataTransferObject.epp.getFileName().toString(), "../artifact/" + dataTransferObject.epp.getFileName());
 		info(msg + ".");
-		response = 200;
+		return getResponse();
 	}
 
 	/**
@@ -125,27 +162,27 @@ class BtcProfileLoadStepExecution extends AbstractBtcStepExecution {
 		UpdateModelPath updateModelPath = new UpdateModelPath();
 		// resolve paths from pipeline
 		String path;
-		path = toRemoteAbsolutePathString(step.getTlModelPath());
+		path = resolveToString(step.getTlModelPath());
 		if (path != null) {
 			updateModelPath.setTlModelFile(path);
 		}
-		path = toRemoteAbsolutePathString(step.getTlScriptPath());
+		path = resolveToString(step.getTlScriptPath());
 		if (path != null) {
 			updateModelPath.setTlInitScript(path);
 		}
-		path = toRemoteAbsolutePathString(step.getSlModelPath());
+		path = resolveToString(step.getSlModelPath());
 		if (path != null) {
 			updateModelPath.setSlModelFile(path);
 		}
-		path = toRemoteAbsolutePathString(step.getSlScriptPath());
+		path = resolveToString(step.getSlScriptPath());
 		if (path != null) {
 			updateModelPath.setSlInitScript(path);
 		}
-		path = toRemoteAbsolutePathString(step.getAddInfoModelPath());
+		path = resolveToString(step.getAddInfoModelPath());
 		if (path != null) {
 			updateModelPath.setAddModelInfo(path);
 		}
-		path = toRemoteAbsolutePathString(step.getCodeModelPath());
+		path = resolveToString(step.getCodeModelPath());
 		if (path != null) {
 			updateModelPath.setEnvironment(path);
 		}

@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.util;
 
+import java.nio.file.Path;
 import java.util.Date;
 
 import com.btc.ep.plugins.embeddedplatform.reporting.project.JenkinsAutomationReport;
@@ -15,7 +16,9 @@ public class Store {
 
 	// General
 	public static Proc epProcess;
+	public static Process epProcess2;
 	public static FilePath epp;
+	public static Path epp2;
 	public static String exportPath;
 	public static String globalSuffix;
 

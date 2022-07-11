@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -8,6 +9,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
@@ -19,39 +21,69 @@ import org.openapitools.client.model.TLImportInfo.TestModeEnum;
 import org.openapitools.client.model.TLImportInfo.UseExistingCodeEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
+class BtcProfileCreateTLStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateTLStep step;
-	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public BtcProfileCreateTLStepExecution(BtcProfileCreateTLStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object run() throws Exception {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ProfileCreateTLExecution exec = new ProfileCreateTLExecution(step, logger, getContext());
+
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.matlabVersion = Store.matlabVersion;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+	
+}
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class ProfileCreateTLExecution extends BtcExecution {
+
+	private static final long serialVersionUID = -2873758361286777998L;
+	private BtcProfileCreateTLStep step;
+	
+	private ArchitecturesApi archApi = new ArchitecturesApi();
+
+	public ProfileCreateTLExecution(BtcProfileCreateTLStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
+		this.step = step;
+	}
+
+	@Override
+	protected Object performAction() throws Exception {
 		/*
 		 * Preparation
 		 */
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
-		String tlModelPath = toRemoteAbsolutePathString(step.getTlModelPath());
-		String tlScriptPath = toRemoteAbsolutePathString(step.getTlScriptPath());
+		String tlModelPath = resolveToString(step.getTlModelPath());
+		String tlScriptPath = resolveToString(step.getTlScriptPath());
 		preliminaryChecks();
-		Store.epp = resolveInAgentWorkspace(profilePath);
-		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath() != null ? step.getExportPath() : "reports")
-				.toString();
+		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 		createEmptyProfile();
 
 		/*
@@ -70,15 +102,16 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 			HttpRequester.waitForCompletion(job.getJobID());
 		} catch (Exception e) {
 			error("Failed to import architecture.", e);
-			return;
+			return response(400);
 		}
 		/*
 		 * Wrapping up, reporting, etc.
 		 */
 		String msg = "Architecture Import successful.";
-		detailWithLink(Store.epp.getName(), profilePath);
+		detailWithLink(dataTransferObject.epp.getFileName().toString(), profilePath);
 		log(msg);
 		info(msg);
+		return response(200);
 	}
 
 	/**
@@ -103,7 +136,7 @@ class BtcProfileCreateTLStepExecution extends AbstractBtcStepExecution {
 		info.setTestMode(testMode);
 		// Legacy Code XML (Environment)
 		if (step.getEnvironmentXmlPath() != null) {
-			info.setEnvironment(toRemoteAbsolutePathString(step.getEnvironmentXmlPath()));
+			info.setEnvironment(resolveToString(step.getEnvironmentXmlPath()));
 		}
 		info.setUseExistingCode(step.isReuseExistingCode() ? UseExistingCodeEnum.TRUE : UseExistingCodeEnum.FALSE);
 		// TL Subsystem

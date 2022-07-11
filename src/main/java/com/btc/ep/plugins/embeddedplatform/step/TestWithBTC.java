@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.yaml.snakeyaml.Yaml;
@@ -42,6 +44,7 @@ import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceResetStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -52,21 +55,23 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class TestWithBTCStepExecution extends AbstractBtcStepExecution {
+class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private TestWithBTC step;
+	private PrintStream logger;
 
 	public TestWithBTCStepExecution(TestWithBTC step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object run() throws Exception {
+		logger = getContext().get(TaskListener.class).getLogger();
 		// Load test config
 		log("Applying specified test config file " + step.getTestConfigPath());
-		FilePath testConfigFilePath = resolveInAgentWorkspace(step.getTestConfigPath());
+		FilePath testConfigFilePath = StepExecutionHelper.resolveInAgentWorkspace(getContext(), step.getTestConfigPath());
 		Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
 		TestConfig testConfig = yaml.loadAs(testConfigFilePath.read(), TestConfig.class);
 
@@ -81,6 +86,7 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 
 		// Wrap up
 		new BtcWrapUpStep().start(getContext()).start();
+		return null;
 	}
 
 	private void runSteps(List<Map<String, Object>> testSteps) {
@@ -258,6 +264,20 @@ class TestWithBTCStepExecution extends AbstractBtcStepExecution {
 
 	}
 
+	private void log(String message) {
+		StepExecutionHelper.log(logger, message);
+	}
+	
+	/**
+	 * Writes the given message to the jenkins console output. The message is
+	 * formatted with the given args: String.format(message, args) All messages are
+	 * prefixed with "[BTC] "
+	 * 
+	 * @param message
+	 */
+	private void log(String message, Object... formatArgs) {
+		log(String.format(message, formatArgs));
+	}
 }
 
 /**

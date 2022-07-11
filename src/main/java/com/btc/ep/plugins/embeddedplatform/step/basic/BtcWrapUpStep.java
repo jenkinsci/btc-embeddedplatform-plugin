@@ -1,47 +1,71 @@
 package com.btc.ep.plugins.embeddedplatform.step.basic;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import java.io.File;
-import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Set;
 
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.Configuration;
 import org.openapitools.client.api.ApplicationApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ProfilePath;
 
-import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
-import com.btc.ep.plugins.embeddedplatform.reporting.ReportService;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
-import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
-import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
-import hudson.tasks.junit.pipeline.JUnitResultsStep;
 
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
+class BtcWrapUpStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcWrapUpStep step;
 
 	public BtcWrapUpStepExecution(BtcWrapUpStep step, StepContext context) {
-		super(step, context);
+		super(context);
+		this.step = step;
+	}
+
+	@Override
+	protected Object run() throws Exception {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		WrapUpExecution exec = new WrapUpExecution(step, logger, getContext());
+
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// Generate the project report and xml report
+		StepExecutionHelper.assembleProjectReport(getContext(), logger);
+		StepExecutionHelper.exportJUnitReport(getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+	
+}
+
+/**
+ * This class defines what happens when the above step is executed
+ */
+class WrapUpExecution extends BtcExecution {
+
+	private static final long serialVersionUID = -5603806953855309282L;
+	private BtcWrapUpStep step;
+
+	public WrapUpExecution(BtcWrapUpStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
@@ -49,31 +73,11 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 	private ApplicationApi applicationApi = new ApplicationApi();
 
 	@Override
-	protected void performAction() throws Exception {
-		checkArgument(Configuration.getDefaultApiClient() instanceof EPApiClient, "Unexpected Default Api Client");
-
-		/*
-		 * Generate the project report
-		 */
-		try {
-			assembleProjectReport();
-		} catch (Exception e) {
-			warning("Failed to create the project report.", e);
-		}
-		try {
-			JUnitXMLHelper.dumpToFile(getContext().get(FilePath.class).child("JUnit.xml"));
-			JUnitResultsStep junitStep = new JUnitResultsStep("JUnit.xml");
-			junitStep.setAllowEmptyResults(true);
-			junitStep.start(getContext()).start();
-		} catch (Exception e) {
-			warning("Failed to create JUnit xml. ", e);
-		}
-
+	protected Object performAction() throws Exception {
 		/*
 		 * Save the profile
 		 */
-		String profilePath = step.getProfilePath() == null ? Store.epp.getRemote()
-				: toRemoteAbsolutePathString(step.getProfilePath()).toString();
+		String profilePath = getProfilePathOrDefault(step.getProfilePath());
 		// save the epp to the designated location
 		System.out.println("Saving to " + profilePath);
 		profileApi.saveProfile(new ProfilePath().path(profilePath));
@@ -97,31 +101,7 @@ class BtcWrapUpStepExecution extends AbstractBtcStepExecution {
 			}
 			log("Successfully closed BTC EmbeddedPlatform.");
 		}
-		response = 200;
-	}
-
-	private void assembleProjectReport() throws Exception {
-		// TODO: generate and export profile messages report and add it to the main
-		// report EP-2539
-		Store.reportData.addSection(Store.testStepSection);
-		Store.testStepArgumentSection.setSteps(Store.testStepSection.getSteps());
-		Store.reportData.addSection(Store.testStepArgumentSection);
-		Store.reportData.addSection(Store.pilInfoSection);
-		String endDate = Util.DATE_FORMAT.format(new Date());
-		Store.reportData.setEndDate(endDate);
-		String durationString = Util.getTimeDiffAsString(new Date(), Store.startDate);
-		Store.reportData.setDuration(durationString);
-		File report = ReportService.getInstance().generateProjectReport(Store.reportData);
-		try {
-			ReportService.getInstance().exportReport(report, Store.exportPath, getContext().get(FilePath.class));
-		} catch (IOException e) {
-			throw new IOException("Failed to export project report to " + Store.exportPath + ": " + e.getMessage());
-		}
-		// Report file name must match report value of JenkinsAutomationReport
-		// constructor
-		publishHtml("Test Automation Report", "TestAutomationReport.html");
-		archiveArtifacts();
-		
+		return response(200);
 	}
 
 }

@@ -39,13 +39,12 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 	private ScopesApi scopesApi = new ScopesApi();
 
 	public BtcAddDomainCheckGoalsStepExecution(BtcAddDomainCheckGoals step, StepContext context) {
-		super(step, context); //
+		super(step, context);
 		this.step = step;
 	}
 
 	@Override
 	protected void performAction() throws Exception {
-
 		// Check preconditions
 		int raster;
 		try {

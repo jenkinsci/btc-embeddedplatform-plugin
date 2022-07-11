@@ -1,7 +1,7 @@
 package com.btc.ep.plugins.embeddedplatform.step;
 
+import java.io.PrintStream;
 import java.io.Serializable;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Set;
 
@@ -9,11 +9,14 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
+
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /*
@@ -27,30 +30,59 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExampleStepExecution extends AbstractBtcStepExecution {
+class BtcExampleStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcExampleStep step;
 
 	public BtcExampleStepExecution(BtcExampleStep step, StepContext context) {
-		super(step, context);
+		super(context);
+		this.step = step;
+	}
+
+	@Override
+	protected Object run() throws Exception {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ExampleExecution exec = new ExampleExecution(step, logger, getContext());
+		// if needed: transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		// exec.dataTransferObject.matlabVersion = Store.matlabVersion;
+		
+		// Main Step Execution on the Jenkins AGENT:
+		// BtcExecution.call() -> executes ExampleExecution::performAction() 
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+	
+
+
+}
+
+class ExampleExecution extends BtcExecution {
+	
+	private static final long serialVersionUID = 4101046454592463535L;
+	private BtcExampleStep step;
+
+	public ExampleExecution(BtcExampleStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
 	/*
-	 * Put the desired action here: - checking preconditions - access step
-	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
-	 * the Jenkins console (field: jenkinsConsole) - set resonse code (field:
-	 * response)
+	 * This method runs on the agent!
+	 * - it has no access to the step context / getContext
+	 * - it has no access to global storage units like Store or static helper methods
+	 * - relevant helper methods are available from the super-class BtcExecution 
 	 */
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		log("The value of the string parameter is " + step.getStrStepParam());
 		log("The value of the integer parameter is " + step.getIntStepParam());
-		log("Workspace: " + Paths.get(getContext().get(FilePath.class).toURI()).toString());
 		// print success message and return response code
 		log("--> [200] Example step successfully executed.");
-		response = 200;
+		return response(200);
 	}
 
 }

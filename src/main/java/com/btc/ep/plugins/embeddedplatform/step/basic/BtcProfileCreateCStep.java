@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.basic;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
@@ -17,38 +19,64 @@ import org.openapitools.client.model.CCodeImportInfo;
 import org.openapitools.client.model.Job;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.step.MatlabAwareStep;
 import com.btc.ep.plugins.embeddedplatform.util.CompilerHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-/**
- * This class defines what happens when the above step is executed
- */
-class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
-
+class BtcProfileCreateCStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+	
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateCStep step;
-	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public BtcProfileCreateCStepExecution(BtcProfileCreateCStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ProfileCreateCExecution exec = new ProfileCreateCExecution(step, logger, getContext());
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.matlabVersion = Store.matlabVersion;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class ProfileCreateCExecution extends BtcExecution {
+	
+	private static final long serialVersionUID = 5227884736793053138L;
+	private BtcProfileCreateCStep step;
+	private ArchitecturesApi archApi = new ArchitecturesApi();
+
+	public ProfileCreateCExecution(BtcProfileCreateCStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step);
+		this.step = step;
+	}
+
+	@Override
+	protected Object performAction() throws Exception {
 		/*
 		 * Preparation
 		 */
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
-		String codeModelPath = toRemoteAbsolutePathString(step.getCodeModelPath());
+		String codeModelPath = resolveToString(step.getCodeModelPath());
 		preliminaryChecks(codeModelPath);
-		Store.epp = resolveInAgentWorkspace(profilePath);
-		Store.exportPath = toRemoteAbsolutePathString(step.getExportPath());
+		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 		createEmptyProfile();
 
 		// Matlab stuff
@@ -69,13 +97,14 @@ class BtcProfileCreateCStepExecution extends AbstractBtcStepExecution {
 			 * Wrapping up, reporting, etc.
 			 */
 			msg = "Architecture Import successful.";
-			detailWithLink(Store.epp.getName(), profilePath);
+			detailWithLink(dataTransferObject.epp.getFileName().toString(), profilePath);
 			info(msg);
 			log(msg);
 		} catch (Exception e) {
 			error("Failed to import C-Code architecture.", e);
-			return;
+			return response(400);
 		}
+		return getResponse();
 	}
 
 	/**
