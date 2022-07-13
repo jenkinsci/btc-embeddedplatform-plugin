@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -28,9 +30,13 @@ import org.openapitools.client.model.RestComparison;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestSuite;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Status;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -40,11 +46,48 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcB2BStepExecution extends AbstractBtcStepExecution {
+class BtcB2BStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+	
+	private static final long serialVersionUID = 1L;
+	private BtcB2BStep step;
 
+	public BtcB2BStepExecution(BtcB2BStep step, StepContext context) {
+		super(context);
+		this.step = step;
+	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		B2BExecution exec = new B2BExecution(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// do JUnit stuff on jenkins controller
+		JUnitXMLHelper.addSuite(stepResult.testSuite.suiteName);
+		for (JUnitXmlTestCase tc : stepResult.testSuite.testCases) {
+			JUnitXMLHelper.addTest(stepResult.testSuite.suiteName, tc.name, tc.status, tc.message);
+		}
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class B2BExecution extends BtcExecution {
+	public B2BExecution(PrintStream logger, StepContext context, BtcB2BStep step) {
+		super(logger, context, step);
+		this.step = step;
+	}
+
+	private static final long serialVersionUID = 4798035558604884801L;
 	private static final String REPORT_LINK_NAME_B2B = "Back-to-Back Test Report";
 	private static final String REPORT_NAME_B2B = "RestBackToBackTestReport";
-	private static final long serialVersionUID = 1L;
 	private BtcB2BStep step;
 	private BackToBackTestsApi b2bApi = new BackToBackTestsApi();
 	private BackToBackTestReportsApi b2bReportingApi = new BackToBackTestReportsApi();
@@ -54,13 +97,8 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 	
 	private String suitename;
 
-	public BtcB2BStepExecution(BtcB2BStep step, StepContext context) {
-		super(step, context);
-		this.step = step;
-	}
-
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// Check preconditions, retrieve scopes
 		Scope toplevelScope = Util.getToplevelScope();
 
@@ -71,17 +109,18 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 			log("Executing Back-to-Back Test %s vs. %s...", data.getRefMode(), data.getCompMode());
 			suitename = "Back-to-Back-"+data.getRefMode()+"-vs-"+
 					data.getCompMode()+"-"+Long.toString(System.currentTimeMillis());
-			JUnitXMLHelper.addSuite(suitename);
+			dataTransferObject.testSuite = new JUnitXmlTestSuite(suitename);
 			Job job = b2bApi.executeBackToBackTestOnScope(toplevelScope.getUid(), data);
 			Map<?, ?> resultMap = (Map<?, ?>) HttpRequester.waitForCompletion(job.getJobID(), "result");
 			b2bTestUid = (String) resultMap.get("uid");
 		} catch (Exception e) {
 			error("Failed to execute B2B test.", e);
-			return;
+			return null;
 		}
 
 		// results and stuff
 		parseResultsAndCreateReport(b2bTestUid);
+		return null;
 
 	}
 
@@ -98,7 +137,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 			} else {
 				b2bTest = b2bApi.getTestByUID(b2bTestUid);
 			}
-			parseResult(b2bTest);
+			int response = parseResult(b2bTest);
 		} catch (Exception e) {
 			warning("Failed to parse the B2B test results.", e);
 		}
@@ -129,7 +168,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		return data;
 	}
 
-	private void parseResult(RestBackToBackTest b2bTest) {
+	private int parseResult(RestBackToBackTest b2bTest) {
 		VerdictStatusEnum verdictStatus = b2bTest.getVerdictStatus();
 		log("Back-to-Back Test finished with result: " + verdictStatus);
 		// status, etc.
@@ -153,7 +192,9 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 			default:
 				break;
 			}
-			JUnitXMLHelper.addTest(suitename, comp.getName(), testStatus, comp.getComment());
+			JUnitXmlTestCase testcase = new JUnitXmlTestCase(comp.getName(), testStatus, comp.getComment());
+			dataTransferObject.testSuite.testCases.add(testcase);
+			
 			
 			
 		}
@@ -161,24 +202,19 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 		switch (verdictStatus) {
 		case PASSED:
 			status(Status.OK).passed().result("Passed");
-			response = 200;
-			break;
+			return 200;
 		case FAILED_ACCEPTED:
 			status(Status.OK).passed().result("Failed accepted");
-			response = 201;
-			break;
+			return 201;
 		case FAILED:
 			status(Status.OK).failed().result("Failed");
-			response = 300;
-			break;
+			return 300;
 		case ERROR:
 			status(Status.ERROR).result("Error");
-			response = 400;
-			break;
+			return 400;
 		default:
 			status(Status.ERROR).result("Unexpected Error");
-			response = 500;
-			break;
+			return 500;
 		}
 	}
 
@@ -194,7 +230,7 @@ class BtcB2BStepExecution extends AbstractBtcStepExecution {
 			warning("WARNING failed to create B2B report. ", e);
 		}
 		ReportExportInfo reportExportInfo = new ReportExportInfo();
-		reportExportInfo.exportPath(Store.exportPath).newName(REPORT_NAME_B2B);
+		reportExportInfo.exportPath(dataTransferObject.exportPath).newName(REPORT_NAME_B2B);
 		if (report != null) {
 			try {
 				reportingApi.exportReport(report.getUid(), reportExportInfo);

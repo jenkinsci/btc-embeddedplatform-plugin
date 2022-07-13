@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -8,13 +9,16 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -22,16 +26,11 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
+class BtcInputRestrictionsExportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
-
 	private BtcInputRestrictionsExportStep step;
-
-	/*
-	 * This field can be used to indicate what's happening during the execution
-	 */
-	private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
+	
 
 	/**
 	 * Constructor
@@ -40,13 +39,39 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcInputRestrictionsExportStepExecution(BtcInputRestrictionsExportStep step, StepContext context) {
-		super(step, context);
+		super(context);
+		this.step = step;
+	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		InputRestrictionsExportExec exec = new InputRestrictionsExportExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		// exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class InputRestrictionsExportExec extends BtcExecution {
+	private static final long serialVersionUID = -1959418936590717343L;
+	private BtcInputRestrictionsExportStep step;
+	private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
+	public InputRestrictionsExportExec(PrintStream logger, StepContext context, BtcInputRestrictionsExportStep step) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
-		String path = toRemoteAbsolutePathString(step.getPath());
+	protected Object performAction() throws Exception {
+		String path = resolveToString(step.getPath());
 
 		InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
 		file.setFilePath(path);
@@ -64,6 +89,7 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
 			error();
 		}
 		info("Finished exporting Input Restrictions");
+		return null;
 
 	}
 

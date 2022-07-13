@@ -46,10 +46,7 @@ public class JUnitXMLHelper {
 		/*if (list == null) {
 			return -1;
 		}*/
-		JUnitXmlTestCase TC = new JUnitXmlTestCase();
-		TC.name = testname;
-		TC.message = message;
-		TC.status = testStatus;
+		JUnitXmlTestCase TC = new JUnitXmlTestCase(testname, testStatus, message);
 		list.add(TC);
 		suites.put(suitename, list);
 		switch (testStatus) {

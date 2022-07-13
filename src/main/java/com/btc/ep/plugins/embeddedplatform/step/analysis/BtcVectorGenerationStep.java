@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -40,7 +42,11 @@ import org.openapitools.client.model.Scope;
 import org.openapitools.client.model.TargetDefinition.EnabledEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -50,23 +56,49 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
+class BtcVectorGenerationExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
+	private BtcVectorGenerationStep step;
+	
+	public BtcVectorGenerationExecution(BtcVectorGenerationStep step, StepContext context) {
+		super(context);
+		this.step = step;
+	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		VectorGenerationExec exec = new VectorGenerationExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class VectorGenerationExec extends BtcExecution {
+	
 	private BtcVectorGenerationStep step;
 	private CoverageGenerationApi vectorGenerationApi = new CoverageGenerationApi();
 	private ScopesApi scopeApi = new ScopesApi();
 	private ReportsApi reportApi = new ReportsApi();
 	private CodeAnalysisReportsB2BApi b2bCodeAnalysisReportApi = new CodeAnalysisReportsB2BApi();
 	private CodeCoverageRobustnessCheckB2BApi coverageApi = new CodeCoverageRobustnessCheckB2BApi();
-	
-	public BtcVectorGenerationExecution(BtcVectorGenerationStep step, StepContext context) {
-		super(step, context);
+
+	public VectorGenerationExec(PrintStream logger, StepContext context, BtcVectorGenerationStep step) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// Preparation
 		Scope toplevelScope = Util.getToplevelScope();
 		
@@ -81,6 +113,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 		}
 		// Reporting
 		reporting(toplevelScope);
+		return null;
 	}
 
 	private void reporting(Scope toplevel) throws ApiException {
@@ -95,7 +128,7 @@ class BtcVectorGenerationExecution extends AbstractBtcStepExecution {
 				ReportExportInfo reportInfo = new ReportExportInfo();
 				String reportName = "CodeCoverageReport";
 				reportInfo.setNewName(reportName);
-				reportInfo.setExportPath(Store.exportPath);
+				reportInfo.setExportPath(dataTransferObject.exportPath);
 				reportApi.exportReport(report.getUid(), reportInfo);
 				msg += " and exported the coverage report";
 				detailWithLink("Code Coverage Report", reportName + ".html");

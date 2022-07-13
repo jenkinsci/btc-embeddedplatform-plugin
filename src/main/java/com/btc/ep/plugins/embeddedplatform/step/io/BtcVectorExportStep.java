@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -27,7 +29,9 @@ import org.openapitools.client.model.RestVectorExportDetails;
 import org.openapitools.client.model.RestVectorExportDetails.CsvDelimiterEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -37,7 +41,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
+class BtcVectorExportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcVectorExportStep step;
@@ -50,24 +54,48 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcVectorExportStepExecution(BtcVectorExportStep step, StepContext context) {
-		super(step, context);
+		super(context);
+		this.step = step;
+	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		VectorExportExec exec = new VectorExportExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class VectorExportExec extends BtcExecution {
+
+	public VectorExportExec(PrintStream logger, StepContext context, BtcVectorExportStep step) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
+	private BtcVectorExportStep step;
 	private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
 	private RequirementBasedTestCasesApi rbTestCaseApi = new RequirementBasedTestCasesApi();
 	private StimuliVectorsApi vectorApi = new StimuliVectorsApi();
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// TODO: EP-2735
 		String format = step.getVectorFormat();
 		checkArgument(format == "CSV" || format == "Excel", "Error: valid vectorFormat is csv or excel, not " + format);
 
 		// Get all vectors
-		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
-
+		String exportDir = step.getDir() != null ? resolveToString(step.getDir()) : dataTransferObject.exportPath;
 		// Stimuli Vector -- Default info.setVectorKind("TC");
 		Job job;
 		List<B2BStimuliVector> allVectors = null;
@@ -132,6 +160,7 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 		// 2. For the Stimuli Vector, do I just need to switch the setVectorKind, or do
 		// I need to use another Api?
 		// I couldn't find an api for Test Cases
+		return null;
 
 	}
 

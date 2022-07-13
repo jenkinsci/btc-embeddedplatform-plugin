@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.CodeAnalysisReportsB2BApi;
@@ -19,7 +21,11 @@ import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -29,21 +35,51 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
+class BtcCodeAnalysisReportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
+	private BtcCodeAnalysisReportStep step;
+	
+	public BtcCodeAnalysisReportStepExecution(BtcCodeAnalysisReportStep step, StepContext context) {
+		super(context);
+		this.step = step;
+	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		CodeAnalysisReportExecution exec = new CodeAnalysisReportExecution(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		// exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+	
+class CodeAnalysisReportExecution extends BtcExecution {
+	
+	
+	private static final long serialVersionUID = 241631316659528834L;
 	private BtcCodeAnalysisReportStep step;
 	private CodeAnalysisReportsRbtApi rbtReportApi = new CodeAnalysisReportsRbtApi();
 	private CodeAnalysisReportsB2BApi b2bReportApi = new CodeAnalysisReportsB2BApi();
 	private ReportsApi reportApi = new ReportsApi();
-	
-	public BtcCodeAnalysisReportStepExecution(BtcCodeAnalysisReportStep step, StepContext context) {
-		super(step, context);
+
+	public CodeAnalysisReportExecution(PrintStream logger, StepContext context, BtcCodeAnalysisReportStep step) {
+		super(logger, context, step);
 		this.step = step;
+		// TODO Auto-generated constructor stub
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// Check preconditions
 		String useCase = step.getUseCase();
 		checkArgument("B2B".equals(useCase) || "RBT".equals(useCase),
@@ -73,6 +109,7 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 		} catch (Exception e) {
 			warning("Report not generated.", e);
 		}
+		return null;
 	}
 
 }

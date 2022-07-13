@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -11,6 +12,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.DomainChecksApi;
@@ -23,7 +25,12 @@ import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -31,27 +38,52 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
+class BtcAddDomainCheckGoalsStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcAddDomainCheckGoals step;
-	private DomainChecksApi domainApi = new DomainChecksApi();
-	private ScopesApi scopesApi = new ScopesApi();
 
 	public BtcAddDomainCheckGoalsStepExecution(BtcAddDomainCheckGoals step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		AddDomainCheckGoalsStepExecution exec = new AddDomainCheckGoalsStepExecution(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		// exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+	
+class AddDomainCheckGoalsStepExecution extends BtcExecution {
+	private static final long serialVersionUID = -4841998758181121586L;
+	private BtcAddDomainCheckGoals step;
+	private DomainChecksApi domainApi = new DomainChecksApi();
+	private ScopesApi scopesApi = new ScopesApi();
+	
+	public AddDomainCheckGoalsStepExecution(PrintStream logger, StepContext context, Step step) {
+		super(logger, context, step);
+	}
+
+	@Override
+	protected Object performAction() throws Exception {
 		// Check preconditions
 		int raster;
 		try {
 			raster = Integer.parseInt(step.getRaster());
 		} catch (Exception e) {
 			error("Invalid integer value for 'raster': " + step.getRaster() + "");
-			return;
+			return null;
 		}
 		checkArgument(raster > 0 && raster <= 100, "ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
 
@@ -63,7 +95,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 				scopesList = scopesApi.getScopesByQuery1(null, TRUE);
 			} catch (Exception e) {
 				error("Could not query scopes.", e);
-				return;
+				return null;
 			}
 			checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
 			String scopeUid = null;
@@ -74,7 +106,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 					scopes = scopesApi.getScopesByQuery1(step.getScopePath(), FALSE);
 				} catch (Exception e) {
 					error("Failed to retrieve scope " + step.getScopePath(), e);
-					return;
+					return null;
 				}
 				checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
 				scopeUid = scopes.get(0).getUid();
@@ -88,7 +120,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 				allScopes = scopesApi.getScopesByQuery1(null, FALSE);
 			} catch (Exception e) {
 				error("Failed to retrieve all scopes", e);
-				return;
+				return null;
 			}
 			checkArgument(!allScopes.isEmpty(), "The profile contains no scopes.");
 			for (Scope scope : allScopes) {
@@ -97,6 +129,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 		}
 		result("PASSED");
 		info("Finished adding domain checks");
+		return null;
 
 	}
 
@@ -106,7 +139,7 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 		if (step.getDcXmlPath() != null) {
 			String dcXmlPath;
 			try {
-				dcXmlPath = toRemoteAbsolutePathString(step.getDcXmlPath());
+				dcXmlPath = resolveToString(step.getDcXmlPath());
 			} catch (Exception e) {
 				log("ERROR: invalid path given: " + step.getDcXmlPath() + ". " + e.getMessage());
 				error();

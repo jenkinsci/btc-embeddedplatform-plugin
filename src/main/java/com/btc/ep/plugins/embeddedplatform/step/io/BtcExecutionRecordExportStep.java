@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -19,7 +21,9 @@ import org.openapitools.client.model.RestExecutionRecordExportInfo;
 import org.openapitools.client.model.RestExecutionRecordExportInfo.ExportFormatEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -28,24 +32,50 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
+class BtcExecutionRecordExportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcExecutionRecordExportStep step;
 
 	public BtcExecutionRecordExportStepExecution(BtcExecutionRecordExportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ExecutionRecordExportExec exec = new ExecutionRecordExportExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
 
+class ExecutionRecordExportExec extends BtcExecution {
+	
+	private static final long serialVersionUID = 2429536303329074875L;
+	private BtcExecutionRecordExportStep step;
 	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 
+	public ExecutionRecordExportExec(PrintStream logger, StepContext context, Step step) {
+		super(logger, context, step);
+		this.step = (BtcExecutionRecordExportStep) step;
+	}
+
 	@Override
-	protected void performAction() throws Exception {
-		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
+	protected Object performAction() throws Exception {
+		String exportDir = step.getDir() != null ? resolveToString(step.getDir()) : dataTransferObject.exportPath;
 		List<String> uids = null;
 		try {
-			uids = erApi.getExecutionRecords1().stream()
+			uids = erApi.getExecutionRecords().stream()
 					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
 							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
 					.map(er -> er.getUid()).collect(Collectors.toList());
@@ -61,7 +91,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 		if (uids.isEmpty()) {
 			log("Warning: no execution records to export found. Did you run any tests yet?");
 			warning();
-			return;
+			return null;
 		}
 
 		RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
@@ -85,7 +115,7 @@ class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
 			;
 			error();
 		}
-
+		return null;
 	}
 
 }

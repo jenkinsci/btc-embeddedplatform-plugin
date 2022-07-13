@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.io;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -10,12 +11,15 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.api.TolerancesApi;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -24,7 +28,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
+class BtcToleranceExportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 
@@ -33,8 +37,7 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
 	/*
 	 * This field can be used to indicate what's happening during the execution
 	 */
-	private TolerancesApi tolerancesApi = new TolerancesApi();
-	private ScopesApi scopesApi = new ScopesApi();
+
 
 	/**
 	 * Constructor
@@ -43,19 +46,50 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcToleranceExportStepExecution(BtcToleranceExportStep step, StepContext context) {
-		super(step, context);
+		super(context);
+		this.step = step;
+	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ToleranceExportExec exec = new ToleranceExportExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+
+class ToleranceExportExec extends BtcExecution {
+	private static final long serialVersionUID = -1426808281503869706L;
+
+	public ToleranceExportExec(PrintStream logger, StepContext context, BtcToleranceExportStep step) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
+	private TolerancesApi tolerancesApi = new TolerancesApi();
+	private ScopesApi scopesApi = new ScopesApi();
+	private BtcToleranceExportStep step;
+	
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// Get the path
-		String path = step.getPath() != null ? toRemoteAbsolutePathString(step.getPath()) : Store.exportPath;
+		String path = step.getPath() != null ? resolveToString(step.getPath()) : dataTransferObject.exportPath;
 		String kind = step.getUseCase();
 		checkArgument(kind == "RBT" || kind == "B2B",
 				"Error: invalid use case '" + kind + "'. Supported cases are 'RBT' and 'B2B'.");
 
 		// TODO: ep-2723. this is a temporary workaround in the meantime.
+		return null;
 	}
 
 }

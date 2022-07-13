@@ -30,7 +30,6 @@ import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
 import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
 import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
-import com.btc.ep.plugins.embeddedplatform.step.analysis.RBTExecution;
 import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
@@ -58,16 +57,11 @@ class BtcVectorImportStepExecution extends SynchronousNonBlockingStepExecution<O
 		RBTExecution exec = new RBTExecution(step, logger, getContext());
 		
 		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
-		exec.dataTransferObject.exportPath = Store.exportPath;
+		//exec.dataTransferObject.exportPath = Store.exportPath;
 		
 		// run the step execution part on the agent
 		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
-		
-		// do JUnit stuff on jenkins controller
-		JUnitXMLHelper.addSuite(stepResult.testSuite.suiteName);
-		for (JUnitXmlTestCase tc : stepResult.testSuite.testCases) {
-			JUnitXMLHelper.addTest(stepResult.testSuite.suiteName, tc.name, tc.status, tc.message);
-		}
+
 		
 		// post processing on Jenkins Controller
 		StepExecutionHelper.postProcessing(stepResult);
@@ -92,7 +86,7 @@ class RBTExecution extends BtcExecution {
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// TODO: EP-2735
 		String fileSuffix = deriveSuffix(step.getVectorFormat());
 		// vectorFiles will be an array of files or null
@@ -112,7 +106,7 @@ class RBTExecution extends BtcExecution {
 			log(msg);
 			info(msg);
 			skipped();
-			return;
+			return null;
 		}
 		// convert FilePaths to list of strings that represent valid paths on the remote
 		// file system
@@ -173,6 +167,7 @@ class RBTExecution extends BtcExecution {
 			;
 			warning();
 		}
+		return null;
 	}
 
 	/**

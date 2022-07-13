@@ -1,5 +1,8 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -8,12 +11,16 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.api.TolerancesApi;
 import org.openapitools.client.model.TolerancesIOConfig;
 import org.openapitools.client.model.TolerancesIOConfig.ToleranceUseCaseEnum;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -21,7 +28,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
+class BtcToleranceImportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcToleranceImportStep step;
@@ -33,17 +40,45 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcToleranceImportStepExecution(BtcToleranceImportStep step, StepContext context) {
-		super(step, context);
+		super(context);
+		this.step = step;
+	}
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ToleranceImportExec exec = new ToleranceImportExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		// exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class ToleranceImportExec extends BtcExecution {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -1726521555060197349L;
+
+	public ToleranceImportExec(PrintStream logger, StepContext context, BtcToleranceImportStep step) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
+	private BtcToleranceImportStep step;
 	private TolerancesApi tolerancesApi = new TolerancesApi();
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 
 		// Get the path
-		String path = toRemoteAbsolutePathString(step.getPath());
+		String path = resolveToString(step.getPath());
 		TolerancesIOConfig info = new TolerancesIOConfig();
 		info.setPath(path);
 		if ("RBT".equals(step.getUseCase())) {
@@ -58,6 +93,7 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
 		// Import
 		tolerancesApi.setGlobalTolerances(info);
 		info("Imported Tolerances.");
+		return null;
 		
 	}
 

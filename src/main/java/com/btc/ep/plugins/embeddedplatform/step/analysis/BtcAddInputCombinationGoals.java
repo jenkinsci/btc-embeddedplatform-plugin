@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -8,11 +9,17 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ProfilesApi;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -20,31 +27,60 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcAddInputCombinationGoalsExecution extends AbstractBtcStepExecution {
+class BtcAddInputCombinationGoalsExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcAddInputCombinationGoals step;
 
 	public BtcAddInputCombinationGoalsExecution(BtcAddInputCombinationGoals step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
+	
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		AddInputCombinationGoalsExec exec = new AddInputCombinationGoalsExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
 
+class AddInputCombinationGoalsExec extends BtcExecution {
 	/*
 	 * Put the desired action here: - checking preconditions - access step
 	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
 	 * the Jenkins console (field: jenkinsConsole) - set resonse code (field:
 	 * response)
 	 */
+	
+	private static final long serialVersionUID = -7048233395221460031L;
+	private BtcAddInputCombinationGoals step;
 	ProfilesApi profilesApi = new ProfilesApi();
+	
+	public AddInputCombinationGoalsExec(PrintStream logger, StepContext context, BtcAddInputCombinationGoals step) {
+		super(logger, context, step);
+		this.step = step;
+	}
+
+	
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		// Check preconditions
 		info("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
 		result("ERROR");
 		error();
 		log("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
+		return null;
 
 	}
 

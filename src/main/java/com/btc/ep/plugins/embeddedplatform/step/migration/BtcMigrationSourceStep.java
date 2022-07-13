@@ -223,7 +223,7 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 		FoldersApi folderApi = new FoldersApi();
 
-		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords1();
+		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords();
 		for (String config : executionConfigs) {
 			if (step.isCreateProfilesFromScratch()) {
 				// Export Execution Records to be imported in the target profile

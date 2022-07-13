@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -19,7 +21,9 @@ import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestExecutionRecordImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -28,21 +32,45 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
+class BtcExecutionRecordImportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcExecutionRecordImportStep step;
 
 	public BtcExecutionRecordImportStepExecution(BtcExecutionRecordImportStep step, StepContext context) {
-		super(step, context);
+		super(context);
+		this.step = step;
+	}
+
+	@Override
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		ExecutionRecordExportExec exec = new ExecutionRecordExportExec(logger, getContext(), step);
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		// exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class ExecutionRecordExportExec extends BtcExecution {
+	public ExecutionRecordExportExec(PrintStream logger, StepContext context, BtcExecutionRecordImportStep step) {
+		super(logger, context, step);
 		this.step = step;
 	}
 
 	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
-
+	private BtcExecutionRecordImportStep step;
+	
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
 		FilePath exportDir = resolveInAgentWorkspace(step.getDir());
 
 		List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
@@ -78,7 +106,6 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
 					+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
 			warning();
 		}
-		response = response_int;
 		switch (response_int) {
 		case 201:
 			// successful. nothing to report.
@@ -97,7 +124,7 @@ class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
 			break;
 		}
 		info("Finished important execution records");
-
+		return null;
 	}
 
 }
