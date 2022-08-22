@@ -119,7 +119,8 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update on Agent | Update on Controller
 --------|---------------|------------|-----------------|--------------------
-22.1.0 | - Adapted to EP 22.1 | 22.1 | X | 
+22.2.0 | - Adapted to EP 22.2 | 22.2 | X | 
+22.1.0 | - Adapted to EP 22.1 | 22.1 | X | X
 2.11.0 | - Adapted to EP 2.11 | 2.11 | X | X
 2.10.1 | - Adapted to EP 2.10<br>- Made UDCG dependency optional (this prevented the plugin from being loaded if BTC EmbeddedPlatform was installed without the UDCG AddOn) | 2.10 | X | 
 2.9.3 | - Added option to control the scopes for input combination goals (instead of toplevel only)<br>- Fixed an issue with the EC wrapper model creation for cases where no slScriptPath is specified<br>- Added enhanced reporting for multi-model migration suite use case | 2.9 | X | X 
