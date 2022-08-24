@@ -12,7 +12,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ProfilesApi;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -20,13 +19,13 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcAddInputCombinationGoalsExecution extends AbstractBtcStepExecution {
+class BtcAddInputCombinationGoalsExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcAddInputCombinationGoals step;
 
 	public BtcAddInputCombinationGoalsExecution(BtcAddInputCombinationGoals step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
@@ -38,14 +37,19 @@ class BtcAddInputCombinationGoalsExecution extends AbstractBtcStepExecution {
 	 */
 	ProfilesApi profilesApi = new ProfilesApi();
 
-	@Override
-	protected void performAction() throws Exception {
-		// Check preconditions
-		info("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
-		result("ERROR");
-		error();
-		log("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
+//	@Override
+//	protected void performAction() throws Exception {
+//		// Check preconditions
+//		info("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
+//		result("ERROR");
+//		error();
+//		log("WARNING: adding input combination goals is deprecated. Nothing has been executed!");
+//	}
 
+	@Override
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

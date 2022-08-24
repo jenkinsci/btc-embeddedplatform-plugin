@@ -23,7 +23,6 @@ import org.openapitools.client.model.Job;
 import org.openapitools.client.model.Scope;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -31,7 +30,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
+class BtcAddDomainCheckGoalsStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcAddDomainCheckGoals step;
@@ -39,108 +38,114 @@ class BtcAddDomainCheckGoalsStepExecution extends AbstractBtcStepExecution {
 	private ScopesApi scopesApi = new ScopesApi();
 
 	public BtcAddDomainCheckGoalsStepExecution(BtcAddDomainCheckGoals step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
+//	@Override
+//	protected void performAction() throws Exception {
+//		// Check preconditions
+//		int raster;
+//		try {
+//			raster = Integer.parseInt(step.getRaster());
+//		} catch (Exception e) {
+//			error("Invalid integer value for 'raster': " + step.getRaster() + "");
+//			return;
+//		}
+//		checkArgument(raster > 0 && raster <= 100, "ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
+//
+//		// check if we have to iterate over all scopes,
+//		// only top level scope, or the given scope
+//		if (step.getScopePath() != "*") { // find a specific scope
+//			List<Scope> scopesList = null;
+//			try {
+//				scopesList = scopesApi.getScopesByQuery1(null, TRUE);
+//			} catch (Exception e) {
+//				error("Could not query scopes.", e);
+//				return;
+//			}
+//			checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
+//			String scopeUid = null;
+//			// get top level scope
+//			if (step.getScopePath() != null) { // scope given. use it.
+//				List<Scope> scopes = null;
+//				try {
+//					scopes = scopesApi.getScopesByQuery1(step.getScopePath(), FALSE);
+//				} catch (Exception e) {
+//					error("Failed to retrieve scope " + step.getScopePath(), e);
+//					return;
+//				}
+//				checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
+//				scopeUid = scopes.get(0).getUid();
+//			} else { // no scope given. default is top level scope.
+//				scopeUid = scopesList.get(0).getUid();
+//			}
+//			sendPerformAction(scopeUid);
+//		} else { // else step.getScopePath() == "*". iterate over all scopes
+//			List<Scope> allScopes = null;
+//			try {
+//				allScopes = scopesApi.getScopesByQuery1(null, FALSE);
+//			} catch (Exception e) {
+//				error("Failed to retrieve all scopes", e);
+//				return;
+//			}
+//			checkArgument(!allScopes.isEmpty(), "The profile contains no scopes.");
+//			for (Scope scope : allScopes) {
+//				sendPerformAction(scope.getUid());
+//			}
+//		}
+//		result("PASSED");
+//		info("Finished adding domain checks");
+//
+//	}
+//
+//	final private void sendPerformAction(String scopeuid) {
+//		// if we are given a config file, import the XML settings
+//		// as our domain check goals.
+//		if (step.getDcXmlPath() != null) {
+//			String dcXmlPath;
+//			try {
+//				dcXmlPath = toRemoteAbsolutePathString(step.getDcXmlPath());
+//			} catch (Exception e) {
+//				log("ERROR: invalid path given: " + step.getDcXmlPath() + ". " + e.getMessage());
+//				error();
+//				return;
+//			}
+//			DomainChecksIOInfo r = new DomainChecksIOInfo();
+//			r.setScopeUid(scopeuid);
+//			r.setFilePath(dcXmlPath);
+//			try {
+//				log("Importing Domain Check Goals from XML...");
+//				Job job = domainApi.importDomainChecksGoals(r);
+//				HttpRequester.waitForCompletion(job.getJobID(), "result");
+//				log("Successfully imported domain checks");
+//			} catch (Exception e) {
+//				error();
+//				log("ERROR: Failed to import Domain Checks goals: " + e.getMessage());
+//
+//			}
+//		} else { // no config file given-- use our input variables
+//			// create API object
+//			DomainChecksRangesInput r = new DomainChecksRangesInput();
+//			r.setScopeUid(scopeuid);
+//			r.setApplyBoundaryChecks(step.isActivateBoundaryCheck() ? ApplyBoundaryChecksEnum.TRUE : ApplyBoundaryChecksEnum.FALSE);
+//			r.setApplyInvalidRangesChecks(step.isActivateRangeViolationCheck() ? ApplyInvalidRangesChecksEnum.TRUE : ApplyInvalidRangesChecksEnum.FALSE);
+//			r.setPercentage(Integer.parseInt(step.getRaster()));
+//			try { // send API object
+//				log("Creating Domain Check Goals...");
+//				domainApi.createDomainChecksRanges(r);
+//				log("Successfully created Domain Check Goals");
+//			} catch (Exception e) {
+//				error();
+//				log("Failed to create DomainChecks goals: " + e.getMessage());
+//			}
+//		}
+//	}
+
 	@Override
-	protected void performAction() throws Exception {
-		// Check preconditions
-		int raster;
-		try {
-			raster = Integer.parseInt(step.getRaster());
-		} catch (Exception e) {
-			error("Invalid integer value for 'raster': " + step.getRaster() + "");
-			return;
-		}
-		checkArgument(raster > 0 && raster <= 100, "ERROR: Domain Check Raster must be between 0 and 100: (0, 100]!");
-
-		// check if we have to iterate over all scopes,
-		// only top level scope, or the given scope
-		if (step.getScopePath() != "*") { // find a specific scope
-			List<Scope> scopesList = null;
-			try {
-				scopesList = scopesApi.getScopesByQuery1(null, TRUE);
-			} catch (Exception e) {
-				error("Could not query scopes.", e);
-				return;
-			}
-			checkArgument(!scopesList.isEmpty(), "The profile contains no scopes.");
-			String scopeUid = null;
-			// get top level scope
-			if (step.getScopePath() != null) { // scope given. use it.
-				List<Scope> scopes = null;
-				try {
-					scopes = scopesApi.getScopesByQuery1(step.getScopePath(), FALSE);
-				} catch (Exception e) {
-					error("Failed to retrieve scope " + step.getScopePath(), e);
-					return;
-				}
-				checkArgument(!scopes.isEmpty(), "The profile contains no scopes.");
-				scopeUid = scopes.get(0).getUid();
-			} else { // no scope given. default is top level scope.
-				scopeUid = scopesList.get(0).getUid();
-			}
-			sendPerformAction(scopeUid);
-		} else { // else step.getScopePath() == "*". iterate over all scopes
-			List<Scope> allScopes = null;
-			try {
-				allScopes = scopesApi.getScopesByQuery1(null, FALSE);
-			} catch (Exception e) {
-				error("Failed to retrieve all scopes", e);
-				return;
-			}
-			checkArgument(!allScopes.isEmpty(), "The profile contains no scopes.");
-			for (Scope scope : allScopes) {
-				sendPerformAction(scope.getUid());
-			}
-		}
-		result("PASSED");
-		info("Finished adding domain checks");
-
-	}
-
-	final private void sendPerformAction(String scopeuid) {
-		// if we are given a config file, import the XML settings
-		// as our domain check goals.
-		if (step.getDcXmlPath() != null) {
-			String dcXmlPath;
-			try {
-				dcXmlPath = toRemoteAbsolutePathString(step.getDcXmlPath());
-			} catch (Exception e) {
-				log("ERROR: invalid path given: " + step.getDcXmlPath() + ". " + e.getMessage());
-				error();
-				return;
-			}
-			DomainChecksIOInfo r = new DomainChecksIOInfo();
-			r.setScopeUid(scopeuid);
-			r.setFilePath(dcXmlPath);
-			try {
-				log("Importing Domain Check Goals from XML...");
-				Job job = domainApi.importDomainChecksGoals(r);
-				HttpRequester.waitForCompletion(job.getJobID(), "result");
-				log("Successfully imported domain checks");
-			} catch (Exception e) {
-				error();
-				log("ERROR: Failed to import Domain Checks goals: " + e.getMessage());
-
-			}
-		} else { // no config file given-- use our input variables
-			// create API object
-			DomainChecksRangesInput r = new DomainChecksRangesInput();
-			r.setScopeUid(scopeuid);
-			r.setApplyBoundaryChecks(step.isActivateBoundaryCheck() ? ApplyBoundaryChecksEnum.TRUE : ApplyBoundaryChecksEnum.FALSE);
-			r.setApplyInvalidRangesChecks(step.isActivateRangeViolationCheck() ? ApplyInvalidRangesChecksEnum.TRUE : ApplyInvalidRangesChecksEnum.FALSE);
-			r.setPercentage(Integer.parseInt(step.getRaster()));
-			try { // send API object
-				log("Creating Domain Check Goals...");
-				domainApi.createDomainChecksRanges(r);
-				log("Successfully created Domain Check Goals");
-			} catch (Exception e) {
-				error();
-				log("Failed to create DomainChecks goals: " + e.getMessage());
-			}
-		}
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

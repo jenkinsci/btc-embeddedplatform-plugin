@@ -24,7 +24,7 @@ public class MigrationSuiteHelper {
 	}
 
 	private static String getStashName(String suffix) {
-		String name = "btc_migration_" + Store.epp.getBaseName() + "_source";
+		String name = "btc_migration_" + Store.eppName + "_source";
 		if (suffix != null && !suffix.isEmpty()) {
 			name += "_" + suffix;
 		}

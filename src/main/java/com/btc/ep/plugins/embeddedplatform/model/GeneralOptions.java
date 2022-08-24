@@ -17,6 +17,7 @@ public class GeneralOptions {
 	private String licenseLocation;
 	private Boolean simplyConnect;
 	private String matlabVersion;
+	private String ipAddress;
 
 	public Integer getPort() {
 		return port;
@@ -83,6 +84,14 @@ public class GeneralOptions {
 
 	public void setMatlabVersion(String matlabVersion) {
 		this.matlabVersion = matlabVersion;
+	}
+
+	public String getIpAddress() {
+		return ipAddress;
+	}
+
+	public void setIpAddress(String ipAddress) {
+		this.ipAddress = ipAddress;
 	}
 
 }

@@ -86,13 +86,14 @@ class ProfileLoadExecution extends BtcExecution {
 		 */
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
 		checkArgument(profilePath != null, "No valid profile path was provided: " + step.getProfilePath());
-		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.epp = resolveToString(profilePath);
+		dataTransferObject.eppName = resolveToPath(profilePath).getFileName().toString();
 		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 
 		/*
 		 * Load the profile
 		 */
-		log("Loading profile '" + dataTransferObject.epp.getFileName() + "'");
+		log("Loading profile '" + dataTransferObject.eppName + "'");
 		String msg = null;
 		try {
 			openProfile(dataTransferObject.epp.toString());
@@ -147,7 +148,7 @@ class ProfileLoadExecution extends BtcExecution {
 			}
 		}
 		log(msg + ".");
-		detailWithLink(dataTransferObject.epp.getFileName().toString(), "../artifact/" + dataTransferObject.epp.getFileName());
+		detailWithLink(dataTransferObject.eppName, "../artifact/" + dataTransferObject.eppName);
 		info(msg + ".");
 		return getResponse();
 	}

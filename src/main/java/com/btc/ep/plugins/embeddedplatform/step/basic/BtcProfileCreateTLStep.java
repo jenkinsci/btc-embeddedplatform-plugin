@@ -82,7 +82,8 @@ class ProfileCreateTLExecution extends BtcExecution {
 		String tlModelPath = resolveToString(step.getTlModelPath());
 		String tlScriptPath = resolveToString(step.getTlScriptPath());
 		preliminaryChecks();
-		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.epp = resolveToString(profilePath);
+		dataTransferObject.eppName = resolveToPath(profilePath).getFileName().toString();
 		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 		createEmptyProfile();
 
@@ -108,7 +109,7 @@ class ProfileCreateTLExecution extends BtcExecution {
 		 * Wrapping up, reporting, etc.
 		 */
 		String msg = "Architecture Import successful.";
-		detailWithLink(dataTransferObject.epp.getFileName().toString(), profilePath);
+		detailWithLink(dataTransferObject.eppName, profilePath);
 		log(msg);
 		info(msg);
 		return response(200);

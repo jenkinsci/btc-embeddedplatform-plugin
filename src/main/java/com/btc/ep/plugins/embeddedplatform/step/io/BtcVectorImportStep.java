@@ -1,8 +1,10 @@
 package com.btc.ep.plugins.embeddedplatform.step.io;
 
+import java.io.File;
+import java.io.FileFilter;
 import java.io.PrintStream;
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -15,8 +17,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.api.FoldersApi;
 import org.openapitools.client.api.RequirementBasedTestCasesApi;
 import org.openapitools.client.api.StimuliVectorsApi;
 import org.openapitools.client.model.ImportResult;
@@ -28,15 +28,11 @@ import org.openapitools.client.model.RestStimuliVectorImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
-import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestCase;
 import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
-import com.btc.ep.plugins.embeddedplatform.step.analysis.RBTExecution;
-import com.btc.ep.plugins.embeddedplatform.util.JUnitXMLHelper;
 import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
 
 /**
@@ -55,7 +51,7 @@ class BtcVectorImportStepExecution extends SynchronousNonBlockingStepExecution<O
 	@Override
 	public Object run() {
 		PrintStream logger = StepExecutionHelper.getLogger(getContext());
-		RBTExecution exec = new RBTExecution(step, logger, getContext());
+		VectorImportExecution exec = new VectorImportExecution(step, logger, getContext());
 		
 		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
 		exec.dataTransferObject.exportPath = Store.exportPath;
@@ -63,116 +59,101 @@ class BtcVectorImportStepExecution extends SynchronousNonBlockingStepExecution<O
 		// run the step execution part on the agent
 		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
 		
-		// do JUnit stuff on jenkins controller
-		JUnitXMLHelper.addSuite(stepResult.testSuite.suiteName);
-		for (JUnitXmlTestCase tc : stepResult.testSuite.testCases) {
-			JUnitXMLHelper.addTest(stepResult.testSuite.suiteName, tc.name, tc.status, tc.message);
-		}
-		
 		// post processing on Jenkins Controller
 		StepExecutionHelper.postProcessing(stepResult);
 		return null;
 	}
 }
 
-class RBTExecution extends BtcExecution {
+class VectorImportExecution extends BtcExecution {
 
 	private static final long serialVersionUID = -140646999640558658L;
 	private BtcVectorImportStep step;
 
-	private static final String OVERWRITE = "OVERWRITE"; // for overwrite policy on tc import
-	
-	private RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
-	private StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
-	private FoldersApi foldersApi = new FoldersApi();
-
-	public RBTExecution(BtcVectorImportStep step, PrintStream logger, StepContext context) {
+	public VectorImportExecution(BtcVectorImportStep step, PrintStream logger, StepContext context) {
 		super(logger, context, step);
 		this.step = step;
 	}
 
 	@Override
-	protected void performAction() throws Exception {
+	protected Object performAction() throws Exception {
+		RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
+		StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
+		
+		// DEBUG OUTPUT
+		// DEBUG OUTPUT
+		log("Vector Import: performAction() starts...");
+		// DEBUG OUTPUT
+		// DEBUG OUTPUT
+		
 		// TODO: EP-2735
 		String fileSuffix = deriveSuffix(step.getVectorFormat());
 		// vectorFiles will be an array of files or null
-		FilePath importDir = resolveInAgentWorkspace(step.getImportDir());
-		List<FilePath> vectorFiles = new ArrayList<>();
+		File importDir = resolveToPath(step.getImportDir()).toFile();
+		List<File> vectorFiles = Collections.emptyList();
 		if (importDir.exists()) {
-			List<FilePath> files = importDir.list();
-			for (FilePath file : files) {
-				if (file.getName() != null && file.getName().toLowerCase().endsWith(fileSuffix)) {
-					vectorFiles.add(file);
+			File[] files = importDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File file) {
+					return file.getName() != null && file.getName().toLowerCase().endsWith(fileSuffix);
 				}
-			}
+			});
+			vectorFiles = Arrays.asList(files);
 		}
+		
+		// DEBUG OUTPUT
+		// DEBUG OUTPUT
+		log("Vector Import: files: " + vectorFiles);
+		// DEBUG OUTPUT
+		// DEBUG OUTPUT
+		
 		// we shouldn't throw an error if the directory doesn't exist
 		if (vectorFiles.isEmpty()) {
 			String msg = "Nothing to import.";
 			log(msg);
 			info(msg);
 			skipped();
-			return;
+			return response(300);
 		}
 		// convert FilePaths to list of strings that represent valid paths on the remote
 		// file system
-		List<String> vectorFilePaths = vectorFiles.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
+		List<String> vectorFilePaths = vectorFiles.stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList());
 		Job job = null;
-		if (step.getVectorKind().equals("TC")) {
-			// import test cases
-			RestRBTestCaseImportInfo info = new RestRBTestCaseImportInfo();
-			info.setOverwritePolicy(OverwritePolicyEnum.OVERWRITE);
-			info.setPaths(vectorFilePaths);
-			// no format? http://jira.osc.local:8080/browse/EP-2534 --> format is
-			// auto-detected based on file extension
-			try {
-				log("Importing testcases from '%s'...", importDir.getRemote());
+		try {
+			log("Importing testcases from '%s'...", importDir.getPath());
+			if (step.getVectorKind().equals("TC")) {
+				// import test cases
+				RestRBTestCaseImportInfo info = new RestRBTestCaseImportInfo();
+				info.setOverwritePolicy(OverwritePolicyEnum.OVERWRITE);
+				info.setPaths(vectorFilePaths);
 				job = rbTestCasesApi.importRBTestCase(info);
-			} catch (Exception e) {
-				log("ERROR importing RBT: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				;
-				error();
-			}
-		} else { // excel
-			// import stimuli vectors
-			RestStimuliVectorImportInfo info = new RestStimuliVectorImportInfo();
-			info.setOverwritePolicy(org.openapitools.client.model.RestStimuliVectorImportInfo.OverwritePolicyEnum.OVERWRITE);
-			info.setPaths(vectorFilePaths);
-			/*
-			 * info.setVectorKind(step.getVectorKind());
-			 * info.setFormat(step.getVectorFormat().toLowerCase()); // according to doc
-			 * only takes lowercase info.setDelimiter("Semicolon"); String fUid =
-			 * foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
-			 * info.setFolderUID(fUid);
-			 */
-			try {
-				log("Importing stimuli vectors from '%s'...", importDir.getRemote());
+				// no format? http://jira.osc.local:8080/browse/EP-2534 --> format is
+				// auto-detected based on file extension
+			} else { // excel
+				// import stimuli vectors
+				RestStimuliVectorImportInfo info = new RestStimuliVectorImportInfo();
+				info.setOverwritePolicy(org.openapitools.client.model.RestStimuliVectorImportInfo.OverwritePolicyEnum.OVERWRITE);
+				info.setPaths(vectorFilePaths);
+				/*
+				 * info.setVectorKind(step.getVectorKind());
+				 * info.setFormat(step.getVectorFormat().toLowerCase()); // according to doc
+				 * only takes lowercase info.setDelimiter("Semicolon"); String fUid =
+				 * foldersApi.getFoldersByQuery(null, null).get(0).getUid().toString();
+				 * info.setFolderUID(fUid);
+				 */
+				log("Importing stimuli vectors from '%s'...", importDir.getPath());
 				job = stimuliVectorsApi.importStimuliVectors(info);
-			} catch (Exception e) {
-				log("ERROR importing Stimul Vectors: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				error();
 			}
+		} catch (Exception e) {
+			error("Error while importing test cases.", e);
 		}
 		ImportResult importResult = HttpRequester.waitForCompletion(job.getJobID(), "result", ImportResult.class);
 		try {
 			processResult(importResult);
 		} catch (Exception e) {
-			log("WARNING failed to parse import results: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
+			warning("Failed to parse import results.", e);
 		}
+		return response(200);
 	}
 
 	/**

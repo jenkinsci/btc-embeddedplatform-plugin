@@ -268,17 +268,22 @@ class StartupExecution extends BtcExecution {
 		// don't add this step to the report...
 		noReporting();
 		
-		int port = step.getIpAddress() != null ? 8080 : step.getPort();
+		if (step.getIpAddress() != null) {
+			step.setPort(8080);
+		}
+		
 		String host = step.getIpAddress() != null ? step.getIpAddress() : "localhost";
+		
+		log("Connecting to BTC on " + host + ":" + step.getPort() + ". This may take up to a minute...");
 			
 		checkArgument(host != null, "Cannot resolve agent IP address for remote connection.");
-		ApiClient apiClient = new EPApiClient().setBasePath("http://" + host + ":" + port);
+		ApiClient apiClient = new EPApiClient().setBasePath("http://" + host + ":" + step.getPort());
 		apiClient.setReadTimeout(10000);
 		Configuration.setDefaultApiClient(apiClient);
 		HttpRequester.port = step.getPort();
 		
 		// Connect or startup EP
-		boolean connected = HttpRequester.checkConnection("/ep/test", 200);
+		boolean connected = HttpRequester.checkConnection("/ep/test", 200, logger());
 		if (connected) {
 			response(201);
 		} else {

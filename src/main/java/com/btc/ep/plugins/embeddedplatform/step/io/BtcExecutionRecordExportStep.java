@@ -19,7 +19,6 @@ import org.openapitools.client.model.RestExecutionRecordExportInfo;
 import org.openapitools.client.model.RestExecutionRecordExportInfo.ExportFormatEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -28,64 +27,70 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExecutionRecordExportStepExecution extends AbstractBtcStepExecution {
+class BtcExecutionRecordExportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcExecutionRecordExportStep step;
 
 	public BtcExecutionRecordExportStepExecution(BtcExecutionRecordExportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 
+//	@Override
+//	protected void performAction() throws Exception {
+//		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
+//		List<String> uids = null;
+//		try {
+//			uids = erApi.getExecutionRecords1().stream()
+//					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
+//							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
+//					.map(er -> er.getUid()).collect(Collectors.toList());
+//		} catch (Exception e) {
+//			log("ERROR. Failed to process execution records: " + e.getMessage());
+//			try {
+//				log(((ApiException) e).getResponseBody());
+//			} catch (Exception idc) {
+//			}
+//			;
+//			error();
+//		}
+//		if (uids.isEmpty()) {
+//			log("Warning: no execution records to export found. Did you run any tests yet?");
+//			warning();
+//			return;
+//		}
+//
+//		RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
+//		data.setUiDs(uids);
+//		data.setExportDirectory(exportDir);
+//		data.setExportFormat(ExportFormatEnum.MDF);
+//		try {
+//			Job job = erApi.exportExecutionRecords(data);
+//			Object response = HttpRequester.waitForCompletion(job.getJobID());
+//			// TODO: the callback is always just null. is there a way of checking the status
+//			// of the job?
+//			detailWithLink("Execution Records Export Folder", data.getExportDirectory());
+//			// TODO: does linking to a folder work? if not just info the export dir.
+//			info("Exported execution records");
+//		} catch (Exception e) {
+//			log("ERROR. Could not export execution records: " + e.getMessage());
+//			try {
+//				log(((ApiException) e).getResponseBody());
+//			} catch (Exception idc) {
+//			}
+//			;
+//			error();
+//		}
+//
+//	}
+
 	@Override
-	protected void performAction() throws Exception {
-		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
-		List<String> uids = null;
-		try {
-			uids = erApi.getExecutionRecords1().stream()
-					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
-							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
-					.map(er -> er.getUid()).collect(Collectors.toList());
-		} catch (Exception e) {
-			log("ERROR. Failed to process execution records: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
-		if (uids.isEmpty()) {
-			log("Warning: no execution records to export found. Did you run any tests yet?");
-			warning();
-			return;
-		}
-
-		RestExecutionRecordExportInfo data = new RestExecutionRecordExportInfo();
-		data.setUiDs(uids);
-		data.setExportDirectory(exportDir);
-		data.setExportFormat(ExportFormatEnum.MDF);
-		try {
-			Job job = erApi.exportExecutionRecords(data);
-			Object response = HttpRequester.waitForCompletion(job.getJobID());
-			// TODO: the callback is always just null. is there a way of checking the status
-			// of the job?
-			detailWithLink("Execution Records Export Folder", data.getExportDirectory());
-			// TODO: does linking to a folder work? if not just info the export dir.
-			info("Exported execution records");
-		} catch (Exception e) {
-			log("ERROR. Could not export execution records: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
-
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

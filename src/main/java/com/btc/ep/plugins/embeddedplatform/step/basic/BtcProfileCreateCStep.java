@@ -60,7 +60,6 @@ class ProfileCreateCExecution extends BtcExecution {
 	
 	private static final long serialVersionUID = 5227884736793053138L;
 	private BtcProfileCreateCStep step;
-	private ArchitecturesApi archApi = new ArchitecturesApi();
 
 	public ProfileCreateCExecution(BtcProfileCreateCStep step, PrintStream logger, StepContext context) {
 		super(logger, context, step);
@@ -69,13 +68,16 @@ class ProfileCreateCExecution extends BtcExecution {
 
 	@Override
 	protected Object performAction() throws Exception {
+		ArchitecturesApi archApi = new ArchitecturesApi();
+		
 		/*
 		 * Preparation
 		 */
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
 		String codeModelPath = resolveToString(step.getCodeModelPath());
 		preliminaryChecks(codeModelPath);
-		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.epp = resolveToString(profilePath);
+		dataTransferObject.eppName = resolveToPath(profilePath).getFileName().toString();
 		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 		createEmptyProfile();
 
@@ -90,6 +92,13 @@ class ProfileCreateCExecution extends BtcExecution {
 		Job job = null;
 		String msg;
 		try {
+			
+			// DEBUG OUTPUT
+			// DEBUG OUTPUT
+			log("Code Model path: " + codeModelPath);
+			// DEBUG OUTPUT
+			// DEBUG OUTPUT
+			
 			job = archApi.importCCodeArchitecture(info);
 			log("Importing C-Code architecture...");
 			HttpRequester.waitForCompletion(job.getJobID(), "result");
@@ -97,7 +106,7 @@ class ProfileCreateCExecution extends BtcExecution {
 			 * Wrapping up, reporting, etc.
 			 */
 			msg = "Architecture Import successful.";
-			detailWithLink(dataTransferObject.epp.getFileName().toString(), profilePath);
+			detailWithLink(dataTransferObject.eppName, profilePath);
 			info(msg);
 			log(msg);
 		} catch (Exception e) {

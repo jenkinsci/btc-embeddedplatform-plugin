@@ -15,7 +15,6 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ScopesApi;
 import org.openapitools.client.api.TolerancesApi;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -24,7 +23,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
+class BtcToleranceExportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 
@@ -43,19 +42,25 @@ class BtcToleranceExportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcToleranceExportStepExecution(BtcToleranceExportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
-	@Override
-	protected void performAction() throws Exception {
-		// Get the path
-		String path = step.getPath() != null ? toRemoteAbsolutePathString(step.getPath()) : Store.exportPath;
-		String kind = step.getUseCase();
-		checkArgument(kind == "RBT" || kind == "B2B",
-				"Error: invalid use case '" + kind + "'. Supported cases are 'RBT' and 'B2B'.");
+//	@Override
+//	protected void performAction() throws Exception {
+//		// Get the path
+//		String path = step.getPath() != null ? toRemoteAbsolutePathString(step.getPath()) : Store.exportPath;
+//		String kind = step.getUseCase();
+//		checkArgument(kind == "RBT" || kind == "B2B",
+//				"Error: invalid use case '" + kind + "'. Supported cases are 'RBT' and 'B2B'.");
+//
+//		// TODO: ep-2723. this is a temporary workaround in the meantime.
+//	}
 
-		// TODO: ep-2723. this is a temporary workaround in the meantime.
+	@Override
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

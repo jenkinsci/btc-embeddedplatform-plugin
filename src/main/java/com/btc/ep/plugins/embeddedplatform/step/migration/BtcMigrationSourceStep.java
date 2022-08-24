@@ -1,12 +1,12 @@
 package com.btc.ep.plugins.embeddedplatform.step.migration;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -14,6 +14,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -26,8 +27,9 @@ import org.openapitools.client.model.Folder;
 import org.openapitools.client.model.FolderTransmisionObject;
 import org.openapitools.client.model.ProfilePath;
 
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.SerializableReportingContainer;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcAddDomainCheckGoals;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcSimulationStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
@@ -40,6 +42,7 @@ import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcInputRestrictionsImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorImportStep;
 import com.btc.ep.plugins.embeddedplatform.util.MigrationSuiteHelper;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 import com.google.gson.Gson;
@@ -51,14 +54,15 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
+class BtcMigrationSourceStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final String EXECUTION_RECORD = "EXECUTION_RECORD";
 	private static final long serialVersionUID = 1L;
 	private transient BtcMigrationSourceStep step;
+	private PrintStream logger;
 
 	public BtcMigrationSourceStepExecution(BtcMigrationSourceStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
@@ -76,8 +80,9 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 	 * </ul>
 	 */
 	@Override
-	protected void performAction() throws Exception {
+	protected Object run() throws Exception {
 		Store.globalSuffix = "_source"; // set prefix for profile names
+		this.logger = getContext().get(TaskListener.class).getLogger();
 		/*
 		 * 0. Startup
 		 */
@@ -87,22 +92,22 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * 1. Load or create the profile
 		 */
-		String profilePath = getProfilePathOrDefault(step.getProfilePath());
-		FilePath profileFilePath = resolveInAgentWorkspace(profilePath);
+		
+		FilePath profileFilePath = StepExecutionHelper.resolveInAgentWorkspace(getContext(), step.getProfilePath());
 		if (!step.isCreateProfilesFromScratch() && profileFilePath.exists()) {
-			BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(profilePath);
+			BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(step.getProfilePath());
 			Util.applyMatchingFields(step, profileLoad).start(getContext()).start();
 		} else if (step.getTlModelPath() != null) {
 			BtcProfileCreateTLStep tlProfileCreation = new BtcProfileCreateTLStep(step.getTlModelPath());
-			tlProfileCreation.setProfilePath(profilePath);
+			tlProfileCreation.setProfilePath(step.getProfilePath());
 			Util.applyMatchingFields(step, tlProfileCreation).start(getContext()).start();
 		} else if (step.getSlModelPath() != null) {
 			BtcProfileCreateECStep ecProfileCreation = new BtcProfileCreateECStep(step.getSlModelPath());
-			ecProfileCreation.setProfilePath(profilePath);
+			ecProfileCreation.setProfilePath(step.getProfilePath());
 			Util.applyMatchingFields(step, ecProfileCreation).start(getContext()).start();
 		} else if (step.getCodeModelPath() != null) {
 			BtcProfileCreateCStep cProfileCreation = new BtcProfileCreateCStep(step.getCodeModelPath());
-			cProfileCreation.setProfilePath(profilePath);
+			cProfileCreation.setProfilePath(step.getProfilePath());
 			Util.applyMatchingFields(step, cProfileCreation).start(getContext()).start();
 		} else {
 			throw new IllegalArgumentException(
@@ -161,13 +166,12 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 		 * 8. Save profile and wrap up
 		 */
 		// save the epp to the designated location
-		saveProfileAndReportData(profilePath.toString());
+		saveProfileAndReportData(step.getProfilePath());
 
 		// print success message and return response code
 		String msg = "[200] Migration Source successfully executed.";
-		log(msg);
-		info(msg);
-		response = 200;
+		StepExecutionHelper.log(logger, msg);
+		return 200;
 	}
 
 	/**
@@ -179,13 +183,24 @@ class BtcMigrationSourceStepExecution extends AbstractBtcStepExecution {
 	 * @throws IOException
 	 */
 	private void saveProfileAndReportData(String profilePath) throws Exception {
-		// Save Profile
-		ProfilesApi profileApi = new ProfilesApi();
-		profileApi.saveProfile(new ProfilePath().path(profilePath));
+		// Save Profile and get metadata: execute this part on the agent
+		DataTransferObject dto = StepExecutionHelper.executeOnAgent(new BtcExecution(logger, getContext(), step) {
+			
+			private static final long serialVersionUID = -2244113951310839245L;
+			private ProfilesApi profileApi = new ProfilesApi();
+
+			@Override
+			protected Object performAction() throws Exception {
+				String profilePathOrDefault = getProfilePathOrDefault(profilePath);
+				profileApi.saveProfile(new ProfilePath().path(profilePathOrDefault));
+				dataTransferObject.metadata = profileApi.getCurrentProfile().getMetadata();
+				return 200;
+			}
+		}, getContext());
+		
 
 		// Prepare Report Data
-		Map<String, String> metadata = profileApi.getCurrentProfile().getMetadata();
-		Store.metaInfoSection.setProfileData(metadata);
+		Store.metaInfoSection.setProfileData(dto.metadata);
 		Store.reportData.addSection(Store.testStepSection);
 		Store.testStepArgumentSection.setSteps(Store.testStepSection.getSteps());
 		Store.reportData.addSection(Store.testStepArgumentSection);

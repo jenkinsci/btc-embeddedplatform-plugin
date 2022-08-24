@@ -13,7 +13,6 @@ import org.openapitools.client.api.TolerancesApi;
 import org.openapitools.client.model.TolerancesIOConfig;
 import org.openapitools.client.model.TolerancesIOConfig.ToleranceUseCaseEnum;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -21,7 +20,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
+class BtcToleranceImportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcToleranceImportStep step;
@@ -33,32 +32,38 @@ class BtcToleranceImportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcToleranceImportStepExecution(BtcToleranceImportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	private TolerancesApi tolerancesApi = new TolerancesApi();
 
-	@Override
-	protected void performAction() throws Exception {
+//	@Override
+//	protected void performAction() throws Exception {
+//
+//		// Get the path
+//		String path = toRemoteAbsolutePathString(step.getPath());
+//		TolerancesIOConfig info = new TolerancesIOConfig();
+//		info.setPath(path);
+//		if ("RBT".equals(step.getUseCase())) {
+//			// Requirements-based Test
+//			info.setToleranceUseCase(ToleranceUseCaseEnum.RBT);
+//		} else if ("B2B".equals(step.getUseCase())) {
+//			// Back-to-Back Test
+//			info.setToleranceUseCase(ToleranceUseCaseEnum.B2B);
+//		} else {
+//			error("Valid use cases for Tolerance Import are B2B or RBT, not " + step.getUseCase());
+//		}
+//		// Import
+//		tolerancesApi.setGlobalTolerances(info);
+//		info("Imported Tolerances.");
+//		
+//	}
 
-		// Get the path
-		String path = toRemoteAbsolutePathString(step.getPath());
-		TolerancesIOConfig info = new TolerancesIOConfig();
-		info.setPath(path);
-		if ("RBT".equals(step.getUseCase())) {
-			// Requirements-based Test
-			info.setToleranceUseCase(ToleranceUseCaseEnum.RBT);
-		} else if ("B2B".equals(step.getUseCase())) {
-			// Back-to-Back Test
-			info.setToleranceUseCase(ToleranceUseCaseEnum.B2B);
-		} else {
-			error("Valid use cases for Tolerance Import are B2B or RBT, not " + step.getUseCase());
-		}
-		// Import
-		tolerancesApi.setGlobalTolerances(info);
-		info("Imported Tolerances.");
-		
+	@Override
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

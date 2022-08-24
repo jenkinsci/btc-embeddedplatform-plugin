@@ -20,7 +20,6 @@ import org.openapitools.client.model.Job;
 import org.openapitools.client.model.TestCaseSimulationOnListParams;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
@@ -29,7 +28,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcSimulationStepExecution extends AbstractBtcStepExecution {
+class BtcSimulationStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcSimulationStep step;
@@ -38,36 +37,42 @@ class BtcSimulationStepExecution extends AbstractBtcStepExecution {
 	private TestCaseStimuliVectorSimulationApi simApi = new TestCaseStimuliVectorSimulationApi();
 	
 	public BtcSimulationStepExecution(BtcSimulationStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
-	@Override
-	protected void performAction() throws Exception {
-		// Prepare data and simulate
-		try {
-			TestCaseSimulationOnListParams info = prepareInfoObject();
-			Job job = simApi.simulateOnScopeList(info);
-			HttpRequester.waitForCompletion(job.getJobID());
-		} catch (Exception e) {
-			error("Failed simulate vectors.", e);
-			return;
-		}
-		log("--> Simulation successfully executed.");
-	}
+//	@Override
+//	protected void performAction() throws Exception {
+//		// Prepare data and simulate
+//		try {
+//			TestCaseSimulationOnListParams info = prepareInfoObject();
+//			Job job = simApi.simulateOnScopeList(info);
+//			HttpRequester.waitForCompletion(job.getJobID());
+//		} catch (Exception e) {
+//			error("Failed simulate vectors.", e);
+//			return;
+//		}
+//		log("--> Simulation successfully executed.");
+//	}
+//
+//	private TestCaseSimulationOnListParams prepareInfoObject() throws ApiException {
+//		TestCaseSimulationOnListParams info = new TestCaseSimulationOnListParams();
+//		List<String> scopeUids = scopeApi.getScopesByQuery1(null, FALSE).stream().map(scope -> scope.getUid())
+//				.collect(Collectors.toList());
+//		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
+//		if (executionConfigNames.isEmpty()) {
+//			executionConfigNames = ecApi.getExecutionConfigs().getExecConfigNames();
+//		}
+//		log("Simulating on %s...", executionConfigNames);
+//		info.setExecConfigNames(executionConfigNames);
+//		info.setUiDs(scopeUids);
+//		return info;
+//	}
 
-	private TestCaseSimulationOnListParams prepareInfoObject() throws ApiException {
-		TestCaseSimulationOnListParams info = new TestCaseSimulationOnListParams();
-		List<String> scopeUids = scopeApi.getScopesByQuery1(null, FALSE).stream().map(scope -> scope.getUid())
-				.collect(Collectors.toList());
-		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
-		if (executionConfigNames.isEmpty()) {
-			executionConfigNames = ecApi.getExecutionConfigs().getExecConfigNames();
-		}
-		log("Simulating on %s...", executionConfigNames);
-		info.setExecConfigNames(executionConfigNames);
-		info.setUiDs(scopeUids);
-		return info;
+	@Override
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

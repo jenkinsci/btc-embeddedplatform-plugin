@@ -19,7 +19,6 @@ import org.openapitools.client.model.Job;
 import org.openapitools.client.model.RestExecutionRecordImportInfo;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.FilePath;
@@ -28,76 +27,82 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExecutionRecordImportStepExecution extends AbstractBtcStepExecution {
+class BtcExecutionRecordImportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcExecutionRecordImportStep step;
 
 	public BtcExecutionRecordImportStepExecution(BtcExecutionRecordImportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	private ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
 
+//	@Override
+//	protected void performAction() throws Exception {
+//		FilePath exportDir = resolveInAgentWorkspace(step.getDir());
+//
+//		List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
+//		List<String> paths = files.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
+//		RestExecutionRecordImportInfo data = new RestExecutionRecordImportInfo();
+//		// execution config can be user-defined, so there's no check to make
+//		String kind = step.getExecutionConfig() != null ? step.getExecutionConfig()
+//				: ecApi.getExecutionConfigs().getExecConfigNames().get(0);
+//		data.setKind(kind);
+//		data.setPaths(paths);
+//		data.setFolderName(step.getFolderName());
+//		Job job = null;
+//		Object response_obj = null;
+//		try {
+//			job = erApi.importExecutionRecord(data);
+//			response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
+//		} catch (Exception e) {
+//			try {
+//				log(((ApiException) e).getResponseBody());
+//			} catch (Exception idc) {
+//			}
+//			;
+//		}
+//		int response_int = (int) response_obj;
+//		switch (step.getExecutionConfig()) {
+//		case "TL MIL":
+//		case "SL MIL":
+//		case "PIL":
+//		case "SIL":
+//			break;
+//		default:
+//			log("Warning: non-standard execution config " + step.getExecutionConfig()
+//					+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
+//			warning();
+//		}
+//		response = response_int;
+//		switch (response_int) {
+//		case 201:
+//			// successful. nothing to report.
+//			break;
+//		case 400:
+//			log("Error: Bad request (make sure the arguments you passed in are valid");
+//			error();
+//			break;
+//		case 404:
+//			log("Error: Not found.");
+//			error();
+//			break;
+//		case 500:
+//			log("Error: Internal server error.");
+//			error();
+//			break;
+//		}
+//		info("Finished important execution records");
+//
+//	}
+
 	@Override
-	protected void performAction() throws Exception {
-		FilePath exportDir = resolveInAgentWorkspace(step.getDir());
-
-		List<FilePath> files = exportDir.list((f) -> f.getName().endsWith(".mdf"));
-		List<String> paths = files.stream().map(fp -> fp.getRemote()).collect(Collectors.toList());
-		RestExecutionRecordImportInfo data = new RestExecutionRecordImportInfo();
-		// execution config can be user-defined, so there's no check to make
-		String kind = step.getExecutionConfig() != null ? step.getExecutionConfig()
-				: ecApi.getExecutionConfigs().getExecConfigNames().get(0);
-		data.setKind(kind);
-		data.setPaths(paths);
-		data.setFolderName(step.getFolderName());
-		Job job = null;
-		Object response_obj = null;
-		try {
-			job = erApi.importExecutionRecord(data);
-			response_obj = HttpRequester.waitForCompletion(job.getJobID(), "statusCode");
-		} catch (Exception e) {
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-		}
-		int response_int = (int) response_obj;
-		switch (step.getExecutionConfig()) {
-		case "TL MIL":
-		case "SL MIL":
-		case "PIL":
-		case "SIL":
-			break;
-		default:
-			log("Warning: non-standard execution config " + step.getExecutionConfig()
-					+ ". Default options are TL MIL, SL MIL, PIL, and SIL. Make sure this isn't a typo!");
-			warning();
-		}
-		response = response_int;
-		switch (response_int) {
-		case 201:
-			// successful. nothing to report.
-			break;
-		case 400:
-			log("Error: Bad request (make sure the arguments you passed in are valid");
-			error();
-			break;
-		case 404:
-			log("Error: Not found.");
-			error();
-			break;
-		case 500:
-			log("Error: Internal server error.");
-			error();
-			break;
-		}
-		info("Finished important execution records");
-
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

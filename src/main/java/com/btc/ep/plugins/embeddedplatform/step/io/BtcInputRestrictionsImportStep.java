@@ -13,7 +13,6 @@ import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -21,7 +20,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
+class BtcInputRestrictionsImportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 
@@ -35,32 +34,38 @@ class BtcInputRestrictionsImportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcInputRestrictionsImportStepExecution(BtcInputRestrictionsImportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
 	private InputRestrictionsApi inputRestrictionsApi = new InputRestrictionsApi();
 
+//	@Override
+//	protected void performAction() throws Exception {
+//		// Get the path
+//		String xmlPath = toRemoteAbsolutePathString(step.getPath());
+//
+//		InputRestrictionsFolderObject obj = new InputRestrictionsFolderObject();
+//		obj.setFilePath(xmlPath.toString());
+//		try {
+//			inputRestrictionsApi.importFromFile(obj);
+//		} catch (Exception e) {
+//			error();
+//			log("ERROR on input restrictions import: " + e.getMessage());
+//			try {
+//				log(((ApiException) e).getResponseBody());
+//			} catch (Exception idc) {
+//			}
+//			;
+//		}
+//		info("Imported input restructions");
+//
+//	}
+
 	@Override
-	protected void performAction() throws Exception {
-		// Get the path
-		String xmlPath = toRemoteAbsolutePathString(step.getPath());
-
-		InputRestrictionsFolderObject obj = new InputRestrictionsFolderObject();
-		obj.setFilePath(xmlPath.toString());
-		try {
-			inputRestrictionsApi.importFromFile(obj);
-		} catch (Exception e) {
-			error();
-			log("ERROR on input restrictions import: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-		}
-		info("Imported input restructions");
-
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

@@ -59,7 +59,6 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 
 	private static final long serialVersionUID = 1L;
 	private TestWithBTC step;
-	private PrintStream logger;
 
 	public TestWithBTCStepExecution(TestWithBTC step, StepContext context) {
 		super(context);
@@ -68,13 +67,15 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 
 	@Override
 	protected Object run() throws Exception {
-		logger = getContext().get(TaskListener.class).getLogger();
+		PrintStream logger = getContext().get(TaskListener.class).getLogger();
 		// Load test config
-		log("Applying specified test config file " + step.getTestConfigPath());
+		StepExecutionHelper.log(logger, "Applying specified test config file " + step.getTestConfigPath());
 		FilePath testConfigFilePath = StepExecutionHelper.resolveInAgentWorkspace(getContext(), step.getTestConfigPath());
 		Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
 		TestConfig testConfig = yaml.loadAs(testConfigFilePath.read(), TestConfig.class);
-
+		// apply specifically, because may be determined via a groovy step and then passed to the step
+		testConfig.generalOptions.setIpAddress(step.getIpAddress());
+		
 		// Initial sanity checks
 		checkTestConfig(testConfig);
 
@@ -82,21 +83,21 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 		run(testConfig.generalOptions, new BtcStartupStep());
 
 		// Run test steps
-		runSteps(testConfig.testSteps);
+		runSteps(testConfig.testSteps, logger);
 
 		// Wrap up
 		new BtcWrapUpStep().start(getContext()).start();
 		return null;
 	}
 
-	private void runSteps(List<Map<String, Object>> testSteps) {
+	private void runSteps(List<Map<String, Object>> testSteps, PrintStream logger) {
 		boolean skipRemainingStepsDueToFailure = false;
 		for (Map<String, Object> testStep : testSteps) {
 			if (!skipRemainingStepsDueToFailure) {
 				try {
-					runStep(testStep);
+					runStep(testStep, logger);
 				} catch (Exception e) {
-					log("Skipping remaining steps due to failure.");
+					StepExecutionHelper.log(logger, "Skipping remaining steps due to failure.");
 					skipRemainingStepsDueToFailure = true;
 				}
 			} else {
@@ -121,7 +122,7 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 	 * 
 	 * @param testStep the input data
 	 */
-	private void runStep(Map<String, Object> testStep) throws Exception {
+	private void runStep(Map<String, Object> testStep, PrintStream logger) throws Exception {
 		String stepName = (String) testStep.get("name");
 		switch (stepName) {
 		/*
@@ -223,7 +224,7 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 			run(testStep, new BtcVectorImportStep(null));
 			break;
 		default:
-			log("Test Step '%s' is not a supported step. Please refer to the docs and verify the spelling.", stepName);
+			StepExecutionHelper.log(logger, "Test Step '%s' is not a supported step. Please refer to the docs and verify the spelling.", stepName);
 			break;
 		}
 
@@ -264,20 +265,6 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 
 	}
 
-	private void log(String message) {
-		StepExecutionHelper.log(logger, message);
-	}
-	
-	/**
-	 * Writes the given message to the jenkins console output. The message is
-	 * formatted with the given args: String.format(message, args) All messages are
-	 * prefixed with "[BTC] "
-	 * 
-	 * @param message
-	 */
-	private void log(String message, Object... formatArgs) {
-		log(String.format(message, formatArgs));
-	}
 }
 
 /**
@@ -293,6 +280,7 @@ public class TestWithBTC extends Step implements Serializable {
 	 * Each parameter of the step needs to be listed here as a field
 	 */
 	private String testConfigPath = "TestConfig.yaml";
+	private String ipAddress;
 
 	@DataBoundConstructor
 	public TestWithBTC() {
@@ -343,6 +331,15 @@ public class TestWithBTC extends Step implements Serializable {
 	@DataBoundSetter
 	public void setTestConfigPath(String testConfigPath) {
 		this.testConfigPath = testConfigPath;
+	}
+
+	public String getIpAddress() {
+		return ipAddress;
+	}
+
+	@DataBoundSetter
+	public void setIpAddress(String ipAddress) {
+		this.ipAddress = ipAddress;
 	}
 
 	/*

@@ -19,7 +19,6 @@ import org.openapitools.client.model.Report;
 import org.openapitools.client.model.ReportExportInfo;
 import org.openapitools.client.model.Scope;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
@@ -29,7 +28,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
+class BtcCodeAnalysisReportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcCodeAnalysisReportStep step;
@@ -38,41 +37,47 @@ class BtcCodeAnalysisReportStepExecution extends AbstractBtcStepExecution {
 	private ReportsApi reportApi = new ReportsApi();
 	
 	public BtcCodeAnalysisReportStepExecution(BtcCodeAnalysisReportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
-	@Override
-	protected void performAction() throws Exception {
-		// Check preconditions
-		String useCase = step.getUseCase();
-		checkArgument("B2B".equals(useCase) || "RBT".equals(useCase),
-				"ERROR: valid useCase for CodeAnalysisReport is RBT or B2B, not " + useCase);
+//	@Override
+//	protected void performAction() throws Exception {
+//		// Check preconditions
+//		String useCase = step.getUseCase();
+//		checkArgument("B2B".equals(useCase) || "RBT".equals(useCase),
+//				"ERROR: valid useCase for CodeAnalysisReport is RBT or B2B, not " + useCase);
+//
+//		Scope toplevel = Util.getToplevelScope();
+//		Report report = null;
+//		try {
+//			log("Creating Code Analysis Report (%s)...", useCase);
+//			if ("RBT".equals(useCase)) {
+//				report = rbtReportApi.createCodeAnalysisReportOnScope1(toplevel.getUid());
+//			} else { // B2B testing
+//				report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
+//			}
+//			ReportExportInfo info = new ReportExportInfo();
+//			info.setNewName(step.getReportName());
+//			info.setExportPath(Store.exportPath);
+//			try {
+//				reportApi.exportReport(report.getUid(), info);
+//				String msg = "Exported the " + useCase + " coverage report.";
+//				detailWithLink("Code Coverage Report", step.getReportName() + ".html");
+//				info(msg);
+//				log(msg);
+//			} catch (Exception e) {
+//				warning("Failed to export report.", e);
+//			}
+//		} catch (Exception e) {
+//			warning("Report not generated.", e);
+//		}
+//	}
 
-		Scope toplevel = Util.getToplevelScope();
-		Report report = null;
-		try {
-			log("Creating Code Analysis Report (%s)...", useCase);
-			if ("RBT".equals(useCase)) {
-				report = rbtReportApi.createCodeAnalysisReportOnScope1(toplevel.getUid());
-			} else { // B2B testing
-				report = b2bReportApi.createCodeAnalysisReportOnScope(toplevel.getUid());
-			}
-			ReportExportInfo info = new ReportExportInfo();
-			info.setNewName(step.getReportName());
-			info.setExportPath(Store.exportPath);
-			try {
-				reportApi.exportReport(report.getUid(), info);
-				String msg = "Exported the " + useCase + " coverage report.";
-				detailWithLink("Code Coverage Report", step.getReportName() + ".html");
-				info(msg);
-				log(msg);
-			} catch (Exception e) {
-				warning("Failed to export report.", e);
-			}
-		} catch (Exception e) {
-			warning("Report not generated.", e);
-		}
+	@Override
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

@@ -27,7 +27,6 @@ import org.openapitools.client.model.RestVectorExportDetails;
 import org.openapitools.client.model.RestVectorExportDetails.CsvDelimiterEnum;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
 import hudson.Extension;
@@ -37,7 +36,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
+class BtcVectorExportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcVectorExportStep step;
@@ -50,7 +49,6 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcVectorExportStepExecution(BtcVectorExportStep step, StepContext context) {
-		super(step, context);
 		this.step = step;
 	}
 
@@ -59,81 +57,81 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 	private StimuliVectorsApi vectorApi = new StimuliVectorsApi();
 	private ArchitecturesApi archApi = new ArchitecturesApi();
 
-	@Override
-	protected void performAction() throws Exception {
-		// TODO: EP-2735
-		String format = step.getVectorFormat();
-		checkArgument(format == "CSV" || format == "Excel", "Error: valid vectorFormat is csv or excel, not " + format);
-
-		// Get all vectors
-		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
-
-		// Stimuli Vector -- Default info.setVectorKind("TC");
-		Job job;
-		List<B2BStimuliVector> allVectors = null;
-		try {
-			allVectors = vectorApi.getStimuliVectors();
-		} catch (Exception e) {
-			log("WARNING could not find stimuli vectors: " + e.getMessage());
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			warning();
-		}
-		List<String> allVectorNames = new ArrayList<String>();
-		for (B2BStimuliVector vector : allVectors) {
-			allVectorNames.add(vector.getUid());
-		}
-
-		RestVectorExportDetails r = new RestVectorExportDetails();
-		if (step.getVectorFormat() == "Excel") {
-			try {
-				List<Architecture> architectures = archApi.getArchitectures(null);
-				r.setArchitectureUid(architectures.get(1).getUid().toString());
-				r.setSingleFile(false); // TODO once EP-2711 is fixed, make sure
-										// that we dont get an error on exporting excel (single-file)
-				// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
-			} catch (Exception e) {
-				log("ERROR getting architecture: " + e.getMessage());
-				try {
-					log(((ApiException) e).getResponseBody());
-				} catch (Exception idc) {
-				}
-				error();
-			}
-		} else if (step.getVectorFormat() == "CSV") {
-			String csvDelimiter = step.getCsvDelimiter();
-			r.setCsvDelimiter(csvDelimiter != null ? CsvDelimiterEnum.fromValue(csvDelimiter.toUpperCase()) : CsvDelimiterEnum.SEMICOLON);
-			r.setSingleFile(step.isSingleFile());
-		}
-
-		// Stimuli Vector
-		RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
-		String vectorFormat = step.getVectorFormat();
-		info.setExportFormat(vectorFormat != null ? ExportFormatEnum.fromValue(vectorFormat.toUpperCase()) : ExportFormatEnum.CSV);
-		info.setExportDirectory(exportDir.toString());
-		info.setUiDs(allVectorNames);
-		info.additionalOptions(r);
-		job = stimuliVectorsApi.exportStimuliVectors(info);
-		info("Exported Stimuli Vectors.");
-		log("Exported Stimuli Vectors.");
-		// TODO: make sure we can detail to directory. if not, only on CSV single-file
-		// export.
-		// the export linked, i think this is giving a 404 not found
-		detailWithLink("Stimuli Vectors Export File", info.getExportDirectory());
-
-		HttpRequester.waitForCompletion(job.getJobID());
-
-		// TODO Questions
-		// 1. How should I handle the job from the
-		// stimuliVectorsApi.importStimuliVectors(info)?
-		// 2. For the Stimuli Vector, do I just need to switch the setVectorKind, or do
-		// I need to use another Api?
-		// I couldn't find an api for Test Cases
-
-	}
+//	@Override
+//	protected void performAction() throws Exception {
+//		// TODO: EP-2735
+//		String format = step.getVectorFormat();
+//		checkArgument(format == "CSV" || format == "Excel", "Error: valid vectorFormat is csv or excel, not " + format);
+//
+//		// Get all vectors
+//		String exportDir = step.getDir() != null ? toRemoteAbsolutePathString(step.getDir()) : Store.exportPath;
+//
+//		// Stimuli Vector -- Default info.setVectorKind("TC");
+//		Job job;
+//		List<B2BStimuliVector> allVectors = null;
+//		try {
+//			allVectors = vectorApi.getStimuliVectors();
+//		} catch (Exception e) {
+//			log("WARNING could not find stimuli vectors: " + e.getMessage());
+//			try {
+//				log(((ApiException) e).getResponseBody());
+//			} catch (Exception idc) {
+//			}
+//			;
+//			warning();
+//		}
+//		List<String> allVectorNames = new ArrayList<String>();
+//		for (B2BStimuliVector vector : allVectors) {
+//			allVectorNames.add(vector.getUid());
+//		}
+//
+//		RestVectorExportDetails r = new RestVectorExportDetails();
+//		if (step.getVectorFormat() == "Excel") {
+//			try {
+//				List<Architecture> architectures = archApi.getArchitectures(null);
+//				r.setArchitectureUid(architectures.get(1).getUid().toString());
+//				r.setSingleFile(false); // TODO once EP-2711 is fixed, make sure
+//										// that we dont get an error on exporting excel (single-file)
+//				// TODO: EP-2711. this is a temporary workaround. we shouldnt need r.
+//			} catch (Exception e) {
+//				log("ERROR getting architecture: " + e.getMessage());
+//				try {
+//					log(((ApiException) e).getResponseBody());
+//				} catch (Exception idc) {
+//				}
+//				error();
+//			}
+//		} else if (step.getVectorFormat() == "CSV") {
+//			String csvDelimiter = step.getCsvDelimiter();
+//			r.setCsvDelimiter(csvDelimiter != null ? CsvDelimiterEnum.fromValue(csvDelimiter.toUpperCase()) : CsvDelimiterEnum.SEMICOLON);
+//			r.setSingleFile(step.isSingleFile());
+//		}
+//
+//		// Stimuli Vector
+//		RestStimuliVectorExportInfo info = new RestStimuliVectorExportInfo();
+//		String vectorFormat = step.getVectorFormat();
+//		info.setExportFormat(vectorFormat != null ? ExportFormatEnum.fromValue(vectorFormat.toUpperCase()) : ExportFormatEnum.CSV);
+//		info.setExportDirectory(exportDir.toString());
+//		info.setUiDs(allVectorNames);
+//		info.additionalOptions(r);
+//		job = stimuliVectorsApi.exportStimuliVectors(info);
+//		info("Exported Stimuli Vectors.");
+//		log("Exported Stimuli Vectors.");
+//		// TODO: make sure we can detail to directory. if not, only on CSV single-file
+//		// export.
+//		// the export linked, i think this is giving a 404 not found
+//		detailWithLink("Stimuli Vectors Export File", info.getExportDirectory());
+//
+//		HttpRequester.waitForCompletion(job.getJobID());
+//
+//		// TODO Questions
+//		// 1. How should I handle the job from the
+//		// stimuliVectorsApi.importStimuliVectors(info)?
+//		// 2. For the Stimuli Vector, do I just need to switch the setVectorKind, or do
+//		// I need to use another Api?
+//		// I couldn't find an api for Test Cases
+//
+//	}
 
 	private String findFileExtension(String format) {
 		String fileExtension;
@@ -148,6 +146,12 @@ class BtcVectorExportStepExecution extends AbstractBtcStepExecution {
 			fileExtension = ".tc";
 		}
 		return fileExtension;
+	}
+
+	@Override
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

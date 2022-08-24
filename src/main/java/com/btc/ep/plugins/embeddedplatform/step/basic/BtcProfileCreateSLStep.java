@@ -75,7 +75,8 @@ class ProfileCreateSLExecution extends BtcExecution {
 		String slModelPath = resolveToString(step.getSlModelPath());
 		String slScriptPath = resolveToString(step.getSlScriptPath());
 		preliminaryChecks();
-		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.epp = resolveToString(profilePath);
+		dataTransferObject.eppName = resolveToPath(profilePath).getFileName().toString();
 		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 		createEmptyProfile();
 		
@@ -101,7 +102,7 @@ class ProfileCreateSLExecution extends BtcExecution {
 		 * Wrapping up, reporting, etc.
 		 */
 		String msg = "Architecture Import successful.";
-		detailWithLink(dataTransferObject.epp.getFileName().toString(), profilePath.toString());
+		detailWithLink(dataTransferObject.eppName, profilePath.toString());
 		log(msg);
 		info(msg);
 		return response(200);

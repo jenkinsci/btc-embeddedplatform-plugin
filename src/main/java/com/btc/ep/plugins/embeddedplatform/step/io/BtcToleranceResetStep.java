@@ -11,7 +11,6 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.api.TolerancesApi;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -19,7 +18,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcToleranceResetStepExecution extends AbstractBtcStepExecution {
+class BtcToleranceResetStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 	private BtcToleranceResetStep step;
@@ -31,17 +30,23 @@ class BtcToleranceResetStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcToleranceResetStepExecution(BtcToleranceResetStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
-
-	private TolerancesApi tolerancesApi = new TolerancesApi();
+//
+//	private TolerancesApi tolerancesApi = new TolerancesApi();
+//
+//	@Override
+//	protected void performAction() throws Exception {
+//		tolerancesApi.resetGlobalTolerances(step.getUseCase());
+//		info("Reset Tolerances.");
+//		
+//	}
 
 	@Override
-	protected void performAction() throws Exception {
-		tolerancesApi.resetGlobalTolerances(step.getUseCase());
-		info("Reset Tolerances.");
-		
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

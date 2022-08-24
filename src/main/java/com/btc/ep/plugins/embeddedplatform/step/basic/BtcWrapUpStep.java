@@ -69,11 +69,10 @@ class WrapUpExecution extends BtcExecution {
 		this.step = step;
 	}
 
-	private ProfilesApi profileApi = new ProfilesApi();
-	private ApplicationApi applicationApi = new ApplicationApi();
-
 	@Override
 	protected Object performAction() throws Exception {
+		ProfilesApi profileApi = new ProfilesApi();
+		ApplicationApi applicationApi = new ApplicationApi();
 		/*
 		 * Save the profile
 		 */

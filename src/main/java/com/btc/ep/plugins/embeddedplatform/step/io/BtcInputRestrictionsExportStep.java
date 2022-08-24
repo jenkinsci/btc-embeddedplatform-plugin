@@ -14,7 +14,6 @@ import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
 import org.openapitools.client.model.InputRestrictionsFolderObject;
 
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -22,7 +21,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
+class BtcInputRestrictionsExportStepExecution extends StepExecution {
 
 	private static final long serialVersionUID = 1L;
 
@@ -40,31 +39,37 @@ class BtcInputRestrictionsExportStepExecution extends AbstractBtcStepExecution {
 	 * @param context
 	 */
 	public BtcInputRestrictionsExportStepExecution(BtcInputRestrictionsExportStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 	}
 
+//	@Override
+//	protected void performAction() throws Exception {
+//		String path = toRemoteAbsolutePathString(step.getPath());
+//
+//		InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
+//		file.setFilePath(path);
+//		try {
+//			inputRestrictionsApi.exportToFile(file);
+//			detailWithLink("Input Restrictions Export File", file.getFilePath());
+//		} catch (ApiException e) {
+//			// TODO: convenience workaround EP-2722
+//			log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
+//			try {
+//				log(((ApiException) e).getResponseBody());
+//			} catch (Exception idc) {
+//			}
+//			;
+//			error();
+//		}
+//		info("Finished exporting Input Restrictions");
+//
+//	}
+
 	@Override
-	protected void performAction() throws Exception {
-		String path = toRemoteAbsolutePathString(step.getPath());
-
-		InputRestrictionsFolderObject file = new InputRestrictionsFolderObject();
-		file.setFilePath(path);
-		try {
-			inputRestrictionsApi.exportToFile(file);
-			detailWithLink("Input Restrictions Export File", file.getFilePath());
-		} catch (ApiException e) {
-			// TODO: convenience workaround EP-2722
-			log("Error: most likely " + step.getPath() + " already exists. Please delete it to continue.");
-			try {
-				log(((ApiException) e).getResponseBody());
-			} catch (Exception idc) {
-			}
-			;
-			error();
-		}
-		info("Finished exporting Input Restrictions");
-
+	public boolean start() throws Exception {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

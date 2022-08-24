@@ -2,6 +2,7 @@ package com.btc.ep.plugins.embeddedplatform.step.migration;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
@@ -13,9 +14,9 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.openapitools.client.ApiException;
 import org.openapitools.client.api.ExecutionRecordsApi;
 import org.openapitools.client.api.FoldersApi;
 import org.openapitools.client.api.RegressionTestsApi;
@@ -35,7 +36,6 @@ import com.btc.ep.plugins.embeddedplatform.reporting.project.PilInfoSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.SerializableReportingContainer;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.StepArgSection;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.TestStepSection;
-import com.btc.ep.plugins.embeddedplatform.step.AbstractBtcStepExecution;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateCStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateTLStep;
@@ -46,7 +46,7 @@ import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordExportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcExecutionRecordImportStep;
 import com.btc.ep.plugins.embeddedplatform.step.io.BtcToleranceImportStep;
 import com.btc.ep.plugins.embeddedplatform.util.MigrationSuiteHelper;
-import com.btc.ep.plugins.embeddedplatform.util.Status;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 import com.google.gson.Gson;
@@ -58,14 +58,16 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
+class BtcMigrationTargetStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 
 	private static final String EXECUTION_RECORD = "EXECUTION_RECORD";
 	private static final long serialVersionUID = 1L;
 	private BtcMigrationTargetStep step;
+	private PrintStream logger;
+	private Object response;
 
 	public BtcMigrationTargetStepExecution(BtcMigrationTargetStep step, StepContext context) {
-		super(step, context);
+		super(context);
 		this.step = step;
 
 	}
@@ -82,7 +84,9 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 	 * </ul>
 	 */
 	@Override
-	protected void performAction() throws Exception {
+	protected Object run() throws Exception {
+		this.logger = getContext().get(TaskListener.class).getLogger();
+		
 		/*
 		 * 0. Startup
 		 */
@@ -94,10 +98,9 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 		/*
 		 * 1. Load or create the profile
 		 */
-		String profilePath = getProfilePathOrDefault(step.getProfilePath());
-		FilePath profileFilePath = resolveInAgentWorkspace(profilePath);
+		FilePath profileFilePath = StepExecutionHelper.resolveInAgentWorkspace(getContext(), step.getProfilePath());
 		if (!step.isCreateProfilesFromScratch() && profileFilePath.exists()) {
-			BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(profilePath.toString());
+			BtcProfileLoadStep profileLoad = new BtcProfileLoadStep(step.getProfilePath());
 			Util.applyMatchingFields(step, profileLoad).start(getContext()).start();
 		} else if (step.getTlModelPath() != null) {
 			BtcProfileCreateTLStep tlProfileCreation = new BtcProfileCreateTLStep(step.getTlModelPath());
@@ -120,21 +123,11 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 		FoldersApi folderApi = new FoldersApi();
 		if (step.getImportDir() != null) {
 			for (String config : executionConfigs) {
-				FolderTransmisionObject folderInfo = new FolderTransmisionObject().folderKind(EXECUTION_RECORD);
-				try {
-					Folder folder = folderApi.addFolder(folderInfo);
-					BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir());
-					importStep.setFolderName(folder.getName());
-					importStep.start(getContext()).start();
-				} catch (Exception e) {
-					log("ERROR migrating on object '" + config + "': '" + e.getMessage());
-					try {
-						log(((ApiException) e).getResponseBody());
-					} catch (Exception idc) {
-					}
-					;
-					error();
-				}
+				FolderTransmisionObject folderInfo = new FolderTransmisionObject().folderKind(EXECUTION_RECORD).folderName(config);
+				Folder folder = folderApi.addFolder(folderInfo);
+				BtcExecutionRecordImportStep importStep = new BtcExecutionRecordImportStep(step.getImportDir());
+				importStep.setFolderName(folder.getName());
+				importStep.start(getContext()).start();
 			}
 
 		}
@@ -167,26 +160,25 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 			// status, etc.
 			String info = regressionTest.getComparisons().size() + " comparison(s), " + regressionTest.getPassed()
 					+ " passed, " + regressionTest.getFailed() + " failed, " + regressionTest.getError() + " error(s)";
-			info(info);
 			switch (regressionTest.getVerdictStatus()) {
 			case PASSED:
-				status(Status.OK).passed().result("Passed");
+//				status(Status.OK).passed().result("Passed");
 				response = 200;
 				break;
 			case FAILED_ACCEPTED:
-				status(Status.OK).passed().result("Failed accepted");
+//				status(Status.OK).passed().result("Failed accepted");
 				response = 201;
 				break;
 			case FAILED:
-				status(Status.OK).failed().result("Failed");
+//				status(Status.OK).failed().result("Failed");
 				response = 300;
 				break;
 			case ERROR:
-				status(Status.ERROR).result("Error");
+//				status(Status.ERROR).result("Error");
 				response = 400;
 				break;
 			default:
-				status(Status.ERROR).result("Unexpected Error");
+//				status(Status.ERROR).result("Unexpected Error");
 				response = 500;
 				break;
 			}
@@ -201,9 +193,8 @@ class BtcMigrationTargetStepExecution extends AbstractBtcStepExecution {
 
 		// print success message and return response code
 		String msg = "[200] Migration Target successfully executed.";
-		log(msg);
-		info(msg);
-		response = 200;
+		StepExecutionHelper.log(logger, msg);
+		return 200;
 	}
 
 	/**

@@ -32,8 +32,11 @@ public class StepExecutionHelper {
 	
 	public static void postProcessing(DataTransferObject dto) {
 		// Adapt updated data where needed
-		if (dto.epp != null && !dto.epp.equals(Store.epp2)) {
-			Store.epp2 = dto.epp;
+		if (dto.epp != null && !dto.epp.equals(Store.epp)) {
+			Store.epp = dto.epp;
+		}
+		if (dto.eppName != null && !dto.eppName.equals(Store.eppName)) {
+			Store.eppName = dto.eppName;
 		}
 		if (dto.exportPath != null && !dto.exportPath.equals(Store.exportPath)) {
 			Store.exportPath = dto.exportPath;
@@ -69,7 +72,7 @@ public class StepExecutionHelper {
 				return channel.call(exec);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			e.printStackTrace(getLogger(context));
 		}
 		return null;
 	}
@@ -144,7 +147,7 @@ public class StepExecutionHelper {
 		TaskListener taskListener = context.get(TaskListener.class);
 		
 		Path wsPath = Paths.get(workspace.getRemote());
-		Path eppPath = Paths.get(Store.epp.getRemote());
+		Path eppPath = Paths.get(Store.epp);
 		Path relPath = wsPath.relativize(eppPath);
 		
 		ArtifactArchiver aa = new ArtifactArchiver(relPath.toString());
@@ -190,11 +193,14 @@ public class StepExecutionHelper {
 	 * 
 	 * @param message
 	 */
-	public static void log(String message, Object... formatArgs) {
-		log(String.format(message, formatArgs));
+	public static void log(PrintStream logger, String message, Object... formatArgs) {
+		log(logger, String.format(message, formatArgs));
 	}
 	
 	public static FilePath resolveInAgentWorkspace(StepContext context, String relOrAbsPathInWorkspace) throws Exception {
-		return context.get(FilePath.class).child(relOrAbsPathInWorkspace);
+		if (relOrAbsPathInWorkspace != null) {
+			return context.get(FilePath.class).child(relOrAbsPathInWorkspace);
+		}
+		return null;
 	}
 }

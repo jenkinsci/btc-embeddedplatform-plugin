@@ -1,8 +1,8 @@
 package com.btc.ep.plugins.embeddedplatform.model;
 
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.util.Date;
+import java.util.Map;
 
 import com.btc.ep.plugins.embeddedplatform.reporting.JUnitXmlTestSuite;
 import com.btc.ep.plugins.embeddedplatform.reporting.project.BasicStep;
@@ -17,15 +17,18 @@ public class DataTransferObject implements Serializable {
 
 	private static final long serialVersionUID = 1099810872423184683L;
 	
-	public Status status;
+	public Status status = Status.OK;
 	public String response; // does this make sense?
 	public BasicStep reportingStep;
 	public Date startTime;
 	public boolean reportingDisabled = false;
-	public Path epp;
+	public String epp;
+	public String eppName;
 	public String exportPath;
 	public String matlabVersion;
 	public JUnitXmlTestSuite testSuite;
+	public Map<String, String> metadata;
+
 
 	
 	public DataTransferObject() {

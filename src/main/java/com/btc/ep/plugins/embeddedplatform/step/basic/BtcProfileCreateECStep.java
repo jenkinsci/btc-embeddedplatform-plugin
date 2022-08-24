@@ -92,7 +92,8 @@ class ProfileCreateECExecution extends BtcExecution {
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
 		preliminaryChecks();
 		
-		dataTransferObject.epp = resolveToPath(profilePath);
+		dataTransferObject.epp = resolveToString(profilePath);
+		dataTransferObject.eppName = resolveToPath(profilePath).getFileName().toString();
 		dataTransferObject.exportPath = resolveToString(step.getExportPath());
 		createEmptyProfile();
 
@@ -148,7 +149,7 @@ class ProfileCreateECExecution extends BtcExecution {
 		 * Wrapping up, reporting, etc.
 		 */
 		String msg = "Architecture Import successful.";
-		detailWithLink(dataTransferObject.epp.getFileName().toString(), profilePath.toString());
+		detailWithLink(dataTransferObject.eppName, profilePath.toString());
 		log(msg);
 		return response(200);
 	}
