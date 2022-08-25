@@ -100,12 +100,14 @@ class RBTExecution extends BtcExecution {
 	private static final String REPORT_NAME_RBT = "TestExecutionReport";
 	
 	private BtcRBTStep step;
-	private RequirementBasedTestExecutionApi testExecutionApi = new RequirementBasedTestExecutionApi();
-	private RequirementBasedTestExecutionReportsApi testExecutionReportApi = new RequirementBasedTestExecutionReportsApi();
-	private ScopesApi scopesApi = new ScopesApi();
-	private ReportsApi reportingApi = new ReportsApi();
-	private RequirementBasedTestCasesApi testCasesApi = new RequirementBasedTestCasesApi();
-	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
+	
+	// transient fields for required services
+	private transient RequirementBasedTestExecutionApi testExecutionApi;
+	private transient RequirementBasedTestExecutionReportsApi testExecutionReportApi;
+	private transient ScopesApi scopesApi;
+	private transient ReportsApi reportingApi;
+	private transient RequirementBasedTestCasesApi testCasesApi;
+	private transient ExecutionConfigsApi ecApi;
 
 	public RBTExecution(BtcRBTStep step, PrintStream logger, StepContext context) {
 		super(logger, context, step);
@@ -114,6 +116,13 @@ class RBTExecution extends BtcExecution {
 
 	@Override
 	protected Object performAction() throws Exception {
+		testExecutionApi = new RequirementBasedTestExecutionApi();
+		testExecutionReportApi = new RequirementBasedTestExecutionReportsApi();
+		scopesApi = new ScopesApi();
+		reportingApi = new ReportsApi();
+		testCasesApi = new RequirementBasedTestCasesApi();
+		ecApi = new ExecutionConfigsApi();
+		
 		// Prepare data
 		Set<String> tcUids = getRelevantTestCaseUIDs();
 

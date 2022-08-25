@@ -80,12 +80,6 @@ class VectorImportExecution extends BtcExecution {
 		RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
 		StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
 		
-		// DEBUG OUTPUT
-		// DEBUG OUTPUT
-		log("Vector Import: performAction() starts...");
-		// DEBUG OUTPUT
-		// DEBUG OUTPUT
-		
 		// TODO: EP-2735
 		String fileSuffix = deriveSuffix(step.getVectorFormat());
 		// vectorFiles will be an array of files or null
@@ -100,12 +94,6 @@ class VectorImportExecution extends BtcExecution {
 			});
 			vectorFiles = Arrays.asList(files);
 		}
-		
-		// DEBUG OUTPUT
-		// DEBUG OUTPUT
-		log("Vector Import: files: " + vectorFiles);
-		// DEBUG OUTPUT
-		// DEBUG OUTPUT
 		
 		// we shouldn't throw an error if the directory doesn't exist
 		if (vectorFiles.isEmpty()) {

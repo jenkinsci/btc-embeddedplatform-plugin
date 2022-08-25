@@ -342,7 +342,7 @@ public abstract class BtcExecution extends MasterToSlaveCallable<DataTransferObj
 			// resolve selected string
 			return Paths.get(stepProfilePath).toAbsolutePath().toString();
 		} else {
-			return Paths.get("profile.epp").toAbsolutePath().toString();
+			return Paths.get(workspace + "/profile.epp").toAbsolutePath().toString();
 		}
 	}
 

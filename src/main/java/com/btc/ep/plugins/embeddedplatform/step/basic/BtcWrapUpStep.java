@@ -47,6 +47,7 @@ class BtcWrapUpStepExecution extends SynchronousNonBlockingStepExecution<Object>
 		
 		// Generate the project report and xml report
 		StepExecutionHelper.assembleProjectReport(getContext(), logger);
+		StepExecutionHelper.archiveArtifacts(getContext());
 		StepExecutionHelper.exportJUnitReport(getContext());
 		
 		// post processing on Jenkins Controller
@@ -78,7 +79,7 @@ class WrapUpExecution extends BtcExecution {
 		 */
 		String profilePath = getProfilePathOrDefault(step.getProfilePath());
 		// save the epp to the designated location
-		System.out.println("Saving to " + profilePath);
+		log("Saving to " + profilePath);
 		profileApi.saveProfile(new ProfilePath().path(profilePath));
 
 		/*

@@ -244,7 +244,7 @@ class BtcMigrationTargetStepExecution extends SynchronousNonBlockingStepExecutio
 		ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 		FoldersApi folderApi = new FoldersApi();
 
-		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords();
+		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords1();
 		// TODO: query all Execution configs if nothing is specified (requires EP-2536)
 		for (String config : executionConfigs) {
 			if (step.isCreateProfilesFromScratch()) {

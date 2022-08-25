@@ -115,7 +115,6 @@ public class StepExecutionHelper {
 			// Report file name must match report value of JenkinsAutomationReport
 			// constructor
 			publishHtml(context, "Test Automation Report", "TestAutomationReport.html");
-			archiveArtifacts(context);
 		} catch (Exception e) {
 			warning(logger, "Failed to create the project report.", e);
 		}
@@ -140,7 +139,7 @@ public class StepExecutionHelper {
 				context.get(TaskListener.class), Collections.singletonList(target), HtmlPublisher.class);
 	}
 	
-	private static void archiveArtifacts(StepContext context) throws Exception {
+	public static void archiveArtifacts(StepContext context) throws Exception {
 		Run<?,?> build = context.get(Run.class);
 		FilePath workspace = context.get(FilePath.class);
 		Launcher launcher = context.get(Launcher.class);
