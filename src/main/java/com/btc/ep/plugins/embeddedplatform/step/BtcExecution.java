@@ -53,7 +53,7 @@ public abstract class BtcExecution extends MasterToSlaveCallable<DataTransferObj
 	protected String workspace;
 	
 	protected abstract Object performAction() throws Exception;
-	
+
 	public BtcExecution(PrintStream logger, StepContext context, Step step) {
 		this.localLogger = logger;
 		this.remoteLogger = new RemoteOutputStream(new CloseProofOutputStream(logger));
@@ -73,9 +73,8 @@ public abstract class BtcExecution extends MasterToSlaveCallable<DataTransferObj
 	public DataTransferObject call() throws Exception {
 		try {
 			// invoke method defined by child class
-			Object result = performAction();
-			logger().println("Step function result: " + result);
-			
+			/*Object result = */ performAction();
+//			logger().println("Step function result: " + result);
 			buildResult = Result.SUCCESS;
 		} catch (Exception e) {
 			error("Error during call of " + functionName + "():", e);
@@ -482,9 +481,11 @@ public abstract class BtcExecution extends MasterToSlaveCallable<DataTransferObj
 
 	private boolean isUnix(StepContext context) {
 		try {
+			isUnix = context.get(Computer.class).isUnix();
 			return context.get(Computer.class).isUnix();
 		} catch (Exception e) {
 			e.printStackTrace(logger());
+			isUnix = false;
 		}
 		return false;
 	}

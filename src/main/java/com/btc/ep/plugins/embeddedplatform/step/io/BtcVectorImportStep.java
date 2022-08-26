@@ -69,6 +69,8 @@ class VectorImportExecution extends BtcExecution {
 
 	private static final long serialVersionUID = -140646999640558658L;
 	private BtcVectorImportStep step;
+	private transient RequirementBasedTestCasesApi rbTestCasesApi;
+	private transient StimuliVectorsApi stimuliVectorsApi;
 
 	public VectorImportExecution(BtcVectorImportStep step, PrintStream logger, StepContext context) {
 		super(logger, context, step);
@@ -77,9 +79,8 @@ class VectorImportExecution extends BtcExecution {
 
 	@Override
 	protected Object performAction() throws Exception {
-		RequirementBasedTestCasesApi rbTestCasesApi = new RequirementBasedTestCasesApi();
-		StimuliVectorsApi stimuliVectorsApi = new StimuliVectorsApi();
-		
+		rbTestCasesApi = new RequirementBasedTestCasesApi();
+		stimuliVectorsApi = new StimuliVectorsApi();
 		// TODO: EP-2735
 		String fileSuffix = deriveSuffix(step.getVectorFormat());
 		// vectorFiles will be an array of files or null

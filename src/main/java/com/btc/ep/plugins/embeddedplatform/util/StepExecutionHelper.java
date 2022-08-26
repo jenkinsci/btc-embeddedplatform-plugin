@@ -146,7 +146,7 @@ public class StepExecutionHelper {
 		TaskListener taskListener = context.get(TaskListener.class);
 		
 		Path wsPath = Paths.get(workspace.getRemote());
-		Path eppPath = Paths.get(Store.epp);
+		Path eppPath = Paths.get(Store.epp.replace("\\", "/"));
 		Path relPath = wsPath.relativize(eppPath);
 		
 		ArtifactArchiver aa = new ArtifactArchiver(relPath.toString());

@@ -85,11 +85,8 @@ class WrapUpExecution extends BtcExecution {
 		/*
 		 * Exit the application (first softly via API)
 		 */
-		if (step.isCloseEp()) {
-			try {
-				applicationApi.exitApplication(true);
-			} catch (Exception e) { // doesn't really matter what we do, as long as we dont crash
-			}
+		if (step.isCloseEp() && !isUnix) {
+			try { applicationApi.exitApplication(true); } catch (Exception ignored) {}
 			try {
 				// hard kill to be on the save side
 				if (Store.epProcess != null && Store.epProcess.isAlive()) {
