@@ -26,6 +26,49 @@ def vectorImport(body) {
     return btcVectorImport(config)
 }
 
+// TODO: tlSubsystem argument is missing from the function itself
+// TODO: calibrationHandling argument is missing from the function itself
+// TODO: testMode, reuseExistingCode, logFilePath also missing
+def profileLoad(body) {
+	def config = resolveConfig(body)
+	return btcProfileLoad(config) 
+}
+// TODO: tlSubsystemFilter, tlCalibrationFilter, tlCodeFileFilter replaced by subsystemMatcher string
+// TODO: from profileLoad, missing startupScriptPath, codeModelPath, slModelPath, slScriptPath, addModelInfoPath, pilTimeout, exportPath, updateRequired, logFilePath
+def profileCreateTL(body) {
+	def config = resolveConfig(body)
+	return btcProfileCreateTL(config) 
+}
+
+// TODO: inheritance from profileLoad is missing: environmentXmlPath, codeModelPath, addModelInfoPath, pilConfig, pilTimeout, reuseExistingCode, updateRequired, logFilePath
+// TODO: compilerShortName, codeModelPath, mappingFilePath missing 
+def profileCreateEC(body) {
+	def config = resolveConfig(body)
+	if (config.calibrationHandling == "EXPLICIT PARAM") {
+		config.parameterHandling = "EXPLICIT PARAMETER"
+	} else if (config.calibrationHandling == "OFF") {
+		config.parameterHandling = "OFF"
+	} else if (config.calibrationHandling == "LIMITED BLOCKSET" {
+		config.parameterHandling = "LIMITED BLOCKSET"
+	} else {
+	// TODO: throw error, invalid calibrationHandling
+	}
+	return btcProfileCreateEC(config) 
+}
+
+// TODO: missing addModelInfoPath
+// TODO: inheritance from profileLoad is missing: environmentXmlPath, codeModelPath, addModelInfoPath, pilConfig, pilTimeout, calibrationHandling, testMode, updateRequired, logFilePath
+def profileCreateSL(body) {
+	def config = resolveConfig(body)
+	return btcProfileCreateSL(config) 
+}
+
+// TODO: missing
+// TODO: inheritance from profileLoad is missing: 
+def profileCreateC(body) {
+	def config = resolveConfig(body)
+	return btcProfileCreateSL(config) 
+}
 
 /**
  * Resolves unresolved closures (groovy magic)
