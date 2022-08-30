@@ -63,12 +63,94 @@ def profileCreateSL(body) {
 	return btcProfileCreateSL(config) 
 }
 
-// TODO: missing
-// TODO: inheritance from profileLoad is missing: 
+// TODO: inheritance from profileLoad is missing: environmentXmlPath, pilConfig, pilTimeout, logFilePath, updateRequired
 def profileCreateC(body) {
 	def config = resolveConfig(body)
-	return btcProfileCreateSL(config) 
+	return btcProfileCreateC(config) 
 }
+
+
+def wrapUp(body) {
+	def config = resolveConfig(body)
+	return btcWrapUp(config) 
+}
+
+// TODO: this entire function is unwritten
+def executionRecordExport(body) {
+	def config = resolveConfig(body)
+	return btcExecutionRecordExport(config) 
+}
+
+// TODO: this entire function is unwritten
+def executionRecordImport(body) {
+	def config = resolveConfig(body)
+	return btcExecutionRecordImport(config) 
+}
+
+// TODO: this entire function is unwritten
+def inputRestrictionsExport(body) {
+	def config = resolveConfig(body)
+	return btcInputRestrictionsExport(config) 
+}
+
+// TODO: this entire function is unwritten
+def inputRestrictionsImport(body) {
+	def config = resolveConfig(body)
+	return btcInputRestrictionsImport(config) 
+}
+
+// TODO: this entire function is unwritten
+def toleranceExport(body) {
+	def config = resolveConfig(body)
+	return btcToleranceExport(config) 
+}
+
+// TODO: this entire function is unwritten
+def toleranceImport(body) {
+	def config = resolveConfig(body)
+	return btcToleranceImport(config) 
+}
+
+def vectorExport(body) {
+	def config = resolveConfig(body)
+	return btcVectorExport(config) 
+}
+
+def vectorImport(body) {
+	def config = resolveConfig(body)
+	return btcVectorImport(config) 
+}
+
+// TODO: this entire function is undefined
+def addInputCombinationGoals(body) {
+	def config = resolveConfig(body)
+	return btcAddInputCombinationGoals(config) 
+}
+
+def backToBack(body) {
+	def config = resolveConfig(body)
+	return btcBackToBack(config) 
+}
+
+def codeAnalysisReport(body) {
+	def config = resolveConfig(body)
+	return btcCodeAnalysisReport(config) 
+}
+
+
+def rbtExecution(body) {
+	def config = resolveConfig(body)
+	return btcRbtExecution(config) 
+}
+
+
+def vectorGeneration(body) {
+	def config = resolveConfig(body)
+	config.propertyTimeout = config.perPropertyTimeout
+	return btcVectorGeneration(config) 
+}
+
+
 
 /**
  * Resolves unresolved closures (groovy magic)

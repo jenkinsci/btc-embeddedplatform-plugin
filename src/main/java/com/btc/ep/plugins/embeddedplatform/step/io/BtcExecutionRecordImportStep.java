@@ -144,7 +144,7 @@ public class BtcExecutionRecordImportStep extends Step implements Serializable {
 
 		@Override
 		public String getFunctionName() {
-			return "btcExecutionRecordExport";
+			return "btcExecutionRecordImport";
 		}
 
 		/*
@@ -152,7 +152,7 @@ public class BtcExecutionRecordImportStep extends Step implements Serializable {
 		 */
 		@Override
 		public String getDisplayName() {
-			return "BTC Execution Record Export Step";
+			return "BTC Execution Record Import Step";
 		}
 	}
 
