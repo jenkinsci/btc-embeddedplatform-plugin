@@ -75,37 +75,32 @@ def wrapUp(body) {
 	return btcWrapUp(config) 
 }
 
-// TODO: this entire function is unwritten
 def executionRecordExport(body) {
 	def config = resolveConfig(body)
 	return btcExecutionRecordExport(config) 
 }
 
-// TODO: this entire function is unwritten
+
 def executionRecordImport(body) {
 	def config = resolveConfig(body)
 	return btcExecutionRecordImport(config) 
 }
 
-// TODO: this entire function is unwritten
 def inputRestrictionsExport(body) {
 	def config = resolveConfig(body)
 	return btcInputRestrictionsExport(config) 
 }
 
-// TODO: this entire function is unwritten
 def inputRestrictionsImport(body) {
 	def config = resolveConfig(body)
 	return btcInputRestrictionsImport(config) 
 }
 
-// TODO: this entire function is unwritten
 def toleranceExport(body) {
 	def config = resolveConfig(body)
 	return btcToleranceExport(config) 
 }
 
-// TODO: this entire function is unwritten
 def toleranceImport(body) {
 	def config = resolveConfig(body)
 	return btcToleranceImport(config) 
@@ -121,7 +116,6 @@ def vectorImport(body) {
 	return btcVectorImport(config) 
 }
 
-// TODO: this entire function is undefined
 def addInputCombinationGoals(body) {
 	def config = resolveConfig(body)
 	return btcAddInputCombinationGoals(config) 
