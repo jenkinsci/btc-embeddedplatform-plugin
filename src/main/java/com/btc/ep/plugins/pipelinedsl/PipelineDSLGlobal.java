@@ -35,41 +35,37 @@ import groovy.lang.GroovyCodeSource;
 
 public abstract class PipelineDSLGlobal extends GlobalVariable {
 
-    public abstract String getFunctionName();
+	public abstract String getFunctionName();
 
-    @Override
-    public String getName() {
-        return getFunctionName();
-    }
+	@Override
+	public String getName() {
+		return getFunctionName();
+	}
 
-    @Override
-    public Object getValue(CpsScript script) throws Exception {
-        Binding binding = script.getBinding();
+	@Override
+	public Object getValue(CpsScript script) throws Exception {
+		Binding binding = script.getBinding();
 
-        CpsThread c = CpsThread.current();
-        if (c == null)
-            throw new IllegalStateException("Expected to be called from CpsThread");
+		CpsThread c = CpsThread.current();
+		if (c == null)
+			throw new IllegalStateException("Expected to be called from CpsThread");
 
-        ClassLoader cl = getClass().getClassLoader();
+		ClassLoader cl = getClass().getClassLoader();
 
-        String scriptPath = "dsl/" + getFunctionName() + ".groovy";
-        Reader r = new InputStreamReader(cl.getResourceAsStream(scriptPath), "UTF-8");
+		String scriptPath = "dsl/" + getFunctionName() + ".groovy";
+		Reader r = new InputStreamReader(cl.getResourceAsStream(scriptPath), "UTF-8");
 
-        GroovyCodeSource gsc =
-            new GroovyCodeSource(r, getFunctionName() + ".groovy", cl.getResource(scriptPath).getFile());
-        gsc.setCachable(true);
+		GroovyCodeSource gsc = new GroovyCodeSource(r, getFunctionName() + ".groovy",
+				cl.getResource(scriptPath).getFile());
+		gsc.setCachable(true);
 
-        @SuppressWarnings ("unchecked")
-        Object pipelineDSL = c.getExecution()
-            .getShell()
-            .getClassLoader()
-            .parseClass(gsc)
-            .getDeclaredConstructor()
-            .newInstance();
-        binding.setVariable(getName(), pipelineDSL);
-        r.close();
+		@SuppressWarnings("unchecked")
+		Object pipelineDSL = c.getExecution().getShell().getClassLoader().parseClass(gsc).getDeclaredConstructor()
+				.newInstance();
+		binding.setVariable(getName(), pipelineDSL);
+		r.close();
 
-        return pipelineDSL;
-    }
+		return pipelineDSL;
+	}
 
 }

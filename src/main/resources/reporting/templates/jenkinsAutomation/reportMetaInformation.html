@@ -1,0 +1,19 @@
+<section class="card">
+    <h4>General Information</h4>
+    <table class="data_table">
+        <tr>
+            <td class="colA">BTC EmbeddedPlatform version</td>
+            <td class="colB">${tool_version}</td>
+        </tr>
+        <tr>
+            <td class="colA">Operating system</td>
+            <td class="colB">${os}</td>
+        </tr>
+        <#list reportMetaInformation.getProfileData()?keys as prop>
+            <tr>
+                <td class="colA">${prop}</td>
+                <td class="colB">${reportMetaInformation.getProfileData()[prop]}</td>
+            </tr>
+        </#list>
+    </table>
+</section>
