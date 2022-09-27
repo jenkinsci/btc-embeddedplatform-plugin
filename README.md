@@ -498,7 +498,7 @@ following settings are available:
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
 **importDir** | The directory that contains the vectors to import. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\vectors", "E:\data\ImportExport"
-vectorFormat | String to specify the format of the vector import files in Standard BTC EmbeddedPlatform style.<br>(default: EXCEL) | "CSV", "EXCEL", "TC"
+vectorFormat | String to specify the format of the vector import files in Standard BTC EmbeddedPlatform style.<br>(default: EXCEL) | "CSV", "EXCEL", "TC", "JSON"
 vectorKind | A String that defines the type of the vectors to import. Can be "TC" (= Test Case) or "SV" (= Stimuli Vector).<br>(default: TC) | "TC", "SV"
 
 **Possible Return values**
@@ -521,8 +521,8 @@ following settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
-**dir** | The directory that contains the vectors to export. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\vectors", "E:\data\ImportExport"
-vectorFormat | String to specify the format of the vector export files in Standard BTC EmbeddedPlatform style.<br>(default: EXCEL, TC format only applicable for test cases) | "CSV", "EXCEL", "TC"
+**exportDir** | The directory that contains the vectors to export. The path can be absolute or relative to the jenkins job's workspace.<br>**mandatory** | "io\vectors", "E:\data\ImportExport"
+vectorFormat | String to specify the format of the vector export files in Standard BTC EmbeddedPlatform style.<br>(default: EXCEL, TC format only applicable for test cases) | "CSV", "EXCEL", "TC", "JSON"
 vectorKind | A String that defines the type of the vectors to export. Can be "TC" (= Test Case) or "SV" (= Stimuli Vector).<br>(default: TC) | "TC", "SV"
 
 **Possible Return values**

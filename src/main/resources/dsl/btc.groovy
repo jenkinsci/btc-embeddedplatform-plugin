@@ -718,6 +718,12 @@ def migrationSource(body) {
         config.createReport = true
     }
     vectorGeneration(config)
+
+    // Import vectors if requested
+    if (config.exportDir != null) {
+        vectorExport(body)
+    }
+
     // Simulation
     r = regressionTest(config)
     if (r >= 400) {
@@ -1083,9 +1089,11 @@ def createReqString(config, methodName) {
     if (config.scopeRegex != null)
         reqString += '"scopeRegex": "' + "${config.scopeRegex}" + '", '
 
-    // Vector Import
+    // Vector Import/Export
     if (config.importDir != null)
         reqString += '"importDir": "' + toAbsPath("${config.importDir}") + '", '
+    if (config.exportDir != null)
+        reqString += '"exportDir": "' + toAbsPath("${config.exportDir}") + '", '
     if (config.vectorFormat != null)
         reqString += '"vectorFormat": "' + "${config.vectorFormat}" + '", '
     if (config.vectorKind != null)
