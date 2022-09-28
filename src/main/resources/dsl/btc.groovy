@@ -48,7 +48,7 @@ def profileCreateEC(body) {
 		config.parameterHandling = "EXPLICIT PARAMETER"
 	} else if (config.calibrationHandling == "OFF") {
 		config.parameterHandling = "OFF"
-	} else if (config.calibrationHandling == "LIMITED BLOCKSET" {
+	} else if (config.calibrationHandling == "LIMITED BLOCKSET") {
 		config.parameterHandling = "LIMITED BLOCKSET"
 	} else {
 		echo "Invalid calibration handling specified: ${config.parameterHandling}"
