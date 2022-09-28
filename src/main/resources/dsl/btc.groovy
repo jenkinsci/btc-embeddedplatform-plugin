@@ -51,7 +51,7 @@ def profileCreateEC(body) {
 	} else if (config.calibrationHandling == "LIMITED BLOCKSET" {
 		config.parameterHandling = "LIMITED BLOCKSET"
 	} else {
-	// TODO: throw error, invalid calibrationHandling
+		echo "Invalid calibration handling specified: ${config.parameterHandling}"
 	}
 	return btcProfileCreateEC(config) 
 }
