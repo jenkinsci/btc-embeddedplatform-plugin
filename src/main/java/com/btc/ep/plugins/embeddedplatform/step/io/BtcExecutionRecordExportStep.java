@@ -23,7 +23,6 @@ import org.openapitools.client.model.RestExecutionRecordExportInfo.ExportFormatE
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
 import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
 import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
-import com.btc.ep.plugins.embeddedplatform.step.io.BtcVectorExportStepExecution.VectorExportExecution;
 import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
 
@@ -70,7 +69,6 @@ class ExecutionRecordExport extends BtcExecution {
 	public ExecutionRecordExport(PrintStream logger, StepContext context, BtcExecutionRecordExportStep step) {
 		super(logger, context, step);
 		this.step = step;
-		// TODO Auto-generated constructor stub
 	}
 
 	private BtcExecutionRecordExportStep step;
@@ -81,7 +79,7 @@ class ExecutionRecordExport extends BtcExecution {
 		String exportDir = step.getDir() != null ? resolveToString(step.getDir()) : Store.exportPath;
 		List<String> uids = null;
 		try {
-			uids = erApi.getExecutionRecords().stream()
+			uids = erApi.getExecutionRecords1().stream()
 					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
 							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
 					.map(er -> er.getUid()).collect(Collectors.toList());
