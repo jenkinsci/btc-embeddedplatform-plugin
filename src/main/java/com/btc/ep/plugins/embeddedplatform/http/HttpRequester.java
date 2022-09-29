@@ -118,8 +118,8 @@ public class HttpRequester {
 	 * key 'statusCode'.<br>
 	 * <br>
 	 *
-	 * 201 -> 'uid' -> string (operation complete + object id)<br>
-	 * 202 -> 'message' -> string, 'progressDone' -> double
+	 * 201: 'uid' - string (operation complete + object id)<br>
+	 * 202: 'message' - string, 'progressDone' - double
 	 *
 	 * @param jobId the jobId to retrieve the progress for
 	 * @return

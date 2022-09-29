@@ -19,12 +19,14 @@ def startup() {
  * ##################################################################
  */
 
+/*
 def vectorImport(body) {
     // transform the closure into a key value structure
     def config = resolveConfig(body)
     // pass the structure to the corresponding step
     return btcVectorImport(config)
 }
+*/
 
 // TODO: tlSubsystem argument is missing from the function itself
 // TODO: calibrationHandling argument is missing from the function itself

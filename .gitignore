@@ -9,9 +9,26 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+work/*
 
 # Avoid ignoring Maven wrapper jar file (.jar files are usually ignored)
 !/.mvn/wrapper/maven-wrapper.jar
 *.lnk
-.vscode/settings.json
+.vscode/*
+.settings/*
+.project/*
+work
+.factorypath
+.classpath
+.project
 .settings/org.eclipse.core.resources.prefs
+.settings/org.eclipse.jdt.core.prefs
+.settings/org.eclipse.jdt.core.prefs
+.settings/org.eclipse.core.resources.prefs
+.project
+.classpath
+/.apt_generated/
+/.apt_generated_tests/
+.settings/org.eclipse.jdt.core.prefs
+.classpath
+.settings/org.eclipse.jdt.core.prefs
