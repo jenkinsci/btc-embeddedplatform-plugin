@@ -19,12 +19,14 @@ def startup() {
  * ##################################################################
  */
 
+/*
 def vectorImport(body) {
     // transform the closure into a key value structure
     def config = resolveConfig(body)
     // pass the structure to the corresponding step
     return btcVectorImport(config)
 }
+*/
 
 // TODO: tlSubsystem argument is missing from the function itself
 // TODO: calibrationHandling argument is missing from the function itself
@@ -48,7 +50,7 @@ def profileCreateEC(body) {
 		config.parameterHandling = "EXPLICIT PARAMETER"
 	} else if (config.calibrationHandling == "OFF") {
 		config.parameterHandling = "OFF"
-	} else if (config.calibrationHandling == "LIMITED BLOCKSET" {
+	} else if (config.calibrationHandling == "LIMITED BLOCKSET") {
 		config.parameterHandling = "LIMITED BLOCKSET"
 	} else {
 		echo "Invalid calibration handling specified: ${config.parameterHandling}"
