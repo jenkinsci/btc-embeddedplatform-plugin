@@ -93,7 +93,9 @@ Migration Suite below).
     + [Step "regressionTest"](#step-regressiontest)
     + [Step "rangeViolationGoals"](#step-rangeviolationgoals)
     + [Step "domainCoverageGoals"](#step-domaincoveragegoals)
+    + [Step "addDomainCheckGoals"](#step-adddomaincheckgoals)
     + [Step "addInputCombinationGoals"](#step-addinputcombinationgoals)
+    + [Step "defaultTolerances"](#step-defaulttolerances)
     + [Step "formalTest"](#step-formaltest)
     + [Step "formalVerification"](#step-formalverification)
   - [Reporting](#reporting)
@@ -101,9 +103,11 @@ Migration Suite below).
     + [Step "xmlReport"](#step-xmlreport)
     + [Step "codeAnalysisReport"](#step-codeanalysisreport)
     + [Step "modelCoverageReport"](#step-modelcoveragereport)
+    + [Step "interfaceReport"](#step-interfacereport)
     + [Overall Report](#overallreport)
   - [Misc](#misc)
     + [Step "getStatusSummary"](#step-getstatussummary)
+    + ["Error handling"](#error-handling)
   
 * [BTC Migration Suite](#btc-migration-suite)
   - [Step "migrationSource"](#step-migrationsource)
@@ -113,8 +117,18 @@ Migration Suite below).
 
 ## Release Notes
 
-Version | Release Notes | EP Version | Update BTC-part | Update Jenkins-part
+Version | Release Notes | EP Version | Update on Agent | Update on Controller
 --------|---------------|------------|-----------------|--------------------
+22.2.0 | - Adapted to EP 22.2 | 22.2 | X | 
+22.1.0 | - Adapted to EP 22.1 | 22.1 | X | X
+2.11.0 | - Adapted to EP 2.11 | 2.11 | X | X
+2.10.1 | - Adapted to EP 2.10<br>- Made UDCG dependency optional (this prevented the plugin from being loaded if BTC EmbeddedPlatform was installed without the UDCG AddOn) | 2.10 | X | 
+2.9.3 | - Added option to control the scopes for input combination goals (instead of toplevel only)<br>- Fixed an issue with the EC wrapper model creation for cases where no slScriptPath is specified<br>- Added enhanced reporting for multi-model migration suite use case | 2.9 | X | X 
+2.9.2 | - Improved port handling for btc.startup | 2.9 | | X 
+2.9.1 | - Added protection against unsupported execution on agents using "Local System" user<br>- Added support for EC wrapper model creation<br>- Added check for model version change to automatically invoke an architecture update if required (can be forced with "updateRequired = true" or prevented with "disableUpdate = true")<br>- Added defaultTolerances step to add tolerances for RBT or B2B | 2.9 | X | X 
+2.9.0 | - Adapted to EP 2.9<br>- Added domain checks step<br>- Added options for parallel execution (vectorGeneration)<br>- Test steps no longer automatically set the Pipeline to unstable | 2.9 | X | X 
+2.8.7 | - Added support for EmbeddedCoder Wrapper model creation (requires plugin version 2.9.1 or higher on the Jenkins Controller) | 2.8 | X |  X
+2.8.6 | - Fixed an issue with ZERO and CENTER calculation of input combination goals<br>- Added robustness improvement for overview report | 2.8 | X |  
 2.8.4 | - Added overview report capabilities when working with more than one project<br>- fixed an alignment issue in the reports<br>- Added overall report option to report on multiple projects<br>Added addInputCombinationGoals step to add input combination goals based on the User Defined Coverage Goals feature | 2.8 | X | X 
 2.8.2 | - Added suppport for blacklist/whitelist filtering for rbtExecution based on linked requirements<br>- Added possibility to specify additional jvm arguments on startup (e.g. -Xmx2g)<br>- Added option for DomainCoverageGoals to only apply to inputs/cals (see step btc.domainCoverageGoals) | 2.8 | X | X 
 2.8.1 | - Added option to control the rmi port used for the matlab connection (matlabPort -> btc.startup) | 2.8 | | X 
@@ -219,36 +233,69 @@ automation workflow.
 **Pipeline Example**
 
 ``` groovy
-node {
-    // checkout changes from SCM
-    checkout scm
- 
-    // start EmbeddedPlatform and connect to it
-    btc.startup {}
- 
-    // load / create / update a profile
-    btc.profileCreateTL {
-        profilePath = "profile.epp"
-        tlModelPath = "powerwindow_tl_v01.slx"
-        tlScriptPath = "start.m"
-        matlabVersion = "2017b"
+pipeline {
+    agent none // agent can be defined per stage
+    stages {
+        stage ('BTC Unit Test') {
+            // Stage must run on an agent with the required software, e.g.:
+            // - Matlab Simulink + Code Generator
+            // - Compiler (Visual Studio / MinGW)
+            // - BTC EmbeddedPlatform incl. JenkinsAutomation plugin
+            agent { label 'my_btc_agent' }
+
+            steps {
+                // checkout files from repository referenced in this pipeline item
+                checkout scm
+                // Tests with BTC EmbeddedPlatform
+                script {
+                    // start BTC EmbeddedPlatform on Agent
+                    btc.startup {
+                        additionalJvmArgs = '-Xmx2g'
+                    }
+                    
+                    // load and update test project
+                    btc.profileLoad {
+                        profilePath = "my_module.epp"
+                        tlModelPath = "my_module.slx"
+                        tlScriptPath = "start.m"
+                        matlabVersion = "2020b"
+                        updateRequired = true
+                    }
+
+                    // Execute requirements-based tests
+                    btc.rbtExecution {
+                        createReport = true
+                    }
+
+                    // Generate vectors for statement & mcdc coverage
+                    btc.vectorGeneration {
+                        pll = "STM; MCDC"
+                    }
+                    
+                    // Generate coverage reports
+                    btc.codeAnalysisReport { useCase = "RBT" }
+                    btc.codeAnalysisReport { useCase = "B2B" }
+                    
+                    // B2B test model vs. code
+                    btc.backToBack {
+                        reference = "TL MIL"
+                        comparison = "SIL"
+                    }
+                
+                    // BTC: close EmbeddedPlatform and store reports
+                    btc.wrapUp {}
+                }
+            }
+            post {
+                always {
+                    // make sure that EP is closed, also in case of errors or if the build is aborted
+                    script { btc.killEp {} }
+                }
+            }
+        }
     }
- 
-    // generate stimuli vectors
-    btc.vectorGeneration {
-        pll = "STM, D, MCDC"
-        createReport = true
-    }
- 
-    // execute back-to-back test MIL vs. SIL
-    btc.backToBack {
-        reference = "TL MIL"
-        comparison = "SIL"
-    }
- 
-    // close EmbeddedPlatform and store reports
-    btc.wrapUp {}
-}
+}   
+
 ```
 
 ## Workflow Steps
@@ -310,7 +357,7 @@ Property | Description | Example Value(s)
 tlModelPath | Path of the TargetLink model. The path can be absolute or relative to the jenkins job's workspace. | "model.slx"
 tlScriptPath | Path of the model init script. The path can be absolute or relative to the jenkins job's workspace. | "init.m"
 tlSubsystem | Name of the Subsystem representing the TL top-level subsystem for the analysis. Note: Argument is mandatory if there is more than one top-level system in the model. | "Controller"
-environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. | "Environment.xml"
+environmentXmlPath | Path to the XML file with additional include paths, etc.. The path can be absolute or relative to the jenkins job's workspace. (only relevant for TargetLink use cases) | "Environment.xml"
 startupScriptPath | Path to a Startup Script which can be used to initialize matlab (e.g. toolchain startup, etc.). The path can be absolute or relative to the jenkins job's workspace. | "startup_toolchain.m"
 codeModelPath | Path of the hand code description file. The path can be absolute or relative to the jenkins job's workspace. | "CodeModel.xml"
 compilerShortName | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found. | "MSSDK71", "MSVC140", "MinGW64"
@@ -325,7 +372,8 @@ reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use exis
 matlabVersion | Controls which matlab version will be used by the tool.<br>String containing the release version (e.g. "2016b"), optionally followed by "32-bit" or "64-bit". The version and 32/64-bit part should be separated by a space character. | "2010a 32-bit"<br>"2013b"<br>"2016b 64-bit"
 matlabInstancePolicy | String that controls when EmbeddedPlatform will start a new Matlab instance. When selecting "NEVER" another process needs to ensure that a Matlab instance is available on the agent machine.<br>Default: "AUTO" (i.e. a new instance is only started if no instance of the specified version is available) | "AUTO", "ALWAYS", "NEVER"
 exportPath | Path to a folder where reports shall be stored. The path can be absolute or relative to the jenkins job's workspace. | "reports" (default)
-updateRequired | Boolean flag that controls whether or not the profile is being update after loading.<br>(default: false) | true, false
+updateRequired | Boolean flag that controls if the architecture update will be performed, even if the model has not changed.<br>(default: false) | true, false
+disableUpdate | Boolean flag that controls if the architecture update will be disabled, even if the model has changed.<br>(default: false) | true, false
 saveProfileAfterEachStep | Boolean flag that controls whether or not the profile is being saved after each step.(default: false) | true, false
 logFilePath | Path for the log file. The path can be absolute or relative to the jenkins job's workspace. | "log.txt" (default)
 licenseLocationString | String containing the license locations in the order of their priority. Multiple locations are to be separated by a semicolon. If not specified explicitly, the license locations will still be retrieved from the registry (via FlexLM) in the way they have been configured in the EP license dialog. | "C:\Licenses\EP21_30.01.2019.lic"<br>"@192.168.0.1"<br>"9000@myserver.com"
@@ -382,6 +430,7 @@ slScriptPath | Path of the model init script. The path can be absolute or relati
 **compilerShortName** | Short name of the compiler that should be used (C-Code Use Case). Fallback will be an already selected compiler or, if undefined, the first one that is found.<br>**mandatory for hand code use case** | "MSSDK71", "MSVC140", "MinGW64"
 codeModelPath | Path of the code description file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "CodeModel.xml"
 mappingFilePath | Path of the mapping file. The path can be absolute or relative to the jenkins job's workspace.<br>_This currently required for the architecture update to work!_ | "Mapping.xml"
+createWrapperModel | Boolean flag that controls if the BTC wrapper model shall be created or the specified EmbeddedCoder model. This is required in case of multiple Runnables or Client-Server communication.<br>(default: false) | true, false
 
 
 #### Step "profileCreateSL"
@@ -430,6 +479,7 @@ BTC EmbeddedPlatform. The following optional settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
+closeEp | Boolean flag controlling whether the BTC EmbeddedPlatform will be closed.<br>(default: true) | true, false
 archiveProfiles | Boolean flag controlling whether BTC EmbeddedPlatform profiles are archived by Jenkins to be available on the Job Page. You can disable this and control the "archiveArtifacts" option yourself.<br>(default: true) | true, false
 publishReports | Boolean flag controlling whether the BTC EmbeddedPlatform reports are published in Jenkins to be available on the Job Page. You can disable this and control the "publishHTML" option yourself.<br>(default: true) | true, false
 publishResults | Boolean flag controlling whether BTC EmbeddedPlatform test results (JUnit XML) are published in Jenkins to be available on the Job Page and for further aggregations. You can disable this and control the "junit" option yourself.<br>(default: true) | true, false
@@ -712,6 +762,8 @@ depthAtg | Controls the maximum depth for the ATG engine. Must be greater than 0
 loopUnroll | Number of loop interations to unroll for unpredictable loops.<br>(default: 50) | 10, 20, 50
 robustnessTestFailure | Boolean flag controlling whether or not robustness issues are added to the JUnit XML Report as "failed tests".<br>(default: false) | true, false
 createReport | Boolean flag controlling whether or not the Code Analysis Report is created by this step. The report can be created explicitly in its own step which is why you might want to tweak this setting.<br>(default: false) | true, false
+numberOfThreads | Integer to specify the number of parallel threads for vector generation (CV engine) *Note: this may lead to increased memory consumption*.<br>(default: 1) | 4, 6, 8
+parallelExecutionMode | String to specify the parallel execution mode for vector generation with the CV engine. Only takes effect if numberOfThreads is > 1.<br>(default: "BALANCED") | "BALANCED", "ENGINES", "GOALS"
 
 **Possible Return values**
 
@@ -864,6 +916,38 @@ addDomainBoundaryForInputs | Flag that controls whether the goals are only appli
 | 400              | Domain Coverage Goals plugin not installed |
 | 500              | Unexpected Error                           |
 
+#### Step "addDomainCheckGoals"
+
+DSL Command: btc.addDomainCheckGoals{...}
+
+**Required License**
+
+EmbeddedTester (ET\_COMPLETE)
+
+**Description**
+
+*Requires EP 2.9p0 or higher*
+
+Adds Domain Check Goals to the profile which contribute to the Code
+Analysis Report and can be considered during vector generation (pll:
+"VDCG;IDCG"). The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+scopePath | Hierarchy path to the targeted scope / subsystem. Leave empty to target the toplevel. Use "*" to target all scopes.<br>(default: toplevel subsystem) | "Toplevel/SubA", "*"
+dcXmlPath | Path to an xml file containing Domain Coverage specs. | "DomainCoverageGoals.xml"
+raster | String to specify a raster in %. Domain Coverage Goals will be created for equal according to the raster.<br>(default: 25) | "10", "25", "30"
+activateRangeViolationCheck | flag that controls if range violation checks are added in the form of invalid ranges: [dataTypeMin, specifiedMin) / (specifiedMax, dataTypeMax].<br>(default: false) | true, false
+activateBoundaryCheck | flag that controls if boundary value goals are added.<br>(default: false) | true, false
+
+**Possible Return values**
+
+| Return Value     | Description                                |
+|------------------|--------------------------------------------|
+| 200              | Success                                    |
+| 400              | Domain Coverage Goals plugin not installed |
+| 500              | Unexpected Error                           |
+
 #### Step "addInputCombinationGoals"
 
 DSL Command: btc.addInputCombinationGoals{...}
@@ -889,6 +973,36 @@ valueRegions | Comma separated string with value regions.<br>MIN, MAX, CENTER, Z
 |------------------|--------------------------------------------|
 | 200              | Success                                    |
 | 400              | User Defined Goals Add-On not installed    |
+| 500              | Unexpected Error                           |
+
+#### Step "defaultTolerances"
+
+DSL Command: btc.defaultTolerances{...}
+
+**Description**
+
+Adds default tolerances for floating point and fixed point outputs / locals. The default setting aims to cover minimal deviations that occur due to the precisions involved. You can change in which cases the tolerances are applied via the applyTo option. When calling this step without parameters the following tolerances will be set:
+- a relative tolerance of 1E-10%
+- an abolute tolerance of 1E-10 for floating point outputs/locals
+- an abolute tolerance of 2*LSB for fixed point outputs/locals
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+applyTo | Controls which kinds of outputs/locals get are considered<br>FLP_OUT -> Floating Point Outputs<br>FXP_OUT -> Fixed-Point outputs<br>FLOAT_FLOAT -> Float outputs, only if there is at least 1 float Input/Parameter<br>(default: all flp & fxp outputs will be considered) | "FLP_OUT"<br>"FXP_OUT"<br>"FLOAT_FLOAT"
+useCase | Controls which use case the tolerances will be valid for (B2B, RBT)<br>(default: B2B use case) | "B2B"<br>"RBT"
+relTolerance | A decimal value for the relative tolerance (in percent).<br>default: 1E-10 | 2.4E-6<br>7E-14
+absToleranceFlp | A decimal value for the abolute tolerance for floating point signals.<br>default: 1E-10 | 2.4E-6<br>7E-14
+absToleranceFxp | A decimal value for the abolute tolerance for fixed point signals. Can be a fixed value or a factor of the resolution (lsb, controlled by fxpIsMultipleOfLsb option)<br>default: 2 | 2.4E-6<br>1
+fxpIsMultipleOfLsb | Boolean flag that controls if the value specified for absToleranceFxp shall be multiplied by the resolution (lsb).<br>(default: true) | true, false
+onlyToplevel | Boolean flag that controls if the tolerances shall only be applied to the toplevel scope or to all scopes<br>(default: false -> apply to all scopes) | true, false
+
+
+**Possible Return values**
+
+| Return Value     | Description                                |
+|------------------|--------------------------------------------|
+| 200              | Success                                    |
+| 300              | Tolerances were applied to zero outputs    |
 | 500              | Unexpected Error                           |
 
 #### Step "formalTest"
@@ -1174,6 +1288,26 @@ This is a somewhat special step that requires some preparation:
 | 200              | Success          |
 | 500              | Unexpected Error |
 
+#### Step "interfaceReport"
+
+DSL Command: btc.interfaceReport{...}
+
+**Description**
+
+Creates the Interface Report and exports it to the "exportDir"
+specified in the "profileLoad" / "profileCreate" step. The following optional settings are available:
+
+Property | Description | Example Value(s)
+---------|-------------|-----------------
+reportName | The filename (String) for the resulting html file.<br>(default: "InterfaceReport.html") | "report.html", "BTCInterfaceReport.html"
+scopeNameRegex | String with regular expression. The report will be created for the first scope that matches this name.<br>(default: undefined -> report is created for the toplevel scope) | "some_expression.*"
+
+**Possible Return values**
+
+| Return Value     | Description      |
+|------------------|------------------|
+| 200              | Success          |
+| 500              | Unexpected Error |
 
 ### Misc
 
@@ -1229,8 +1363,9 @@ Retrieves a struct as a json text (see below) which can be passed on to external
     - CreatedOn
     - CreatedBy
 
-
-  
+#### Error Handling
+It is important that the EP process is closed to free the used resources and that the reserved port on the agent is released.
+To ensure this in an easy manner, the DSL command btc.handleError(errorMsg) is provided. It will safely close EP, release the used port and then call the Jenkins error(...) command with the given error message.
 
 ## BTC Migration Suite
 
