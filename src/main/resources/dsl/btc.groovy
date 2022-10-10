@@ -866,10 +866,6 @@ def migrationTarget(body) {
     }
     // Regression Test
     r = regressionTest(config)
-    if (r >= 400) {
-        wrapUp(body)
-        error("Error during regression test (source vs. target config).")
-    }
     
     // contribute to overall report
     if (config.uniqueName != null) {
@@ -886,6 +882,11 @@ def migrationTarget(body) {
         }
     } else {
         wrapUp(body)
+    }
+
+    // raise error in case the regression test had errors
+    if (r >= 400) {
+        error("Error during regression test (source vs. target config).")
     }
 }
 
