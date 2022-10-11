@@ -135,7 +135,7 @@ Version | Release Notes | EP Version | Update on Agent | Update on Controller
 2.8.0 | - Adapted to EP 2.8<br>- NOTE: requires BTC DSL for Pipeline (btc-embeddedplatform-plugin) on the Jenkins master in version 2.8.0 or higher! | 2.8 | X | X 
 2.7.3 | - Fixed an encoding issue introduced by a recent windows update (now ensures utf-8 charset)<br>- Fixed an issue that prevented the architecture update for manually created merged architectures (SL + C-Code). NOTE: this fix requires BTC DSL for Pipeline (btc-embeddedplatform-plugin) on the Jenkins master in version 2.8.0 or higher! | 2.7 | X | X 
 2.6.2<br>2.5.11<br>2.4.23 | - An issue was introduced by a recent windows update. Added a workaround for that which ensures that the report.json file (migration suite use case) is always encoded in utf-8. | 2.6 | X |  
-2.6.1 | - Added Parameters "analyzeScopesHierachichally" and "allowDenormalizedFloats" to vectorGeneration step<br>- Added Parameters "tlSubsystemFilter", "tlCalibrationFilter" and "tlCodeFileFilter" to profileCreateTL step<br>- Added vectorExport step for Test Cases & Stimuli Vectors | 2.6 | X |  X
+2.6.1 | - Added Parameters "analyzeScopesHierachically" and "allowDenormalizedFloats" to vectorGeneration step<br>- Added Parameters "tlSubsystemFilter", "tlCalibrationFilter" and "tlCodeFileFilter" to profileCreateTL step<br>- Added vectorExport step for Test Cases & Stimuli Vectors | 2.6 | X |  X
 2.7.0 | - Adapted to EP 2.7 | 2.7 | X |  
 2.6.0 | - Minor reporting modifications for reference simulation in migration suite use case<br>- Adaptions to EP 2.6 | 2.6 | X |  X
 2.5.10 | - Matlab log is now also available for c-code workflows that include matlab startupScripts | 2.5 | X | X 
@@ -754,7 +754,7 @@ globalTimeout | Global timeout in seconds. 0 means no timeout.<br>(default: 600)
 scopeTimeout | Scope timeout in seconds. 0 means no timeout.<br>(default: 300) | 300
 perPropertyTimeout | Timeout per coverage property in seconds. 0 means no timeout.<br>(default: 60) | 60
 considerSubscopes | Boolean flag controlling whether or not to consider coverage goals from subscopes.<br>(default: true) | true, false
-analyzeScopesHierachichally | Boolean flag controlling whether or not to analyze subscopes hierachically.<br>(default: true) | true, false
+analyzeScopesHierachically | Boolean flag controlling whether or not to analyze subscopes hierachically.<br>(default: true) | true, false
 allowDenormalizedFloats | Boolean flag controlling whether or not to allow denormalized floats.<br>(default: true) | true, false
 recheckUnreachable | Boolean flag controlling whether or not to recheck already calculated unreachable results.<br>(default: false) | true, false
 depthCv | Controls the maximum depth for the CV engine. Set to 0 for infinite depth.<br>(default: 10) | 0, 10, 20, 50
