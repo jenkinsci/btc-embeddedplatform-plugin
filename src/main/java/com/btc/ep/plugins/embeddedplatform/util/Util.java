@@ -32,7 +32,9 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.steps.Step;
+import org.openapitools.client.ApiClient;
 import org.openapitools.client.ApiException;
+import org.openapitools.client.api.MessagesApi;
 import org.openapitools.client.api.PreferencesApi;
 import org.openapitools.client.api.RequirementsApi;
 import org.openapitools.client.api.ScopesApi;
@@ -43,12 +45,15 @@ import org.openapitools.client.model.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
 import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 
 public class Util {
 
 	private static Logger logger = LoggerFactory.getLogger(Util.class);
-
+	public static ApiClient getApiClient(String basePath) {
+		return new ApiClient().setBasePath(basePath);
+	}
 	private static final int ONE_DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
 	private static final int ONE_HOUR_IN_MILLIS = 1000 * 60 * 60;
 	private static final int ONE_MINUTE_IN_MILLIS = 1000 * 60;
@@ -224,7 +229,19 @@ public class Util {
 		}
 		return requirements;
 	}
-
+	
+	/**
+	 * Splits a camelCase or TitleCase string into its parts.
+	 * Capitalizes the first character. 
+	 * Returns a String joined with spaces
+	 */
+	public static String camelCaseToSpaceSeparatedString(String camelCaseString) {
+		String camelCaseRegex = "(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])";
+		String spaceSeparatedString = String.join(" ", camelCaseString.split(camelCaseRegex));
+		spaceSeparatedString = spaceSeparatedString.substring(0, 1).toUpperCase() + spaceSeparatedString.substring(1);
+		return spaceSeparatedString;
+	}
+	
 	/**
 	 * Utility function to get the values from a String with a comma separated list
 	 * of values. Will not return null, but can return an empty list.
@@ -253,8 +270,9 @@ public class Util {
 	 */
 	public static Scope getToplevelScope() throws ApiException {
 		try {
-			return new ScopesApi().getScopesByQuery1(null, BtcExecution.TRUE).get(0);
+			return new ScopesApi().getScopesByQuery1("", BtcExecution.TRUE).get(0);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new ApiException("Could not determine the toplevel scope");
 		}
 	}
@@ -432,6 +450,11 @@ public class Util {
 		    }
 		}
 		return matchList2;
+	}
+
+	// store message marker to be able to access all messages of the current session later on
+	public static void createMessageMarker(DataTransferObject dataTransferObject, MessagesApi messageApi) throws ApiException {
+		dataTransferObject.messageMarker = messageApi.createMessageMarker().getDate();		
 	}
 
 }

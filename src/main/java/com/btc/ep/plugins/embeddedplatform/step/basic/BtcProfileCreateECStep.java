@@ -10,7 +10,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -36,7 +36,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcProfileCreateECStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcProfileCreateECStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateECStep step;
@@ -68,14 +68,13 @@ class ProfileCreateECExecution extends BtcExecution {
 	
 	private static final long serialVersionUID = 2387451531872732925L;
 	private BtcProfileCreateECStep step;
+	private transient ArchitecturesApi archApi;
 
 	public ProfileCreateECExecution(BtcProfileCreateECStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 	
-	private ArchitecturesApi archApi = new ArchitecturesApi();
-
 	/*
 	 * Put the desired action here: - checking preconditions - access step
 	 * parameters (field step: step.getFoo()) - calling EP Rest API - print text to
@@ -84,6 +83,7 @@ class ProfileCreateECExecution extends BtcExecution {
 	 */
 	@Override
 	protected Object performAction() throws Exception {
+		archApi = new ArchitecturesApi();
 		/*
 		 * Preparation
 		 */

@@ -9,7 +9,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
@@ -26,7 +26,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Store;
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-class BtcProfileCreateSLStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcProfileCreateSLStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateSLStep step;
@@ -58,16 +58,16 @@ class ProfileCreateSLExecution extends BtcExecution {
 	
 	private static final long serialVersionUID = 4219311637704025602L;
 	private BtcProfileCreateSLStep step;
+	private transient ArchitecturesApi archApi;
 	
-	private ArchitecturesApi archApi = new ArchitecturesApi();
-
 	public ProfileCreateSLExecution(BtcProfileCreateSLStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 
 	@Override
 	protected Object performAction() throws Exception {
+		archApi = new ArchitecturesApi();
 		/*
 		 * Preparation
 		 */
@@ -137,7 +137,7 @@ public class BtcProfileCreateSLStep extends Step implements Serializable, Matlab
 	 * Each parameter of the step needs to be listed here as a field
 	 */
 	private String profilePath;
-	private String exportPath;
+	private String exportPath = "reports";
 
 	private String slModelPath;
 	private String slScriptPath;
@@ -150,10 +150,8 @@ public class BtcProfileCreateSLStep extends Step implements Serializable, Matlab
 	private String licenseLocationString; // mark as deprecated?
 
 	@DataBoundConstructor
-	public BtcProfileCreateSLStep(String profilePath, String slModelPath, String addInfoModelPath) {
+	public BtcProfileCreateSLStep(String slModelPath) {
 		super();
-		this.profilePath = profilePath;
-		this.slModelPath = slModelPath;
 	}
 
 	@Override
@@ -254,6 +252,11 @@ public class BtcProfileCreateSLStep extends Step implements Serializable, Matlab
 	@Deprecated
 	public void setLicenseLocationString(String licenseLocationString) {
 		this.licenseLocationString = licenseLocationString;
+	}
+
+	@DataBoundSetter
+	public void setProfilePath(String profilePath) {
+		this.profilePath = profilePath;
 	}
 
 	/*

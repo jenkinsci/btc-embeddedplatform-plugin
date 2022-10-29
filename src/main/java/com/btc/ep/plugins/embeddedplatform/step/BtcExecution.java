@@ -54,12 +54,14 @@ public abstract class BtcExecution extends MasterToSlaveCallable<DataTransferObj
 	
 	protected abstract Object performAction() throws Exception;
 
-	public BtcExecution(PrintStream logger, StepContext context, Step step) {
+	public BtcExecution(PrintStream logger, StepContext context, Step step, String baseDir) {
 		this.localLogger = logger;
 		this.remoteLogger = new RemoteOutputStream(new CloseProofOutputStream(logger));
 		this.functionName = step.getDescriptor().getFunctionName();
 		this.dataTransferObject = new DataTransferObject();
-		this.dataTransferObject.reportingStep = new TestStep(functionName.replace("btc", "")); // TODO: make this more user friendly
+		this.dataTransferObject.baseDir = baseDir;
+		String testStepName = Util.camelCaseToSpaceSeparatedString(functionName.replace("btc", ""));
+		this.dataTransferObject.reportingStep = new TestStep(testStepName); // TODO: make this more user friendly
 		try {
 			this.workspace = context.get(FilePath.class).getRemote();
 		} catch (Exception e) {
@@ -88,11 +90,8 @@ public abstract class BtcExecution extends MasterToSlaveCallable<DataTransferObj
 	 * @return the absolute path string (may be null)
 	 */
 	public String resolveToString(String absOrRelPath) {
-		if (absOrRelPath != null) {
-			Path p = Paths.get(absOrRelPath).isAbsolute() ? Paths.get(absOrRelPath) : new File(workspace + File.separator + absOrRelPath).getAbsoluteFile().toPath();
-			return p.toString();
-		}
-		return null;
+		Path p = resolveToPath(absOrRelPath);
+		return p != null ? p.toString() : null;
 	}
 	
 	/**
@@ -101,8 +100,12 @@ public abstract class BtcExecution extends MasterToSlaveCallable<DataTransferObj
 	 * @return the path object (may be null)
 	 */
 	public Path resolveToPath(String absOrRelPath) {
-		Path p = Paths.get(absOrRelPath).isAbsolute() ? Paths.get(absOrRelPath) : new File(workspace + File.separator + absOrRelPath).toPath();
-		return p;
+		String baseDir = dataTransferObject.baseDir != null ? dataTransferObject.baseDir : workspace;
+		if (absOrRelPath != null) {
+			Path p = Paths.get(absOrRelPath).isAbsolute() ? Paths.get(absOrRelPath) : new File(baseDir + File.separator + absOrRelPath).getAbsoluteFile().toPath();
+			return p;
+		}
+		return null;
 	}
 	
 	/**

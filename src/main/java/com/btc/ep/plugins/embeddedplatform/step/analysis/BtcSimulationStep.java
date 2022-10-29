@@ -1,5 +1,6 @@
 package com.btc.ep.plugins.embeddedplatform.step.analysis;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -20,6 +22,10 @@ import org.openapitools.client.model.Job;
 import org.openapitools.client.model.TestCaseSimulationOnListParams;
 
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
+import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
+import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
+import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
+import com.btc.ep.plugins.embeddedplatform.util.Store;
 import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
@@ -28,51 +34,78 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcSimulationStepExecution extends StepExecution {
+class BtcSimulationStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcSimulationStep step;
-	private ScopesApi scopeApi = new ScopesApi();
-	private ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
-	private TestCaseStimuliVectorSimulationApi simApi = new TestCaseStimuliVectorSimulationApi();
+	
 	
 	public BtcSimulationStepExecution(BtcSimulationStep step, StepContext context) {
 		super(context);
 		this.step = step;
 	}
-
-//	@Override
-//	protected void performAction() throws Exception {
-//		// Prepare data and simulate
-//		try {
-//			TestCaseSimulationOnListParams info = prepareInfoObject();
-//			Job job = simApi.simulateOnScopeList(info);
-//			HttpRequester.waitForCompletion(job.getJobID());
-//		} catch (Exception e) {
-//			error("Failed simulate vectors.", e);
-//			return;
-//		}
-//		log("--> Simulation successfully executed.");
-//	}
-//
-//	private TestCaseSimulationOnListParams prepareInfoObject() throws ApiException {
-//		TestCaseSimulationOnListParams info = new TestCaseSimulationOnListParams();
-//		List<String> scopeUids = scopeApi.getScopesByQuery1(null, FALSE).stream().map(scope -> scope.getUid())
-//				.collect(Collectors.toList());
-//		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
-//		if (executionConfigNames.isEmpty()) {
-//			executionConfigNames = ecApi.getExecutionConfigs().getExecConfigNames();
-//		}
-//		log("Simulating on %s...", executionConfigNames);
-//		info.setExecConfigNames(executionConfigNames);
-//		info.setUiDs(scopeUids);
-//		return info;
-//	}
-
+	
 	@Override
-	public boolean start() throws Exception {
-		// TODO Auto-generated method stub
-		return false;
+	public Object run() {
+		PrintStream logger = StepExecutionHelper.getLogger(getContext());
+		SimulationExecution exec = new SimulationExecution(step, logger, getContext());
+		
+		// transfer applicable global options from Store to the dataTransferObject to be available on the agent
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		
+		// run the step execution part on the agent
+		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
+		
+		// post processing on Jenkins Controller
+		StepExecutionHelper.postProcessing(stepResult);
+		return null;
+	}
+}
+
+class SimulationExecution extends BtcExecution {
+
+	private static final long serialVersionUID = 1472396837794657813L;
+	private BtcSimulationStep step;
+	
+	private transient ScopesApi scopeApi = new ScopesApi();
+	private transient ExecutionConfigsApi ecApi = new ExecutionConfigsApi();
+	private transient TestCaseStimuliVectorSimulationApi simApi = new TestCaseStimuliVectorSimulationApi();
+
+	public SimulationExecution(BtcSimulationStep step, PrintStream logger, StepContext context) {
+		super(logger, context, step, Store.baseDir);
+		this.step = step;
+	}
+	
+	@Override
+	protected Object performAction() throws Exception {
+		scopeApi = new ScopesApi();
+		ecApi = new ExecutionConfigsApi();
+		simApi = new TestCaseStimuliVectorSimulationApi();
+		// Prepare data and simulate
+		try {
+			TestCaseSimulationOnListParams info = prepareInfoObject();
+			Job job = simApi.simulateOnScopeList(info);
+			HttpRequester.waitForCompletion(job.getJobID());
+		} catch (Exception e) {
+			error("Failed simulate vectors.", e);
+			return response(500);
+		}
+		log("--> Simulation successfully executed.");
+		return getResponse();
+	}
+
+	private TestCaseSimulationOnListParams prepareInfoObject() throws ApiException {
+		TestCaseSimulationOnListParams info = new TestCaseSimulationOnListParams();
+		List<String> scopeUids = scopeApi.getScopesByQuery1(null, FALSE).stream().map(scope -> scope.getUid())
+				.collect(Collectors.toList());
+		List<String> executionConfigNames = Util.getValuesFromCsv(step.getExecutionConfigString());
+		if (executionConfigNames.isEmpty()) {
+			executionConfigNames = ecApi.getExecutionConfigs().getExecConfigNames();
+		}
+		log("Simulating on %s...", executionConfigNames);
+		info.setExecConfigNames(executionConfigNames);
+		info.setUiDs(scopeUids);
+		return info;
 	}
 
 }

@@ -28,5 +28,7 @@ public class Store {
 	public static Date startDate;
 	public static MetaInfoSection metaInfoSection;
 	public static String matlabVersion;
+	public static String messageMarker;
+	public static String baseDir;
 
 }

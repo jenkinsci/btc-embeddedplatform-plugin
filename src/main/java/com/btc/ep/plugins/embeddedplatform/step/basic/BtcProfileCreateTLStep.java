@@ -9,7 +9,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
@@ -30,7 +30,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Store;
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-class BtcProfileCreateTLStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcProfileCreateTLStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateTLStep step;
@@ -65,16 +65,16 @@ class ProfileCreateTLExecution extends BtcExecution {
 
 	private static final long serialVersionUID = -2873758361286777998L;
 	private BtcProfileCreateTLStep step;
+	private transient ArchitecturesApi archApi;
 	
-	private ArchitecturesApi archApi = new ArchitecturesApi();
-
 	public ProfileCreateTLExecution(BtcProfileCreateTLStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 
 	@Override
 	protected Object performAction() throws Exception {
+		archApi = new ArchitecturesApi();
 		/*
 		 * Preparation
 		 */
@@ -185,7 +185,7 @@ public class BtcProfileCreateTLStep extends Step implements Serializable, Matlab
 	 * Each parameter of the step needs to be listed here as a field
 	 */
 	private String profilePath;
-	private String exportPath;
+	private String exportPath = "reports";
 
 	private String tlModelPath;
 	private String tlScriptPath;

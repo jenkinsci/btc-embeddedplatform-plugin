@@ -16,7 +16,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -60,7 +60,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcRBTStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcRBTStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcRBTStep step;
@@ -82,9 +82,11 @@ class BtcRBTStepExecution extends SynchronousNonBlockingStepExecution<Object> {
 		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
 		
 		// do JUnit stuff on jenkins controller
-		JUnitXMLHelper.addSuite(stepResult.testSuite.suiteName);
-		for (JUnitXmlTestCase tc : stepResult.testSuite.testCases) {
-			JUnitXMLHelper.addTest(stepResult.testSuite.suiteName, tc.name, tc.status, tc.message);
+		if (stepResult.testSuite != null) {
+			JUnitXMLHelper.addSuite(stepResult.testSuite.suiteName);
+			for (JUnitXmlTestCase tc : stepResult.testSuite.testCases) {
+				JUnitXMLHelper.addTest(stepResult.testSuite.suiteName, tc.name, tc.status, tc.message);
+			}
 		}
 		
 		// post processing on Jenkins Controller
@@ -110,7 +112,7 @@ class RBTExecution extends BtcExecution {
 	private transient ExecutionConfigsApi ecApi;
 
 	public RBTExecution(BtcRBTStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 

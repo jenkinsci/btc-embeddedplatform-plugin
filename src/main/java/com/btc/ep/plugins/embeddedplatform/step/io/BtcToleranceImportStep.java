@@ -9,7 +9,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.api.TolerancesApi;
 import org.openapitools.client.model.TolerancesIOConfig;
@@ -26,7 +26,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcToleranceImportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcToleranceImportStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcToleranceImportStep step;
@@ -67,7 +67,7 @@ class ToleranceImport extends BtcExecution {
 	private BtcToleranceImportStep step;
 	
 	public ToleranceImport(PrintStream logger, StepContext context, BtcToleranceImportStep step) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 

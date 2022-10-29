@@ -28,18 +28,28 @@ def vectorImport(body) {
 }
 */
 
+def startup(body) {
+	def config = resolveConfig(body)
+	return btcStart(config) 
+}
+
+def addDomainCheckGoals(body) {
+	def config = resolveConfig(body)
+	return btcAddDomainCheckGoals(config)
+}
+
 // TODO: tlSubsystem argument is missing from the function itself
 // TODO: calibrationHandling argument is missing from the function itself
 // TODO: testMode, reuseExistingCode, logFilePath also missing
 def profileLoad(body) {
 	def config = resolveConfig(body)
-	return btcProfileLoad(config) 
+	return btcProfileLoad(config)
 }
 // TODO: tlSubsystemFilter, tlCalibrationFilter, tlCodeFileFilter replaced by subsystemMatcher string
 // TODO: from profileLoad, missing startupScriptPath, codeModelPath, slModelPath, slScriptPath, addModelInfoPath, pilTimeout, exportPath, updateRequired, logFilePath
 def profileCreateTL(body) {
 	def config = resolveConfig(body)
-	return btcProfileCreateTL(config) 
+	return btcProfileCreateTL(config)
 }
 
 // TODO: inheritance from profileLoad is missing: environmentXmlPath, codeModelPath, addModelInfoPath, pilConfig, pilTimeout, reuseExistingCode, updateRequired, logFilePath
@@ -142,8 +152,7 @@ def rbtExecution(body) {
 
 def vectorGeneration(body) {
 	def config = resolveConfig(body)
-	config.propertyTimeout = config.perPropertyTimeout
-	return btcVectorGeneration(config) 
+	return btcVectorGeneration(config)
 }
 
 

@@ -13,7 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -40,7 +40,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcVectorExportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcVectorExportStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcVectorExportStep step;
@@ -81,7 +81,7 @@ class BtcVectorExportStepExecution extends SynchronousNonBlockingStepExecution<O
 		transient StimuliVectorsApi vectorApi = new StimuliVectorsApi();
 		transient ArchitecturesApi archApi = new ArchitecturesApi();
 		public VectorExportExecution(PrintStream logger, StepContext context, BtcVectorExportStep step) {
-			super(logger, context, step);
+			super(logger, context, step, Store.baseDir);
 		}
 		
 	@Override

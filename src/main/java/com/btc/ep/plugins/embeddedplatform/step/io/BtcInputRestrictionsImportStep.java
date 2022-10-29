@@ -9,7 +9,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.openapitools.client.ApiException;
 import org.openapitools.client.api.InputRestrictionsApi;
@@ -26,7 +26,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcInputRestrictionsImportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcInputRestrictionsImportStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 
@@ -65,7 +65,7 @@ class InputRestrictionsImport extends BtcExecution {
 	
 	private BtcInputRestrictionsImportStep step;
 	public InputRestrictionsImport(PrintStream logger, StepContext context, BtcInputRestrictionsImportStep step) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 

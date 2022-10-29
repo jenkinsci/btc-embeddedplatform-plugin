@@ -14,7 +14,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ExecutionRecordsApi;
@@ -58,7 +58,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcMigrationTargetStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcMigrationTargetStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final String EXECUTION_RECORD = "EXECUTION_RECORD";
 	private static final long serialVersionUID = 1L;
@@ -244,7 +244,7 @@ class BtcMigrationTargetStepExecution extends SynchronousNonBlockingStepExecutio
 		ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 		FoldersApi folderApi = new FoldersApi();
 
-		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords1();
+		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords();
 		// TODO: query all Execution configs if nothing is specified (requires EP-2536)
 		for (String config : executionConfigs) {
 			if (step.isCreateProfilesFromScratch()) {

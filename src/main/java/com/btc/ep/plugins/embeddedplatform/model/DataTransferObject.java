@@ -28,6 +28,8 @@ public class DataTransferObject implements Serializable {
 	public String matlabVersion;
 	public JUnitXmlTestSuite testSuite;
 	public Map<String, String> metadata;
+	public String messageMarker;
+	public String baseDir;
 
 
 	

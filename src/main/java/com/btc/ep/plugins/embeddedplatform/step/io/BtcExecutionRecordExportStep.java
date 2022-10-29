@@ -11,7 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -32,7 +32,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcExecutionRecordExportStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcExecutionRecordExportStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcExecutionRecordExportStep step;
@@ -67,7 +67,7 @@ class ExecutionRecordExport extends BtcExecution {
 	private static final long serialVersionUID = 4934881457669048090L;
 
 	public ExecutionRecordExport(PrintStream logger, StepContext context, BtcExecutionRecordExportStep step) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 
@@ -79,7 +79,7 @@ class ExecutionRecordExport extends BtcExecution {
 		String exportDir = step.getDir() != null ? resolveToString(step.getDir()) : Store.exportPath;
 		List<String> uids = null;
 		try {
-			uids = erApi.getExecutionRecords1().stream()
+			uids = erApi.getExecutionRecords().stream()
 					.filter(er -> step.getExecutionConfig().equalsIgnoreCase(er.getExecutionConfig())
 							&& (step.getFolderName() == null || step.getFolderName().equals(er.getFolderName())))
 					.map(er -> er.getUid()).collect(Collectors.toList());

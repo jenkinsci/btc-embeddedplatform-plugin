@@ -9,10 +9,12 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.openapitools.client.Configuration;
 import org.openapitools.client.api.ApplicationApi;
+import org.openapitools.client.api.MessagesApi;
 import org.openapitools.client.api.ProfilesApi;
 import org.openapitools.client.model.ProfilePath;
 
@@ -20,6 +22,7 @@ import com.btc.ep.plugins.embeddedplatform.model.DataTransferObject;
 import com.btc.ep.plugins.embeddedplatform.step.BtcExecution;
 import com.btc.ep.plugins.embeddedplatform.util.StepExecutionHelper;
 import com.btc.ep.plugins.embeddedplatform.util.Store;
+import com.btc.ep.plugins.embeddedplatform.util.Util;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -27,7 +30,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcWrapUpStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcWrapUpStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcWrapUpStep step;
@@ -42,6 +45,9 @@ class BtcWrapUpStepExecution extends SynchronousNonBlockingStepExecution<Object>
 		PrintStream logger = StepExecutionHelper.getLogger(getContext());
 		WrapUpExecution exec = new WrapUpExecution(step, logger, getContext());
 
+		exec.dataTransferObject.exportPath = Store.exportPath;
+		exec.dataTransferObject.messageMarker = Store.messageMarker;
+		
 		// run the step execution part on the agent
 		DataTransferObject stepResult = StepExecutionHelper.executeOnAgent(exec, getContext());
 		
@@ -65,15 +71,35 @@ class WrapUpExecution extends BtcExecution {
 	private static final long serialVersionUID = -5603806953855309282L;
 	private BtcWrapUpStep step;
 
+	private transient MessagesApi messagesApi;
+	private transient ProfilesApi profileApi;
+	private transient ApplicationApi applicationApi;
+	
+	
 	public WrapUpExecution(BtcWrapUpStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 
 	@Override
 	protected Object performAction() throws Exception {
-		ProfilesApi profileApi = new ProfilesApi();
-		ApplicationApi applicationApi = new ApplicationApi();
+		profileApi = new ProfilesApi();
+		applicationApi = new ApplicationApi();
+		/*
+		 * Messages api needs a different API client, or rather:
+		 * 	other endpoints need a special API client (content type fallback: text/plain)
+		 *  messages api needs the vanilla api client (content type fallback: applcation/json)
+		 *  
+		 *  Without this, the ProfileMessagesReport export throws an UnsupportedMediaType Exception
+		 */
+		messagesApi = new MessagesApi(Util.getApiClient(Configuration.getDefaultApiClient().getBasePath()));
+		
+		// messages report
+		String fileName = "ProfileMessages.html";
+		String profileMessagesPath = dataTransferObject.exportPath + "/" + fileName;
+		messagesApi.exportMessages(profileMessagesPath, dataTransferObject.messageMarker);
+		detailWithLink("Profile Messages Report", fileName);
+		
 		/*
 		 * Save the profile
 		 */

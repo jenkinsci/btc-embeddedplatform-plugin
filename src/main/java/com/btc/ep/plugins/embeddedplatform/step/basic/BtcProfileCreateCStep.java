@@ -11,7 +11,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.api.ArchitecturesApi;
@@ -29,7 +29,7 @@ import com.btc.ep.plugins.embeddedplatform.util.Store;
 import hudson.Extension;
 import hudson.model.TaskListener;
 
-class BtcProfileCreateCStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcProfileCreateCStepExecution extends SynchronousStepExecution<Object> {
 	
 	private static final long serialVersionUID = 1L;
 	private BtcProfileCreateCStep step;
@@ -60,15 +60,16 @@ class ProfileCreateCExecution extends BtcExecution {
 	
 	private static final long serialVersionUID = 5227884736793053138L;
 	private BtcProfileCreateCStep step;
+	private transient ArchitecturesApi archApi;
 
 	public ProfileCreateCExecution(BtcProfileCreateCStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 
 	@Override
 	protected Object performAction() throws Exception {
-		ArchitecturesApi archApi = new ArchitecturesApi();
+		archApi = new ArchitecturesApi();
 		
 		/*
 		 * Preparation

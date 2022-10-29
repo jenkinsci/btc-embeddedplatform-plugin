@@ -17,11 +17,12 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiClient;
 import org.openapitools.client.Configuration;
+import org.openapitools.client.api.MessagesApi;
 
 import com.btc.ep.plugins.embeddedplatform.http.EPApiClient;
 import com.btc.ep.plugins.embeddedplatform.http.HttpRequester;
@@ -47,7 +48,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcStartupStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcStartupStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private BtcStartupStep step;
@@ -70,8 +71,10 @@ class BtcStartupStepExecution extends SynchronousNonBlockingStepExecution<Object
 		if (!Status.OK.equals(response.status)) {
 			startupEpOnWindows(logger, response);
 			WaitForConnection exec = new WaitForConnection(step, logger, getContext());
-			StepExecutionHelper.executeOnAgent(exec, getContext());
+			response = StepExecutionHelper.executeOnAgent(exec, getContext());
 		}
+		// store created message marker
+		Store.messageMarker = response.messageMarker;
 		return null;
 	}
 
@@ -376,9 +379,9 @@ class ConnectionAttempt extends BtcExecution {
 
 	private static final long serialVersionUID = -8024389552732543068L;
 	private BtcStartupStep step;
-
+	
 	public ConnectionAttempt(BtcStartupStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 		initBeforeExecution();
 	}
@@ -432,7 +435,9 @@ class ConnectionAttempt extends BtcExecution {
 		// connection could be established
 		dataTransferObject.status = connected ? Status.OK : Status.ERROR;
 		if (connected) {
-			log("Successfully connected to BTC EmbeddedPlatform on " + host + ":" + step.getPort());
+			log("Successfully connected to BTC EmbeddedPlatform");
+			
+			Util.createMessageMarker(dataTransferObject, new MessagesApi());
 		}
 		return connected;
 	}
@@ -447,7 +452,7 @@ class WaitForConnection extends BtcExecution {
 	private String epVersion = "";
 
 	public WaitForConnection(BtcStartupStep step, PrintStream logger, StepContext context) {
-		super(logger, context, step);
+		super(logger, context, step, Store.baseDir);
 		this.step = step;
 	}
 
@@ -456,6 +461,7 @@ class WaitForConnection extends BtcExecution {
 		boolean connected = HttpRequester.checkConnection("/ep/test", 200, step.getTimeout(), 2);
 		if (connected) {
 			log("Successfully connected to BTC EmbeddedPlatform " + epVersion + " on port " + step.getPort());
+			Util.createMessageMarker(dataTransferObject, new MessagesApi());
 			response(200);
 		} else {
 			error("Connection timed out after " + step.getTimeout() + " seconds.");

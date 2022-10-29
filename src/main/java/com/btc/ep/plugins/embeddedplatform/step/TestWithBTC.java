@@ -15,7 +15,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.yaml.snakeyaml.Yaml;
@@ -31,6 +31,8 @@ import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcCodeAnalysisReportSt
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcRBTStep;
 import com.btc.ep.plugins.embeddedplatform.step.analysis.BtcVectorGenerationStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateCStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateECStep;
+import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateSLStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileCreateTLStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcProfileLoadStep;
 import com.btc.ep.plugins.embeddedplatform.step.basic.BtcStartupStep;
@@ -55,7 +57,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class TestWithBTCStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final long serialVersionUID = 1L;
 	private TestWithBTC step;
@@ -71,6 +73,7 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 		// Load test config
 		StepExecutionHelper.log(logger, "Applying specified test config file " + step.getTestConfigPath());
 		FilePath testConfigFilePath = StepExecutionHelper.resolveInAgentWorkspace(getContext(), step.getTestConfigPath());
+		Store.baseDir = testConfigFilePath.getParent().getRemote();
 		Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
 		TestConfig testConfig = yaml.loadAs(testConfigFilePath.read(), TestConfig.class);
 		// apply specifically, because may be determined via a groovy step and then passed to the step
@@ -147,18 +150,19 @@ class TestWithBTCStepExecution extends SynchronousNonBlockingStepExecution<Objec
 			String slModelPath1 = (String) testStep.get("slModelPath");
 			checkArgument(slModelPath1 != null,
 					"No slModelPath was provided for the EmbeddedCoder Profile Creation step.");
-			run(testStep, new BtcProfileCreateTLStep(slModelPath1));
+			run(testStep, new BtcProfileCreateECStep(slModelPath1));
 			break;
 		case "simulink":
 			String slModelPath2 = (String) testStep.get("slModelPath");
 			checkArgument(slModelPath2 != null, "No slModelPath was provided for the Simulink Profile Creation step.");
-			run(testStep, new BtcProfileCreateTLStep(slModelPath2));
+			run(testStep, new BtcProfileCreateSLStep(slModelPath2));
 			break;
 		case "simulinkToplevel":
 			String slModelPath3 = (String) testStep.get("slModelPath");
 			checkArgument(slModelPath3 != null, "No slModelPath was provided for the Simulink Profile Creation step.");
-			run(testStep, new BtcProfileCreateTLStep(slModelPath3));
-			break;
+			throw new IllegalArgumentException("Not implemented");
+//			run(testStep, new BtcProfileCreateTLStep(slModelPath3));
+//			break;
 
 		/*
 		 * Analysis Steps

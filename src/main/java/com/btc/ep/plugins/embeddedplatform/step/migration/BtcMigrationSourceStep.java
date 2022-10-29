@@ -14,7 +14,7 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
-import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.openapitools.client.ApiException;
@@ -54,7 +54,7 @@ import hudson.model.TaskListener;
 /**
  * This class defines what happens when the above step is executed
  */
-class BtcMigrationSourceStepExecution extends SynchronousNonBlockingStepExecution<Object> {
+class BtcMigrationSourceStepExecution extends SynchronousStepExecution<Object> {
 
 	private static final String EXECUTION_RECORD = "EXECUTION_RECORD";
 	private static final long serialVersionUID = 1L;
@@ -184,7 +184,7 @@ class BtcMigrationSourceStepExecution extends SynchronousNonBlockingStepExecutio
 	 */
 	private void saveProfileAndReportData(String profilePath) throws Exception {
 		// Save Profile and get metadata: execute this part on the agent
-		DataTransferObject dto = StepExecutionHelper.executeOnAgent(new BtcExecution(logger, getContext(), step) {
+		DataTransferObject dto = StepExecutionHelper.executeOnAgent(new BtcExecution(logger, getContext(), step, Store.baseDir) {
 			
 			private static final long serialVersionUID = -2244113951310839245L;
 			private ProfilesApi profileApi = new ProfilesApi();
@@ -238,7 +238,7 @@ class BtcMigrationSourceStepExecution extends SynchronousNonBlockingStepExecutio
 		ExecutionRecordsApi erApi = new ExecutionRecordsApi();
 		FoldersApi folderApi = new FoldersApi();
 
-		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords1();
+		List<ExecutionRecord> executionRecords = erApi.getExecutionRecords();
 		for (String config : executionConfigs) {
 			if (step.isCreateProfilesFromScratch()) {
 				// Export Execution Records to be imported in the target profile
