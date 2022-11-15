@@ -20,9 +20,9 @@ def connect(body = {}) {
     def config = resolveConfig(body)
     if (config.port != null) {
         epJenkinsPort = config.port
-    } else {
+    } else if (!binding.hasVariable('epJenkinsPort') || epJenkinsPort == null) {
         epJenkinsPort = "29267" // default as fallback
-    }
+    } // else: keep existing value of epJenkinsPort
     def timeoutSeconds = 120
     if (config.timeout != null)
         timeoutSeconds = config.timeout
