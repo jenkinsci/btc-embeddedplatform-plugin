@@ -62,7 +62,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>http_request</artifactId>
-            <version>1.8.27</version> <!-- not managed by BOM, hence needs version -->
+            <version>1.16</version> <!-- not managed by BOM, hence needs version -->
         </dependency>
         <!-- HtmlPublish -->
         <dependency>
