@@ -119,6 +119,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update on Agent | Update on Controller
 --------|---------------|------------|-----------------|--------------------
+22.3.1 | - Adapted to EP 22.3<br>- Introduced Black/Whitelists for Calibrations, Subsystems and CodeFiles for TargetLink architecture import.<br>- added filters for architecture import<br>- vector generation is now skipped if there's no ccode architecture<br>- executionrecord import/export now supports different formats (csv and excel on top of mdf)<br>- migration suite now supports pure simulink models (without EmbeddedCoder), if existing test data can be provided (e.g. through vectorImport) | 22.3 | X | X 
 22.2.0 | - Adapted to EP 22.2 | 22.2 | X | 
 22.1.0 | - Adapted to EP 22.1 | 22.1 | X | X
 2.11.0 | - Adapted to EP 2.11 | 2.11 | X | X

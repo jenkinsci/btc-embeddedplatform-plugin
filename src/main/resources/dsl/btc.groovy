@@ -2,8 +2,8 @@ package dsl
 // vars/btc.groovy
 
 def epJenkinsPort = null       // the port to use for communication with EP
-def isDebug  = false       // specifies if a debug environment should be exported and archived (true, false)
-def mode     = null       // mode for migration suite (source, target)
+def isDebug       = false      // specifies if a debug environment should be exported and archived (true, false)
+def mode          = null       // mode for migration suite (source, target)
 
 /**
  * Connects to a running instance of BTC EmbeddedPlatform.
@@ -691,6 +691,8 @@ def migrationSource(body) {
         }
         if (config.tlModelPath != null) {
             r = profileCreateTL(config)
+        } else if (config.slModelPath != null && config.slOnly != null && config.slOnly) {
+            r = profileCreateSL(config)
         } else if (config.slModelPath != null) {
             r = profileCreateEC(config)
         } else if (config.codeModelPath != null) {
@@ -731,16 +733,21 @@ def migrationSource(body) {
         error("Error during simulation on source config.")
     }
     // ER Export
-    executionRecordExport {
-        dir = "${this.migrationTmpDir}/er/SIL"
-        executionConfig = "SIL"
-        isMigration = true
+    def erFormat = config.erFormat == null ? 'MDF' : config.erFormat
+    if (config.executionConfigString == null || "${config.executionConfigString}".contains("SIL")) {
+        executionRecordExport {
+            dir = "${this.migrationTmpDir}/er/SIL"
+            executionConfig = "SIL"
+            isMigration = true
+            format = erFormat
+        }
     }
     if ("${config.executionConfigString}".contains("TL MIL")) {
         executionRecordExport { // only if requested
             dir = "${this.migrationTmpDir}/er/TL_MIL"
             executionConfig = "TL MIL"
             isMigration = true
+            format = erFormat
         }
     }
     if ("${config.executionConfigString}".contains("SL MIL")) {
@@ -748,6 +755,7 @@ def migrationSource(body) {
             dir = "${this.migrationTmpDir}/er/SL_MIL"
             executionConfig = "SL MIL"
             isMigration = true
+            format = erFormat
         }
     }
     if ("${config.executionConfigString}".contains("PIL")) {
@@ -755,6 +763,7 @@ def migrationSource(body) {
             dir = "${this.migrationTmpDir}/er/PIL"
             executionConfig = "PIL"
             isMigration = true
+            format = erFormat
         }
     }
     try {
@@ -775,8 +784,8 @@ def migrationSource(body) {
         archiveArtifacts allowEmptyArchive: true, artifacts: "${relativeMigTmpDir}/profiles/*.epp"
     }
     // stash mdf files and reports
-    printToConsole("stashing files: ${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/*")
-    stash includes: "${relativeMigTmpDir}/er/**/*.mdf, ${relativeExportPath}/**/*", name: stashName
+    printToConsole("stashing files: ${relativeMigTmpDir}/er/**/*, ${relativeExportPath}/*")
+    stash includes: "${relativeMigTmpDir}/er/**/*, ${relativeExportPath}/**/*", name: stashName
 }
 
 /**
@@ -824,6 +833,8 @@ def migrationTarget(body) {
         }
         if (config.tlModelPath != null) {
             r = profileCreateTL(config)
+        } else if (config.slModelPath != null && config.slOnly != null && config.slOnly) {
+            r = profileCreateSL(config)
         } else if (config.slModelPath != null) {
             r = profileCreateEC(config)
         } else if (config.codeModelPath != null) {
@@ -842,26 +853,33 @@ def migrationTarget(body) {
     }
     
     // ER Import
-    executionRecordImport { // always test SIL vs. SIL
-        dir = "${this.migrationTmpDir}/er/SIL"
-        executionConfig = "SIL"
+    def erFormat = config.erFormat == null ? 'MDF' : config.erFormat
+    if (config.executionConfigString == null || "${config.executionConfigString}".contains("SIL")) {
+        executionRecordImport { // always test SIL vs. SIL
+            dir = "${this.migrationTmpDir}/er/SIL"
+            executionConfig = 'SIL'
+            format = erFormat
+        }
     }
     if ("${config.executionConfigString}".contains("TL MIL")) {
         executionRecordImport { // only if requested
             dir = "${this.migrationTmpDir}/er/TL_MIL"
             executionConfig = "TL MIL"
+            format = erFormat
         }
     }
     if ("${config.executionConfigString}".contains("SL MIL")) {
         executionRecordImport { // only if requested
             dir = "${this.migrationTmpDir}/er/SL_MIL"
             executionConfig = "SL MIL"
+            format = erFormat
         }
     }
     if ("${config.executionConfigString}".contains("PIL")) {
         executionRecordImport { // only if requested
             dir = "${this.migrationTmpDir}/er/PIL"
             executionConfig = "PIL"
+            format = erFormat
         }
     }
     // Regression Test
@@ -956,10 +974,26 @@ def createReqString(config, methodName) {
         reqString += '"tlSubsystem": "' + "${config.tlSubsystem}" + '", '
     if (config.tlCalibrationFilter != null)
         reqString += '"tlCalibrationFilter": "' + "${config.tlCalibrationFilter}" + '", '
+    if (config.tlCalibrationBlacklist != null)
+        reqString += '"tlCalibrationBlacklist": "' + "${config.tlCalibrationBlacklist}" + '", '
+    if (config.tlCalibrationWhitelist != null)
+        reqString += '"tlCalibrationWhitelist": "' + "${config.tlCalibrationWhitelist}" + '", '
     if (config.tlSubsystemFilter != null)
         reqString += '"tlSubsystemFilter": "' + "${config.tlSubsystemFilter}" + '", '
+    if (config.tlSubsystemBlacklist != null)
+        reqString += '"tlSubsystemBlacklist": "' + "${config.tlSubsystemBlacklist}" + '", '
+    if (config.tlSubsystemWhitelist != null)
+        reqString += '"tlSubsystemWhitelist": "' + "${config.tlSubsystemWhitelist}" + '", '
     if (config.tlCodeFileFilter != null)
         reqString += '"tlCodeFileFilter": "' + "${config.tlCodeFileFilter}" + '", '
+    if (config.tlCodeFileBlacklist != null)
+        reqString += '"tlCodeFileBlacklist": "' + "${config.tlCodeFileBlacklist}" + '", '
+    if (config.tlCodeFileWhitelist != null)
+        reqString += '"tlCodeFileWhitelist": "' + "${config.tlCodeFileWhitelist}" + '", '
+    if (config.slParameterFilter != null)
+        reqString += '"slParameterFilter": "' + "${config.slParameterFilter}" + '", '
+    if (config.slSubsystemFilter != null)
+        reqString += '"slSubsystemFilter": "' + "${config.slSubsystemFilter}" + '", '
     if (config.compilerShortName != null)
         reqString += '"compilerShortName": "' + "${config.compilerShortName}" + '", '
     if (config.licenseLocationString != null)
@@ -1095,6 +1129,8 @@ def createReqString(config, methodName) {
         reqString += '"importDir": "' + toAbsPath("${config.importDir}") + '", '
     if (config.exportDir != null)
         reqString += '"exportDir": "' + toAbsPath("${config.exportDir}") + '", '
+    if (config.format != null)
+        reqString += '"format": "' + "${config.format}" + '", '
     if (config.vectorFormat != null)
         reqString += '"vectorFormat": "' + "${config.vectorFormat}" + '", '
     if (config.vectorKind != null)
