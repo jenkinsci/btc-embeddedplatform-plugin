@@ -1183,8 +1183,8 @@ def createReqString(config, methodName) {
         reqString += '"checkResolution": "' + "${config.checkResolution}" + '", '
     if (config.checkTestCases != null)
         reqString += '"checkTestCases": "' + "${config.checkTestCases}" + '", '
-
-
+    if (config.projectReportTemplateName)
+        reqString += '"projectReportTemplateName": "' + "${config.projectReportTemplateName}" + '", '
     reqString = reqString.trim()
     if (reqString.endsWith(','))
         reqString = reqString.substring(0, reqString.length() - 1)

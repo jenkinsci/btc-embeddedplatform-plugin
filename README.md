@@ -490,6 +490,7 @@ closeEp | Boolean flag controlling whether the BTC EmbeddedPlatform will be clos
 archiveProfiles | Boolean flag controlling whether BTC EmbeddedPlatform profiles are archived by Jenkins to be available on the Job Page. You can disable this and control the "archiveArtifacts" option yourself.<br>(default: true) | true, false
 publishReports | Boolean flag controlling whether the BTC EmbeddedPlatform reports are published in Jenkins to be available on the Job Page. You can disable this and control the "publishHTML" option yourself.<br>(default: true) | true, false
 publishResults | Boolean flag controlling whether BTC EmbeddedPlatform test results (JUnit XML) are published in Jenkins to be available on the Job Page and for further aggregations. You can disable this and control the "junit" option yourself.<br>(default: true) | true, false
+projectReportTemplateName | String specifying the name of the tempalte that shall be used for the project report. This requires a template directory to be defined in the preferences (REPORT_TEMPLATE_FOLDER) and the specified template to be available.<br>(default: no value -> default template) | "MyTemplate1"
 
 ### Import & Export
 
@@ -499,8 +500,7 @@ DSL Command: btc.vectorImport {...}
 
 **Description**
 
-Imports test cases or stimuli vectors from the specified location. The
-following settings are available:
+Imports test cases or stimuli vectors from the specified location. The following settings are available:
 
 Property | Description | Example Value(s)
 ---------|-------------|-----------------
