@@ -119,6 +119,7 @@ Migration Suite below).
 
 Version | Release Notes | EP Version | Update on Agent | Update on Controller
 --------|---------------|------------|-----------------|--------------------
+23.1.0 | - Adapted to EP 23.1<br> - Added enablePILCleanCode option for TargetLink PIL (context: profileLoad / profileCreateTL) | 2.11 / 23.1 | X | X 
 22.3.1 | - Adapted to EP 22.3<br>- Introduced Black/Whitelists for Calibrations, Subsystems and CodeFiles for TargetLink architecture import.<br>- added filters for architecture import<br>- vector generation is now skipped if there's no ccode architecture<br>- executionrecord import/export now supports different formats (csv and excel on top of mdf)<br>- migration suite now supports pure simulink models (without EmbeddedCoder), if existing test data can be provided (e.g. through vectorImport) | 22.3 | X | X 
 22.2.0 | - Adapted to EP 22.2 | 22.2 | X | 
 22.1.0 | - Adapted to EP 22.1 | 22.1 | X | X
@@ -367,6 +368,7 @@ slScriptPath | Path of the model init script for the Simulink model. The path ca
 addModelInfoPath | Path to the XML file with additional model info for SL use case. The path can be absolute or relative to the jenkins job's workspace. | "AddGenModelInfo.xml"
 pilConfig | Name of the PIL configuration to use. This config must exist in TargetLink. Setting a PIL Config will activate PIL in the profile and enable you to choose "PIL" as an execution config. | "default EVM"
 pilTimeout | Timeout in seconds for the download process to the PIL board.<br>(default: 60) | 60, 120
+enablePilCleanCode | Enables the CleanCode option for TL PIL.<br>(default: false) | true, false
 calibrationHandling | The calibration handling controls how calibrations are recognized during architecture import.<br>(default: "EXPLICIT PARAM") | "EXPLICIT PARAM", "LIMITED BLOCKSET", "OFF"
 testMode | The test mode controls whether local displayables will be available for testing (GREY BOX) or not (BLACK BOX). | "GREY BOX", "BLACK BOX"
 reuseExistingCode | Boolean flag that controls if EmbeddedPlatform will use existing generated code from TargetLink. Requires the Code and the linking information in the data dictionary to be available.<br>(default: false) | true, false

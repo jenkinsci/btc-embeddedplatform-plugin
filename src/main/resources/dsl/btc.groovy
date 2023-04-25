@@ -950,6 +950,8 @@ def createReqString(config, methodName) {
         reqString += '"pilConfig": "' + "${config.pilConfig}" + '", '
     if (config.pilTimeout != null)
         reqString += '"pilTimeout": "' + "${config.pilTimeout}" + '", '
+    if (config.enablePilCleanCode != null)
+        reqString += '"enablePilCleanCode": "' + "${config.enablePilCleanCode}" + '", '
     if (config.testMode != null)
         reqString += '"testMode": "' + "${config.testMode}" + '", '
     if (config.calibrationHandling != null)
@@ -1173,6 +1175,8 @@ def createReqString(config, methodName) {
         reqString += '"tolerancesFilePath": "' + toAbsPath("${config.tolerancesFilePath}") + '", '
     if (config.variant != null)
         reqString += '"variant": "' + "${config.variant}" + '", '
+    if (config.ignoreCpl != null)
+        reqString += '"ignoreCpl": "' + "${config.ignoreCpl}" + '", '
     // Interface Report
     if (config.scopeNameRegex != null)
         reqString += '"scopeNameRegex": "' + "${config.scopeNameRegex}" + '", '
