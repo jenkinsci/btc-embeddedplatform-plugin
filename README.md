@@ -759,6 +759,7 @@ Property | Description | Example Value(s)
 ---------|-------------|-----------------
 pll | Semicolon separated list of PLLs used to set the goals for automatic stimuli vector generation.<br>(default: all goals will be analyzed) | "STM; D", "STM:3", … (see Back-to-Back & Vector Generation User Guide for more details about PLLs)
 engine | Engine to be used for vector generation (guided random, model checker, both)<br>(default: "ATG+CV", combined hierachical approach) | "ATG+CV", "ATG", "CV" (see Back-to-Back & Vector Generation User Guide for more details about engines)
+scope | String with a scope name to use as an entry-point<br>(default: toplevel scope(s) used as entrypoint) | "my_runnable"
 globalTimeout | Global timeout in seconds. 0 means no timeout.<br>(default: 600) | 600
 scopeTimeout | Scope timeout in seconds. 0 means no timeout.<br>(default: 300) | 300
 perPropertyTimeout | Timeout per coverage property in seconds. 0 means no timeout.<br>(default: 60) | 60
