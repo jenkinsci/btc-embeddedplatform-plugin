@@ -127,11 +127,15 @@ def startup(body = {}) {
             def startCmd = """\$p = Start-Process '${epInstallDir}/rcp/ep.exe' -PassThru -ArgumentList \
                 '-clearPersistedState', \
                 '-application', """
-                 // before/after package refactoring
-            if (compareVersions(epVersion, '2.11p0') >= 0) {
-                startCmd += "'ep.application.headless', "
-            } else { // version < 2.11
+            if (compareVersions(epVersion, '2.11p0') < 0) {
+                // version < 2.11
                 startCmd += "'com.btc.ep.application.headless', "
+            } else if (compareVersions(epVersion, '23.3p0') < 0) {
+                // version < 23.3
+                startCmd += "'ep.application.headless', "
+            } else { 
+                // version >= 23.3
+                startCmd += "'ep.application.headless.HeadlessApplication', "
             }
             startCmd += """'-nosplash',${epJreString} \
                 '-vmargs', \
