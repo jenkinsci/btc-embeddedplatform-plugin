@@ -595,14 +595,7 @@ def wrapUp(body = {}) {
     try {
         // Closes BTC EmbeddedPlatform. Try-Catch is needed because the REST API call
         // will throw an exception as soon as the tool closes. This is expected.
-        def reqString = "" // removed closeEp parameter, it was only causing problems
-        if (config.closeEp != null && config.closeEp == false) {
-            reqString = "false"
-        }
-        // this overrides "false" or anything else
-        if (config.exit != null && config.exit == true) {
-            reqString = "exit"
-        }
+        def reqString = createReqString(config, 'wrapUp')
         httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/kill", validResponseCodes: '100:500'
     } catch (err) {
         printToConsole('BTC EmbeddedPlatform successfully closed.')
@@ -1191,8 +1184,13 @@ def createReqString(config, methodName) {
         reqString += '"checkResolution": "' + "${config.checkResolution}" + '", '
     if (config.checkTestCases != null)
         reqString += '"checkTestCases": "' + "${config.checkTestCases}" + '", '
-    if (config.projectReportTemplateName)
+    
+    // wrap up
+    if (config.projectReportTemplateName != null)
         reqString += '"projectReportTemplateName": "' + "${config.projectReportTemplateName}" + '", '
+    if (config.closeEp != null)
+        reqString += '"closeEp": "' + "${config.closeEp}" + '", '
+
     reqString = reqString.trim()
     if (reqString.endsWith(','))
         reqString = reqString.substring(0, reqString.length() - 1)
