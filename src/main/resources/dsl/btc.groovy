@@ -1,9 +1,12 @@
 package dsl
 // vars/btc.groovy
 
-def epJenkinsPort = null       // the port to use for communication with EP
-def isDebug       = false      // specifies if a debug environment should be exported and archived (true, false)
-def mode          = null       // mode for migration suite (source, target)
+import groovy.transform.Field
+
+@Field def epJenkinsPort = null       // the port to use for communication with EP
+@Field def epVersion     = null       // the version of EP that is used
+def isDebug              = false      // specifies if a debug environment should be exported and archived (true, false)
+def mode                 = null       // mode for migration suite (source, target)
 
 /**
  * Connects to a running instance of BTC EmbeddedPlatform.
