@@ -5,8 +5,11 @@ import groovy.transform.Field
 
 @Field def epJenkinsPort = null       // the port to use for communication with EP
 @Field def epVersion     = null       // the version of EP that is used
-def isDebug              = false      // specifies if a debug environment should be exported and archived (true, false)
-def mode                 = null       // mode for migration suite (source, target)
+@Field def isDebug       = false      // specifies if a debug environment should be exported and archived (true, false)
+@Field def mode          = null       // mode for migration suite (source, target)
+@Field def portMap       = [:]        // registers ports used by individual instances
+@Field def PID           = null       // process ID of the started instance of EP
+@Field def exportPath    = null
 
 /**
  * Connects to a running instance of BTC EmbeddedPlatform.
@@ -122,8 +125,8 @@ def startup(body = {}) {
     printToConsole("Connecting to EP ${epVersion} using port ${epJenkinsPort}. (timeout: " + timeoutSeconds + " seconds).\n(The log file on the agent can be found here: ${env:userprofile}/AppData/Roaming/BTC/ep/${epVersion}/${epJenkinsPort}/logs/current.log)")
     timeout(time: timeoutSeconds, unit: 'SECONDS') { // timeout for connection to EP
         try {
-            epJreDir = getJreDir(epInstallDir)
-            epJreString = ''
+            def epJreDir = getJreDir(epInstallDir)
+            def epJreString = ''
             if (epJreDir != null) {
                 epJreString = " '-vm', '\"${epJreDir}\"',"
             }
@@ -170,7 +173,7 @@ def startup(body = {}) {
             PID = startCmdOutput.trim()
             reservePortAndReleaseRegistryLock(epJenkinsPort)
             waitUntil(quiet: true, initialRecurrencePeriod: 3000) {
-                r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
+                def r = httpRequest quiet: true, url: "http://localhost:${epJenkinsPort}/check", validResponseCodes: '100:500'
                 // exit waitUntil closure
                 return (r.status == 200)
             }
@@ -933,7 +936,7 @@ def createReqString(config, methodName) {
     // Profile
     if (config.profilePath != null) {
         reqString += '"profilePath": "' + toAbsPath("${config.profilePath}") + '", '
-        profilePath = toAbsPath("${config.profilePath}")
+        def profilePath = toAbsPath("${config.profilePath}")
         exportPath = toAbsPath(getParentDir("${config.profilePath}") + "/reports")
     }
     if (config.uniqueName != null)
