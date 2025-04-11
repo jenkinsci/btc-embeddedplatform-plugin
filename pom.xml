@@ -10,7 +10,7 @@
     
     <groupId>com.btc.ep</groupId>
     <artifactId>btc-embeddedplatform</artifactId>
-    <version>25.1.1</version>
+    <version>25.1.2</version>
     <packaging>hpi</packaging>
 
      <scm>
@@ -34,7 +34,7 @@
         <developer>
             <id>thabok</id>
             <name>Thabo Krick</name>
-            <email>thabo.krick@btc-es.de</email>
+            <email>thabo.krick@btc-embedded.com</email>
         </developer>
     </developers>
 

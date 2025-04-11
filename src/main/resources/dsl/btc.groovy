@@ -10,6 +10,8 @@ import groovy.transform.Field
 @Field def portMap       = [:]        // registers ports used by individual instances
 @Field def PID           = null       // process ID of the started instance of EP
 @Field def exportPath    = null
+@Field def projectOverviewList = [] //Used in migration suite for multiple projects
+@Field def migrationTmpDir = null 
 
 /**
  * Connects to a running instance of BTC EmbeddedPlatform.
@@ -552,7 +554,7 @@ def collectProjectOverview(body)  {
     def config = resolveConfig(body)
     def reqString = createReqString(config, 'collectProjectOverview')
     def r = httpRequest quiet: true, httpMode: 'POST', requestBody: reqString, url: "http://localhost:${epJenkinsPort}/collectProjectOverview", validResponseCodes: '100:500'
-    projectOverview = readJSON text: r.content
+    def projectOverview = readJSON text: r.content
     if (!binding.hasVariable('projectOverviewList')) {
         initProjectOverview()
     }
@@ -685,6 +687,7 @@ def migrationSource(body) {
         startup(body)
     }
     // Profile Creation
+    def r = null
     if (config.profilePath == null) {
         // create a new profile
         if (config.uniqueName != null) {
@@ -827,6 +830,7 @@ def migrationTarget(body) {
         startup(body)
     }
     // Profile Creation
+    def r = null
     if (config.profilePath == null) {
         // create a new profile
         if (config.uniqueName != null) {
