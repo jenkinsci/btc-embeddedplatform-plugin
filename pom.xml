@@ -73,7 +73,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>pipeline-utility-steps</artifactId>
-            <version>2.6.1</version> <!-- not managed by BOM, hence needs version -->
+            <version>2.13.2</version> <!-- not managed by BOM, hence needs version -->
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/fluent-hc -->
         <dependency>
