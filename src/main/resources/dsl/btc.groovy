@@ -12,6 +12,7 @@ import groovy.transform.Field
 @Field def exportPath    = null
 @Field def projectOverviewList = [] //Used in migration suite for multiple projects
 @Field def migrationTmpDir = null 
+@Field def profilePath = null 
 
 /**
  * Connects to a running instance of BTC EmbeddedPlatform.
@@ -940,7 +941,7 @@ def createReqString(config, methodName) {
     // Profile
     if (config.profilePath != null) {
         reqString += '"profilePath": "' + toAbsPath("${config.profilePath}") + '", '
-        def profilePath = toAbsPath("${config.profilePath}")
+        profilePath = toAbsPath("${config.profilePath}")
         exportPath = toAbsPath(getParentDir("${config.profilePath}") + "/reports")
     }
     if (config.uniqueName != null)
