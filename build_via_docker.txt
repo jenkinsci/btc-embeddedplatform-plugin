@@ -1,6 +1,6 @@
 # in this directory:
 
 # build 
-docker run --rm -it -w "$(pwd)" -v "$(pwd)":"$(pwd)" -v /Users/thabok/Documents/m2_docker:/root/.m2  maven:3.5.3-jdk-8-alpine mvn package -DskipTests=true
+docker run --rm -w "$(pwd)" -v "$(pwd)":"$(pwd)" -v "$(pwd)/mvn-repo:/root/.m2"  maven:3.5.3-jdk-8-alpine mvn package -DskipTests=true
 # deploy
-docker run --rm -it -w "$(pwd)" -v "$(pwd)":"$(pwd)" -v /Users/thabok/Documents/m2_docker:/root/.m2  maven:3.5.3-jdk-8-alpine mvn -Dset.changelist -DaltDeploymentRepository=maven.jenkins-ci.org::default::https://repo.jenkins-ci.org/releases/ clean deploy
+docker run --rm -w "$(pwd)" -v "$(pwd)":"$(pwd)" -v "$(pwd)/mvn-repo:/root/.m2"  maven:3.5.3-jdk-8-alpine mvn -Dset.changelist -DaltDeploymentRepository=maven.jenkins-ci.org::default::https://repo.jenkins-ci.org/releases/ clean deploy
