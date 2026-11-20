@@ -1483,9 +1483,12 @@ def updatePortRegistry() {
 }
 
 boolean isProcessAlive(pid) {
-    def out = bat script: """@echo off
-    tasklist /fi \"pid eq ${pid}\"""", returnStdout: true
-    return out.trim().length() > 200
+    def processId = pid as Integer
+    def status = powershell script: """
+        if (Get-Process -Id ${processId} -ErrorAction SilentlyContinue) { exit 0 }
+        exit 1
+    """, returnStatus: true
+    return status == 0
 }
 
 def toJson(object) {
